@@ -2,6 +2,19 @@
 
 ## Версия 1.0.1 (Декабрь 2025)
 
+### 🎉 Новое
+
+- **Компиляция в EXE файл** (~220 МБ)
+  - Создан файл спецификации SNEE_Graf.spec для PyInstaller
+  - Готовый standalone EXE в папке dist/
+  - Включены все зависимости (Python, PyQt6, Chromium)
+  - Документация по распространению (DISTRIBUTION.md)
+
+- **Документация для GitHub**
+  - .github/README.md для отображения на GitHub
+  - BRANCHES.md - описание структуры веток
+  - DISTRIBUTION.md - инструкции по распространению EXE
+
 ### 🐛 Исправления
 
 - **Добавлена зависимость PyQt6-WebEngine** в requirements.txt

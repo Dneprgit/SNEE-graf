@@ -36,6 +36,7 @@
 | **[VERSION.md](VERSION.md)** | История версий | Релизы |
 | **[CHANGELOG.md](CHANGELOG.md)** | Журнал изменений | Обновления |
 | **[BRANCHES.md](BRANCHES.md)** | Структура веток Git | Разработка |
+| **[DISTRIBUTION.md](DISTRIBUTION.md)** | Распространение EXE | Релизы |
 | **[INDEX.md](INDEX.md)** | Этот файл | Навигация |
 
 ---
