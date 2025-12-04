@@ -35,6 +35,7 @@
 | **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** | Структура файлов | Навигация |
 | **[VERSION.md](VERSION.md)** | История версий | Релизы |
 | **[CHANGELOG.md](CHANGELOG.md)** | Журнал изменений | Обновления |
+| **[BRANCHES.md](BRANCHES.md)** | Структура веток Git | Разработка |
 | **[INDEX.md](INDEX.md)** | Этот файл | Навигация |
 
 ---
