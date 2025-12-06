@@ -75,7 +75,6 @@ function App() {
       {loadProfile && (
         <DataVisualizationSection
           loadProfile={loadProfile}
-          setLoadProfile={setLoadProfile}
         />
       )}
 

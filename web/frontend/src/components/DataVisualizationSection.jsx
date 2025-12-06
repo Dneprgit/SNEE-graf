@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Edit, TrendingUp, TrendingDown } from 'lucide-react';
 
-const DataVisualizationSection = ({ loadProfile, setLoadProfile }) => {
+const DataVisualizationSection = ({ loadProfile }) => {
   const chartData = loadProfile.map((value, index) => ({
     hour: index + 1,
     balance: parseFloat(value.toFixed(2)),
@@ -14,12 +14,6 @@ const DataVisualizationSection = ({ loadProfile, setLoadProfile }) => {
     avg: loadProfile.reduce((a, b) => a + b, 0) / loadProfile.length,
     surplus: loadProfile.filter(v => v > 0).reduce((a, b) => a + b, 0),
     deficit: Math.abs(loadProfile.filter(v => v < 0).reduce((a, b) => a + b, 0)),
-  };
-
-  const handleValueChange = (index, newValue) => {
-    const updated = [...loadProfile];
-    updated[index] = parseFloat(newValue) || 0;
-    setLoadProfile(updated);
   };
 
   return (
@@ -140,39 +134,6 @@ const DataVisualizationSection = ({ loadProfile, setLoadProfile }) => {
               />
             </BarChart>
           </ResponsiveContainer>
-        </motion.div>
-
-        {/* Таблица редактирования */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          viewport={{ once: true }}
-          className="card"
-        >
-          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-            <Edit className="w-6 h-6 mr-2 text-primary-600" />
-            Редактирование значений
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {loadProfile.map((value, index) => (
-              <div key={index} className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  Час {index + 1}
-                </label>
-                <input
-                  type="number"
-                  value={value}
-                  onChange={(e) => handleValueChange(index, e.target.value)}
-                  className="input-field text-sm py-2"
-                  step="1"
-                />
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 mt-4">
-            💡 Положительные значения — избыток энергии, отрицательные — дефицит
-          </p>
         </motion.div>
       </motion.div>
     </section>
