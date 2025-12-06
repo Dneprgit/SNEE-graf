@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { AreaChart, Area, LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Edit, TrendingUp, TrendingDown } from 'lucide-react';
 
 const DataVisualizationSection = ({ loadProfile }) => {
@@ -131,9 +131,12 @@ const DataVisualizationSection = ({ loadProfile }) => {
               <Bar
                 dataKey="balance"
                 name="Баланс мощности"
-                fill="#0ea5e9"
                 radius={[4, 4, 0, 0]}
-              />
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.balance > 0 ? '#10b981' : '#ef4444'} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </motion.div>

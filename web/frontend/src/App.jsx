@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Hero from './components/Hero';
 import DataInputSection from './components/DataInputSection';
 import DataVisualizationSection from './components/DataVisualizationSection';
+import BatteryInteractiveSection from './components/BatteryInteractiveSection';
 import ChartsSection from './components/ChartsSection';
 import SchematicSection from './components/SchematicSection';
 import Footer from './components/Footer';
@@ -33,6 +34,16 @@ function App() {
       setError('Не удалось загрузить профиль по умолчанию');
     }
   };
+
+  // Автоматический пересчет при изменении параметров (если уже был выполнен расчет)
+  useEffect(() => {
+    if (calculationResult && loadProfile) {
+      const timer = setTimeout(() => {
+        handleCalculate();
+      }, 500); // Debounce 500ms
+      return () => clearTimeout(timer);
+    }
+  }, [parameters.rated_power_mw, parameters.rated_capacity_mwh, parameters.efficiency]);
 
   const handleCalculate = async () => {
     if (!loadProfile || loadProfile.length !== 24) {
@@ -73,9 +84,17 @@ function App() {
       />
 
       {loadProfile && (
-        <DataVisualizationSection
-          loadProfile={loadProfile}
-        />
+        <>
+          <DataVisualizationSection
+            loadProfile={loadProfile}
+          />
+          
+          <BatteryInteractiveSection
+            loadProfile={loadProfile}
+            parameters={parameters}
+            setParameters={setParameters}
+          />
+        </>
       )}
 
       {calculationResult && (
