@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Edit, TrendingUp, TrendingDown } from 'lucide-react';
 
 const DataVisualizationSection = ({ loadProfile }) => {
@@ -68,7 +68,7 @@ const DataVisualizationSection = ({ loadProfile }) => {
             Суточный профиль баланса мощности
           </h3>
           <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={chartData}>
+            <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis 
                 dataKey="hour" 
@@ -88,16 +88,18 @@ const DataVisualizationSection = ({ loadProfile }) => {
               />
               <Legend />
               <ReferenceLine y={0} stroke="#000" strokeWidth={2} />
-              <Line
+              <Area
                 type="monotone"
                 dataKey="balance"
                 name="Баланс мощности"
                 stroke="#0ea5e9"
-                strokeWidth={3}
+                fill="#0ea5e9"
+                fillOpacity={0.3}
+                strokeWidth={2}
                 dot={{ r: 4, fill: '#0ea5e9' }}
                 activeDot={{ r: 6 }}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </motion.div>
 
