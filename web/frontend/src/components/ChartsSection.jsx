@@ -15,8 +15,9 @@ import {
 } from 'recharts';
 import { BarChart3, Activity, Battery, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import BatteryInteractiveSection from './BatteryInteractiveSection';
 
-const ChartsSection = ({ loadProfile, calculationResult, parameters }) => {
+const ChartsSection = ({ loadProfile, calculationResult, parameters, setParameters }) => {
   const { eess_schedule, resulting_balance, soc, summary } = calculationResult;
 
   // Подготовка данных для основного графика
@@ -164,6 +165,13 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters }) => {
             ))}
           </div>
         </motion.div>
+
+        {/* Интерактивный выбор параметров */}
+        <BatteryInteractiveSection
+          loadProfile={loadProfile}
+          parameters={parameters}
+          setParameters={setParameters}
+        />
 
         {/* Основной график */}
         <motion.div

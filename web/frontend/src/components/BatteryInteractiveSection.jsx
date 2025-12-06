@@ -112,73 +112,79 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) =
   };
   
   return (
-    <section id="battery-interactive" className="section-container bg-gradient-to-br from-blue-50 to-indigo-50">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        viewport={{ once: true }}
-      >
-        <h2 className="section-title text-center">Интерактивный выбор параметров СНЭЭ</h2>
-        <p className="section-subtitle text-center">
-          Изменяйте размеры батареи, чтобы настроить мощность и емкость
-        </p>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.3 }}
+      viewport={{ once: true }}
+      className="mb-8"
+    >
+      <div className="card max-w-6xl mx-auto">
+        <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+          <Battery className="w-6 h-6 mr-2 text-primary-600" />
+          Интерактивный выбор параметров СНЭЭ
+        </h3>
         
-        <div className="card max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-[1fr,auto] gap-8">
-            {/* Инфо панель */}
-            <div className="space-y-4">
-              <div className="flex items-center text-lg font-semibold text-gray-800 mb-4">
-                <Info className="w-6 h-6 mr-2 text-primary-600" />
-                Текущие параметры
-              </div>
-              
-              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 border-2 border-green-300">
-                <div className="text-sm text-gray-600 mb-1">Мощность инвертора</div>
-                <div className="text-3xl font-bold text-green-700">{batteryPower.toFixed(0)} МВт</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Высота батареи • Макс: {maxPower.toFixed(0)} МВт
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-300">
-                <div className="text-sm text-gray-600 mb-1">Емкость батареи</div>
-                <div className="text-3xl font-bold text-blue-700">{batteryCapacity.toFixed(0)} МВтч</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Ширина: {batteryDuration.toFixed(1)} ч • Макс: {maxDurationHours.toFixed(1)} ч
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4 border-2 border-purple-300">
-                <div className="text-sm text-gray-600 mb-1">КПД цикла</div>
-                <div className="text-3xl font-bold text-purple-700">{(parameters.efficiency * 100).toFixed(0)}%</div>
-              </div>
-              
-              <div className="bg-amber-50 rounded-lg p-4 border-2 border-amber-200 text-sm text-amber-900">
-                <div className="flex items-start">
-                  <Zap className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0 text-amber-600" />
-                  <div>
-                    <strong className="block mb-1">Как использовать:</strong>
-                    <ul className="list-disc list-inside space-y-1 text-xs">
-                      <li>Тяните <span className="font-bold text-green-700">зеленый маркер</span> вверх/вниз для изменения мощности</li>
-                      <li>Тяните <span className="font-bold text-blue-700">синий маркер</span> влево/вправо для изменения емкости</li>
-                      <li>Пунктирная рамка показывает максимальные размеры</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              
-              <button
-                onClick={resetToRecommended}
-                className="w-full btn-secondary text-sm flex items-center justify-center"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Рекомендуемые параметры
-              </button>
+        <div>
+          {/* Инфо панель */}
+          <div className="mb-6">
+            <div className="flex items-center text-lg font-semibold text-gray-800 mb-4">
+              <Info className="w-6 h-6 mr-2 text-primary-600" />
+              Текущие параметры
             </div>
             
-            {/* SVG батарея */}
-            <div className="flex items-center justify-center">
+            {/* Параметры в одну строку */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
+                <div className="text-xs text-gray-600 mb-0.5">Мощность инвертора</div>
+                <div className="text-2xl font-bold text-green-700">{batteryPower.toFixed(0)} МВт</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">
+                  Макс: {maxPower.toFixed(0)} МВт
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
+                <div className="text-xs text-gray-600 mb-0.5">Емкость батареи</div>
+                <div className="text-2xl font-bold text-blue-700">{batteryCapacity.toFixed(0)} МВтч</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">
+                  {batteryDuration.toFixed(1)} ч • Макс: {maxDurationHours.toFixed(1)} ч
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
+                <div className="text-xs text-gray-600 mb-0.5">КПД цикла</div>
+                <div className="text-2xl font-bold text-purple-700">{(parameters.efficiency * 100).toFixed(0)}%</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">
+                  Эффективность
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-amber-50 rounded-lg p-3 border-2 border-amber-200 text-sm text-amber-900 mb-3">
+              <div className="flex items-start">
+                <Zap className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-amber-600" />
+                <div>
+                  <strong className="block mb-1">Как использовать:</strong>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li>Тяните <span className="font-bold text-green-700">зеленый маркер</span> вверх/вниз для изменения мощности</li>
+                    <li>Тяните <span className="font-bold text-blue-700">синий маркер</span> влево/вправо для изменения емкости</li>
+                    <li>Пунктирная рамка показывает максимальные размеры</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={resetToRecommended}
+              className="w-full btn-secondary text-sm flex items-center justify-center"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Рекомендуемые параметры
+            </button>
+          </div>
+          
+          {/* SVG батарея */}
+          <div className="flex items-center justify-center mt-6">
               <svg
                 ref={svgRef}
                 viewBox={`0 0 ${viewWidth} ${viewHeight}`}
@@ -355,11 +361,10 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) =
                   Мощность (МВт)
                 </text>
               </svg>
-            </div>
           </div>
         </div>
-      </motion.div>
-    </section>
+      </div>
+    </motion.div>
   );
 };
 
