@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import Hero from './components/Hero';
 import DataInputSection from './components/DataInputSection';
 import DataVisualizationSection from './components/DataVisualizationSection';
-import BatteryInteractiveSection from './components/BatteryInteractiveSection';
 import ChartsSection from './components/ChartsSection';
 import SchematicSection from './components/SchematicSection';
 import Footer from './components/Footer';
@@ -84,17 +83,9 @@ function App() {
       />
 
       {loadProfile && (
-        <>
-          <DataVisualizationSection
-            loadProfile={loadProfile}
-          />
-          
-          <BatteryInteractiveSection
-            loadProfile={loadProfile}
-            parameters={parameters}
-            setParameters={setParameters}
-          />
-        </>
+        <DataVisualizationSection
+          loadProfile={loadProfile}
+        />
       )}
 
       {calculationResult && (
@@ -103,6 +94,7 @@ function App() {
             loadProfile={loadProfile}
             calculationResult={calculationResult}
             parameters={parameters}
+            setParameters={setParameters}
           />
           
           <SchematicSection
