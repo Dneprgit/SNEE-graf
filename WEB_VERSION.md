@@ -114,7 +114,8 @@ cd web/backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-python -m uvicorn main:app --reload
+//////python -m uvicorn main:app --reload
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 #### Frontend
@@ -132,11 +133,16 @@ docker-compose up -d
 
 ## 🌐 Доступ к приложению
 
-После запуска:
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Документация**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+### Локальная разработка
+- **Frontend**: http://localhost:3001
+- **Backend API**: http://localhost:8001
+- **API Документация**: http://localhost:8001/docs
+- **ReDoc**: http://localhost:8001/redoc
+
+### Production (после развертывания)
+- **Frontend**: https://snee.companykd.world
+- **Backend API**: https://snee.companykd.world/api/v1/health
+- **API Документация**: https://snee.companykd.world/docs
 
 ## 📚 Документация
 
@@ -144,7 +150,9 @@ docker-compose up -d
 |----------|----------|
 | [README.md](web/README.md) | Полная документация проекта |
 | [QUICKSTART.md](web/QUICKSTART.md) | Быстрый старт для разработчиков |
-| [DEPLOYMENT.md](web/DEPLOYMENT.md) | Развертывание на сервере Reg.ru |
+| **[INDEX_DOCKER.md](web/INDEX_DOCKER.md)** | **🐳 Навигация по Docker развертыванию** |
+| **[DOCKER_DEPLOYMENT.md](web/DOCKER_DEPLOYMENT.md)** | **🐳 Пошаговая инструкция развертывания** |
+| [DEPLOYMENT.md](web/DEPLOYMENT.md) | Альтернативное развертывание без Docker |
 | [TESTING.md](web/TESTING.md) | Руководство по тестированию |
 | [API_EXAMPLES.md](web/API_EXAMPLES.md) | Примеры использования API |
 
@@ -236,7 +244,23 @@ docker-compose up -d
 
 ## 🚀 Развертывание на Reg.ru
 
-Подробные инструкции см. в [DEPLOYMENT.md](web/DEPLOYMENT.md)
+### 🐳 Рекомендуемый способ: Docker
+
+**Полная документация:**
+- 👉 **[web/INDEX_DOCKER.md](web/INDEX_DOCKER.md)** - Навигация по всей документации
+- 📖 **[web/README_DOCKER.md](web/README_DOCKER.md)** - Обзор Docker развертывания
+- 📘 **[web/DOCKER_DEPLOYMENT.md](web/DOCKER_DEPLOYMENT.md)** - Пошаговая инструкция
+- ⚡ **[web/QUICKSTART_DOCKER.md](web/QUICKSTART_DOCKER.md)** - Быстрый старт
+
+**Workflow:**
+1. Локально: сборка образов → push в Docker Hub
+2. На сервере: pull из Docker Hub → запуск контейнеров
+3. Настройка Nginx с SSL
+4. Готово!
+
+### Альтернативный способ: Без Docker
+
+Подробные инструкции см. в [web/DEPLOYMENT.md](web/DEPLOYMENT.md)
 
 ### Быстрый гайд:
 

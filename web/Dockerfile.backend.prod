@@ -1,0 +1,35 @@
+# Production Dockerfile для Backend
+FROM python:3.11-slim
+
+# Метаданные
+LABEL maintainer="SNEE Graf Team"
+LABEL description="SNEE Graf Backend API"
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Копируем файлы зависимостей
+COPY backend/requirements.txt .
+
+# Устанавливаем зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Создаем директорию для родительских модулей
+RUN mkdir -p /parent
+
+# Копируем родительские модули (для импорта)
+COPY energy_storage_calculator.py /parent/
+COPY data_manager.py /parent/
+
+# Копируем код backend
+COPY backend/ .
+
+# Добавляем родительскую директорию в PYTHONPATH
+ENV PYTHONPATH=/parent:$PYTHONPATH
+
+# Открываем порт
+EXPOSE 8001
+
+# Запуск в production режиме
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "2"]
+

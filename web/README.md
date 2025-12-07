@@ -46,6 +46,32 @@ web/
 
 ## 🛠 Установка и запуск
 
+### 🐳 Docker (Рекомендуется для продакшена)
+
+Для развертывания на сервере используйте Docker:
+
+**📚 Полная документация Docker:**
+- **[README_DOCKER.md](README_DOCKER.md)** - Обзор Docker развертывания
+- **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - Подробная инструкция
+- **[QUICKSTART_DOCKER.md](QUICKSTART_DOCKER.md)** - Быстрый старт
+- **[COMMANDS.md](COMMANDS.md)** - Шпаргалка по командам
+
+**Быстрый старт с Docker:**
+
+```bash
+# Разработка (с hot-reload)
+cd web
+docker-compose up -d
+
+# Продакшен (оптимизированные образы)
+cd web
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+Подробнее см. [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
+
+---
+
 ### Backend (FastAPI)
 
 1. Перейдите в директорию backend:
@@ -196,9 +222,35 @@ server {
 }
 ```
 
-### Вариант 3: Docker (рекомендуется)
+### Вариант 3: Docker (рекомендуется для продакшена)
 
-См. `docker-compose.yml` в корне проекта для containerized развертывания.
+**Для полного развертывания на продакшен сервере с Docker Hub:**
+
+См. **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - подробная пошаговая инструкция:
+- Сборка и публикация образов в Docker Hub
+- Развертывание на сервере Reg.ru
+- Настройка Nginx с SSL
+- Автозапуск и мониторинг
+- Скрипты автоматизации
+
+**Быстрый локальный запуск:**
+
+```bash
+cd web
+
+# Development режим (с hot-reload)
+docker-compose up -d
+
+# Production режим (оптимизированные образы)
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+**Доступные файлы:**
+- `Dockerfile.backend.prod` - Production образ backend
+- `Dockerfile.frontend.prod` - Production образ frontend
+- `docker-compose.yml` - Development конфигурация
+- `docker-compose.prod.yml` - Production конфигурация
+- `nginx-server.conf` - Готовая конфигурация Nginx для сервера
 
 ## 📝 API Документация
 
@@ -221,6 +273,24 @@ server {
 3. **Визуализация данных** - графики исходного профиля
 4. **Результаты расчета** - диспетчерский график и статистика
 5. **Схема системы** - интерактивная SVG визуализация
+
+## 📚 Дополнительная документация
+
+### Для разработчиков:
+- **[QUICKSTART.md](QUICKSTART.md)** - Быстрый старт для разработчиков
+- **[API_EXAMPLES.md](API_EXAMPLES.md)** - Примеры использования API
+- **[TESTING.md](TESTING.md)** - Руководство по тестированию
+- **[USER_GUIDE.md](USER_GUIDE.md)** - Руководство пользователя
+
+### Для развертывания (Docker):
+- **[README_DOCKER.md](README_DOCKER.md)** - 🐳 Обзор Docker развертывания ⭐
+- **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - Подробная инструкция развертывания
+- **[QUICKSTART_DOCKER.md](QUICKSTART_DOCKER.md)** - Быстрый старт Docker
+- **[COMMANDS.md](COMMANDS.md)** - Шпаргалка по командам Docker/Nginx/SSL
+- **[scripts/README.md](scripts/README.md)** - Документация по скриптам автоматизации
+
+### Альтернативное развертывание:
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Развертывание без Docker (ручная установка)
 
 ## 🤝 Поддержка
 
