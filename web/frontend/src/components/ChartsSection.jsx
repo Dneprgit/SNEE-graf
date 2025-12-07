@@ -24,7 +24,7 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
   const mainChartData = loadProfile.map((value, index) => ({
     hour: index + 1,
     original: parseFloat(value.toFixed(2)),
-    charge: eess_schedule[index] < 0 ? parseFloat(Math.abs(eess_schedule[index]).toFixed(2)) : 0,
+    charge: eess_schedule[index] < 0 ? parseFloat(eess_schedule[index].toFixed(2)) : 0,
     discharge: eess_schedule[index] > 0 ? parseFloat(eess_schedule[index].toFixed(2)) : 0,
     resulting: parseFloat(resulting_balance[index].toFixed(2)),
   }));
@@ -213,9 +213,10 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
                 type="monotone"
                 dataKey="original"
                 name="Исходный баланс"
-                fill="rgba(255, 200, 200, 0.3)"
-                stroke="rgba(255, 100, 100, 0.5)"
-                strokeWidth={1}
+                fill="#0ea5e9"
+                fillOpacity={0.3}
+                stroke="#0ea5e9"
+                strokeWidth={2}
                 strokeDasharray="5 5"
               />
               
@@ -229,19 +230,18 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
               <Bar
                 dataKey="charge"
                 name="Заряд СНЭЭ (потребление)"
-                fill="#3b82f6"
+                fill="#ef4444"
                 stackId="eess"
               />
               
               {/* Результирующий баланс */}
-              <Line
+              <Area
                 type="monotone"
                 dataKey="resulting"
                 name="Результирующий баланс"
-                stroke="#1f2937"
+                fill="rgba(255, 200, 200, 1)"
+                stroke="rgba(255, 100, 100, 1)"
                 strokeWidth={3}
-                dot={{ r: 4, fill: '#1f2937' }}
-                activeDot={{ r: 6 }}
               />
             </ComposedChart>
           </ResponsiveContainer>

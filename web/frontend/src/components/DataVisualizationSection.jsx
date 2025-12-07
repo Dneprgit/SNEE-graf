@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { Edit, TrendingUp, TrendingDown } from 'lucide-react';
+import { Edit, TrendingUp, TrendingDown, Calculator, AlertCircle } from 'lucide-react';
 
-const DataVisualizationSection = ({ loadProfile }) => {
+const DataVisualizationSection = ({ loadProfile, onCalculate, isCalculating, error }) => {
   const chartData = loadProfile.map((value, index) => ({
     hour: index + 1,
     balance: parseFloat(value.toFixed(2)),
@@ -139,6 +139,46 @@ const DataVisualizationSection = ({ loadProfile }) => {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        </motion.div>
+
+        {/* Кнопка расчета */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          viewport={{ once: true }}
+          className="text-center mt-8"
+        >
+          <button
+            onClick={onCalculate}
+            disabled={!loadProfile || isCalculating}
+            className={`btn-primary text-lg px-12 py-4 ${
+              !loadProfile || isCalculating ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isCalculating ? (
+              <>
+                <span className="inline-block animate-spin mr-2">⚙️</span>
+                Расчет...
+              </>
+            ) : (
+              <>
+                <Calculator className="inline-block w-6 h-6 mr-2" />
+                Рассчитать график
+              </>
+            )}
+          </button>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 max-w-2xl mx-auto flex items-start"
+            >
+              <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </motion.div>
+          )}
         </motion.div>
       </motion.div>
     </section>

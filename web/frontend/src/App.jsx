@@ -76,15 +76,15 @@ function App() {
         setLoadProfile={setLoadProfile}
         parameters={parameters}
         setParameters={setParameters}
-        onCalculate={handleCalculate}
-        isCalculating={isCalculating}
-        error={error}
         setError={setError}
       />
 
       {loadProfile && (
         <DataVisualizationSection
           loadProfile={loadProfile}
+          onCalculate={handleCalculate}
+          isCalculating={isCalculating}
+          error={error}
         />
       )}
 

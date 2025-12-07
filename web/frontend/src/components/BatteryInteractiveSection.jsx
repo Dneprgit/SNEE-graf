@@ -6,7 +6,8 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) =
   // Расчет максимальных значений
   const maxPower = Math.max(...loadProfile); // Максимум мощности баланса
   const totalSurplus = loadProfile.filter(v => v > 0).reduce((a, b) => a + b, 0); // Избыток энергии
-  const maxDurationHours = totalSurplus / maxPower; // Максимальная длительность в часах
+  const maxDurationHours = loadProfile.filter(v => v < 0).length; // Количество часов в отрицательной зоне
+  const minDeficit = Math.abs(Math.min(...loadProfile)) / parameters.efficiency; // Максимальный дефицит с учетом КПД
   
   // Состояние для размеров батареи
   const [batteryPower, setBatteryPower] = useState(parameters.rated_power_mw);
@@ -54,6 +55,12 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) =
     }
   }, [batteryPower, batteryCapacity, parameters.rated_power_mw, parameters.rated_capacity_mwh, setParameters]);
   
+  // Синхронизация размеров батареи при изменении параметров извне
+  useEffect(() => {
+    setBatteryPower(parameters.rated_power_mw);
+    setBatteryCapacity(parameters.rated_capacity_mwh);
+  }, [parameters.rated_power_mw, parameters.rated_capacity_mwh]);
+  
   // Обработчики для drag высоты
   const handleMouseMove = (e) => {
     if (isDraggingHeight) {
@@ -65,10 +72,10 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) =
       
       setBatteryPower(newPower);
       
-      // Пересчет емкости пропорционально
-      const ratio = batteryCapacity / dragStartCapacity;
-      let newCapacity = (newPower * batteryDuration);
-      newCapacity = Math.round(newCapacity / 100) * 100; // Округление до 100 МВтч
+      // Пересчет емкости с сохранением начальной длительности
+      const initialDuration = dragStartCapacity / dragStartPower;
+      let newCapacity = newPower * initialDuration;
+      // newCapacity = Math.round(newCapacity / 100) * 100; // Округление до 100 МВтч
       setBatteryCapacity(newCapacity);
     }
     
@@ -248,6 +255,41 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) =
                   {maxDurationHours.toFixed(1)} ч
                 </text>
                 
+                {/* Линия минимально необходимой мощности */}
+                {minDeficit > 0 && (
+                  <>
+                    <line
+                      x1={padding}
+                      y1={viewHeight - padding - minDeficit * scaleY}
+                      x2={padding + maxWidth}
+                      y2={viewHeight - padding - minDeficit * scaleY}
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      strokeDasharray="6,4"
+                      opacity="0.8"
+                    />
+                    <text
+                      x={padding + maxWidth + 5}
+                      y={viewHeight - padding - minDeficit * scaleY}
+                      fill="#ef4444"
+                      fontSize="10"
+                      fontWeight="bold"
+                      //textAnchor="end"
+                    >
+                      {minDeficit.toFixed(0)} МВт
+                    </text>
+                    <text
+                      x={padding+10}
+                      y={viewHeight - padding - minDeficit * scaleY - 10}
+                      fill="#ef4444"
+                      fontSize="9"
+                      fontWeight="600"
+                    >
+                      Минимально необходимая мощность для покрытия максимального дефицита
+                    </text>
+                  </>
+                )}
+                
                 {/* Батарея */}
                 <g>
                   {/* Тело батареи */}
@@ -269,6 +311,20 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) =
                     <rect x="10" y="-4" width="10" height="4" rx="1" fill="white" opacity="0.95" stroke="#1e40af" strokeWidth="1.5"/>
                     <rect x="8" y="18" width="14" height="8" fill="#10b981" opacity="0.9" rx="1"/>
                   </g>
+                  
+                  {/* Емкость в центре батареи */}
+                  <text
+                    x={padding + batteryWidth / 2}
+                    y={viewHeight - padding - batteryHeight / 2 + 25}
+                    textAnchor="middle"
+                    fill="white"
+                    fontSize="16"
+                    fontWeight="bold"
+                    stroke="#1e40af"
+                    strokeWidth="0.5"
+                  >
+                    {batteryCapacity.toFixed(0)} МВтч
+                  </text>
                   
                   {/* Значения на батарее */}
                   <text
@@ -313,7 +369,7 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) =
                   
                   {/* Маркер изменения ширины (синий, снизу) */}
                   <g
-                    transform={`translate(${padding + batteryWidth}, ${viewHeight - padding + 35})`}
+                    transform={`translate(${padding + batteryWidth}, ${viewHeight - padding + 20})`}
                     onMouseDown={(e) => {
                       setIsDraggingWidth(true);
                       setDragStartX(e.clientX);
