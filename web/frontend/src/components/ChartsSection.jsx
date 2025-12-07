@@ -36,6 +36,16 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
     capacity: parameters.rated_capacity_mwh,
   }));
 
+  // Вычисление максимального значения для оси Y основного графика
+  // Находим максимальное значение по модулю из исходного профиля
+  const maxAbsValue = Math.max(...loadProfile.map(v => Math.abs(v)));
+  
+  // Округляем вверх до ближайшего числа, кратного 100
+  const yAxisMax = Math.ceil(maxAbsValue / 100) * 100;
+  
+  // Используем симметричный диапазон [-yAxisMax, +yAxisMax]
+  const yAxisDomain = [-yAxisMax, yAxisMax];
+
   const exportResults = () => {
     const hours = Array.from({ length: 24 }, (_, i) => i + 1);
     
@@ -194,6 +204,7 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
                 stroke="#666"
               />
               <YAxis
+                domain={yAxisDomain}
                 label={{ value: 'Мощность, МВт', angle: -90, position: 'insideLeft' }}
                 stroke="#666"
               />
