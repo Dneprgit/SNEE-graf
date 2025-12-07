@@ -78,11 +78,11 @@ pip install -r requirements.txt
 run.bat
 
 # Linux/Mac
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-API будет доступен по адресу: http://localhost:8000
-Документация: http://localhost:8000/docs
+API будет доступен по адресу: http://localhost:8001
+Документация: http://localhost:8001/docs
 
 ### Frontend (React)
 
@@ -101,7 +101,7 @@ npm install
 npm run dev
 ```
 
-Приложение будет доступно по адресу: http://localhost:3000
+Приложение будет доступно по адресу: http://localhost:3001
 
 ## 🎨 Технологии
 
@@ -133,13 +133,13 @@ npm run dev
 
 ```bash
 pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn main:app --host 0.0.0.0 --port 8001 --workers 4
 ```
 
 Или с использованием Gunicorn:
 
 ```bash
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8001
 ```
 
 ### Frontend
@@ -189,7 +189,7 @@ server {
 
     # Backend API
     location /api {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
@@ -203,8 +203,8 @@ server {
 ## 📝 API Документация
 
 После запуска backend, полная API документация доступна по адресам:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: http://localhost:8001/docs
+- ReDoc: http://localhost:8001/redoc
 
 ### Основные эндпоинты:
 

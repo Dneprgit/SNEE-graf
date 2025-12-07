@@ -8,7 +8,7 @@ echo.
 
 REM Запуск backend в новом окне
 echo Starting Backend (FastAPI)...
-start "SNEE Backend" cmd /k "cd backend && if exist venv\Scripts\activate (venv\Scripts\activate) && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000"
+start "SNEE Backend" cmd /k "cd backend && if exist venv\Scripts\activate (venv\Scripts\activate) && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8001"
 
 REM Небольшая задержка
 timeout /t 3 /nobreak >nul
@@ -20,9 +20,9 @@ start "SNEE Frontend" cmd /k "cd frontend && npm run dev"
 echo.
 echo ========================================
 echo Development servers are starting...
-echo Backend:  http://localhost:8000
-echo Frontend: http://localhost:3000
-echo API Docs: http://localhost:8000/docs
+echo Backend:  http://localhost:8001
+echo Frontend: http://localhost:3001
+echo API Docs: http://localhost:8001/docs
 echo ========================================
 echo.
 echo Press any key to close this window (servers will continue running)

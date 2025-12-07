@@ -32,14 +32,14 @@ run.bat
 
 ### Linux/Mac
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 ## API Документация
 
 После запуска сервера документация доступна по адресам:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: http://localhost:8001/docs
+- ReDoc: http://localhost:8001/redoc
 
 ## Основные эндпоинты
 
@@ -54,7 +54,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ### Расчет графика
 ```bash
-curl -X POST "http://localhost:8000/api/v1/calculate" \
+curl -X POST "http://localhost:8001/api/v1/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "load_profile": [1320, 1515, 1623, 1769, 1854, 1791, 1409, 860, 227, -261, -618, -779, -845, -927, -927, -927, -862, -799, -669, -535, -638, -370, 59, 963],

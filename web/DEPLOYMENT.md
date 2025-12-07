@@ -83,7 +83,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/snee-graf/web/backend
 Environment="PATH=/var/www/snee-graf/web/backend/venv/bin"
-ExecStart=/var/www/snee-graf/web/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 4
+ExecStart=/var/www/snee-graf/web/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001 --workers 4
 Restart=always
 RestartSec=10
 
@@ -269,8 +269,8 @@ python -c "import fastapi; print(fastapi.__version__)"
 # Убедитесь, что backend запущен
 sudo systemctl status snee-backend
 
-# Проверьте, что backend слушает на порту 8000
-sudo netstat -tlnp | grep 8000
+# Проверьте, что backend слушает на порту 8001
+sudo netstat -tlnp | grep 8001
 
 # Проверьте логи Nginx
 sudo tail -f /var/log/nginx/error.log
@@ -301,7 +301,7 @@ npm run build
 В файле `/etc/systemd/system/snee-backend.service` измените:
 
 ```ini
-ExecStart=/var/www/snee-graf/web/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 8
+ExecStart=/var/www/snee-graf/web/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001 --workers 8
 ```
 
 ### 3. Настройка кэша приложения

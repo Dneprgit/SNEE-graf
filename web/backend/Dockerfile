@@ -21,8 +21,8 @@ COPY ../../data_manager.py /parent/
 ENV PYTHONPATH=/parent:$PYTHONPATH
 
 # Открываем порт
-EXPOSE 8000
+EXPOSE 8001
 
 # Команда запуска
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
 

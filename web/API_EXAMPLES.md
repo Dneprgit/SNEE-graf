@@ -5,7 +5,7 @@
 ## Базовый URL
 
 ```
-http://localhost:8000  # Development
+http://localhost:8001  # Development
 https://your-domain.ru # Production
 ```
 
@@ -16,7 +16,7 @@ https://your-domain.ru # Production
 ### Request
 
 ```bash
-curl -X GET http://localhost:8000/api/v1/health
+curl -X GET http://localhost:8001/api/v1/health
 ```
 
 ### Response
@@ -33,7 +33,7 @@ curl -X GET http://localhost:8000/api/v1/health
 ### Request
 
 ```bash
-curl -X GET http://localhost:8000/api/v1/default-profile
+curl -X GET http://localhost:8001/api/v1/default-profile
 ```
 
 ### Response
@@ -56,7 +56,7 @@ curl -X GET http://localhost:8000/api/v1/default-profile
 ### Request
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/calculate \
+curl -X POST http://localhost:8001/api/v1/calculate \
   -H "Content-Type: application/json" \
   -d '{
     "load_profile": [
@@ -115,7 +115,7 @@ curl -X POST http://localhost:8000/api/v1/calculate \
 ### Request
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/validate-profile \
+curl -X POST http://localhost:8001/api/v1/validate-profile \
   -H "Content-Type: application/json" \
   -d '[1320, 1515, 1623, 1769, 1854, 1791, 1409, 860, 227, -261, -618, -779, -845, -927, -927, -927, -862, -799, -669, -535, -638, -370, 59, 963]'
 ```
@@ -149,7 +149,7 @@ curl -X POST http://localhost:8000/api/v1/validate-profile \
 ### Request
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/upload-excel \
+curl -X POST http://localhost:8001/api/v1/upload-excel \
   -F "file=@balance_profile.xlsx"
 ```
 
@@ -184,7 +184,7 @@ import requests
 import json
 
 # Базовый URL
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8001"
 
 # Расчет графика
 data = {
@@ -223,7 +223,7 @@ if response.status_code == 200:
 ```javascript
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = 'http://localhost:8001';
 
 // Расчет графика
 const calculateSchedule = async () => {
@@ -268,7 +268,7 @@ const uploadFile = async (file) => {
 ### JavaScript (Fetch API)
 
 ```javascript
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = 'http://localhost:8001';
 
 // Расчет графика
 fetch(`${BASE_URL}/api/v1/calculate`, {
@@ -295,7 +295,7 @@ fetch(`${BASE_URL}/api/v1/calculate`, {
 ### PowerShell
 
 ```powershell
-$baseUrl = "http://localhost:8000"
+$baseUrl = "http://localhost:8001"
 
 # Расчет графика
 $body = @{
@@ -363,7 +363,7 @@ Write-Host "Покрытие дефицита: $($response.summary.deficit_cover
 
 ## Полезные ссылки
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- OpenAPI Schema: http://localhost:8000/openapi.json
+- Swagger UI: http://localhost:8001/docs
+- ReDoc: http://localhost:8001/redoc
+- OpenAPI Schema: http://localhost:8001/openapi.json
 

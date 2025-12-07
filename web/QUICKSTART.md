@@ -18,8 +18,8 @@ start-dev.bat
 ```
 
 Это откроет два окна терминала:
-- Backend (FastAPI) на http://localhost:8000
-- Frontend (React) на http://localhost:3000
+- Backend (FastAPI) на http://localhost:8001
+- Frontend (React) на http://localhost:3001
 
 ### Linux/Mac
 
@@ -53,8 +53,8 @@ pip install -r requirements.txt
 python -m uvicorn main:app --reload
 ```
 
-Backend будет доступен на: http://localhost:8000
-API документация: http://localhost:8000/docs
+Backend будет доступен на: http://localhost:8001
+API документация: http://localhost:8001/docs
 
 ### 2. Запуск Frontend
 
@@ -70,11 +70,11 @@ npm install
 npm run dev
 ```
 
-Frontend будет доступен на: http://localhost:3000
+Frontend будет доступен на: http://localhost:3001
 
 ## 🎉 Готово!
 
-Откройте браузер и перейдите на http://localhost:3000
+Откройте браузер и перейдите на http://localhost:3001
 
 ## Что дальше?
 
@@ -102,11 +102,11 @@ pip install -r requirements.txt
 
 **Решение**: Установите Node.js с https://nodejs.org/
 
-**Ошибка**: `EADDRINUSE: port 3000 already in use`
+**Ошибка**: `EADDRINUSE: port 3001 already in use`
 
 **Решение**: Порт занят. Либо остановите другое приложение, либо измените порт:
 ```bash
-npm run dev -- --port 3001
+npm run dev -- --port 3002
 ```
 
 ### API запросы не работают
@@ -114,7 +114,7 @@ npm run dev -- --port 3001
 **Проблема**: Frontend не может подключиться к backend
 
 **Решение**: 
-1. Убедитесь, что backend запущен на порту 8000
+1. Убедитесь, что backend запущен на порту 8001
 2. Проверьте консоль браузера (F12) на наличие CORS ошибок
 3. Проверьте файл `frontend/vite.config.js` - должен быть настроен proxy
 
@@ -142,10 +142,10 @@ web/
 ### Backend
 ```bash
 # Проверка работоспособности
-curl http://localhost:8000/api/v1/health
+curl http://localhost:8001/api/v1/health
 
 # Тестирование API
-curl -X POST http://localhost:8000/api/v1/calculate \
+curl -X POST http://localhost:8001/api/v1/calculate \
   -H "Content-Type: application/json" \
   -d @test_data.json
 ```

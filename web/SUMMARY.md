@@ -192,9 +192,9 @@ cd frontend && npm run dev
 
 ## Доступ
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:8001
+- API Docs: http://localhost:8001/docs
 
 ## Развертывание на Reg.ru
 

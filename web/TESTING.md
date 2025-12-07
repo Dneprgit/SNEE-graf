@@ -12,7 +12,7 @@ cd backend
 python -m uvicorn main:app --reload
 ```
 
-2. Откройте в браузере: http://localhost:8000/docs
+2. Откройте в браузере: http://localhost:8001/docs
 
 3. Протестируйте каждый endpoint:
 
@@ -44,13 +44,13 @@ python -m uvicorn main:app --reload
 
 ```bash
 # Health check
-curl http://localhost:8000/api/v1/health
+curl http://localhost:8001/api/v1/health
 
 # Получить профиль по умолчанию
-curl http://localhost:8000/api/v1/default-profile
+curl http://localhost:8001/api/v1/default-profile
 
 # Расчет графика
-curl -X POST http://localhost:8000/api/v1/calculate \
+curl -X POST http://localhost:8001/api/v1/calculate \
   -H "Content-Type: application/json" \
   -d '{
     "load_profile": [1320, 1515, 1623, 1769, 1854, 1791, 1409, 860, 227, -261, -618, -779, -845, -927, -927, -927, -862, -799, -669, -535, -638, -370, 59, 963],
@@ -60,7 +60,7 @@ curl -X POST http://localhost:8000/api/v1/calculate \
   }'
 
 # Валидация профиля
-curl -X POST http://localhost:8000/api/v1/validate-profile \
+curl -X POST http://localhost:8001/api/v1/validate-profile \
   -H "Content-Type: application/json" \
   -d '[1320, 1515, 1623, 1769, 1854, 1791, 1409, 860, 227, -261, -618, -779, -845, -927, -927, -927, -862, -799, -669, -535, -638, -370, 59, 963]'
 ```
@@ -69,7 +69,7 @@ curl -X POST http://localhost:8000/api/v1/validate-profile \
 
 ```bash
 # Создайте тестовый Excel файл или используйте существующий
-curl -X POST http://localhost:8000/api/v1/upload-excel \
+curl -X POST http://localhost:8001/api/v1/upload-excel \
   -F "file=@test_data.xlsx"
 ```
 
@@ -166,7 +166,7 @@ curl -X POST http://localhost:8000/api/v1/upload-excel \
 ```bash
 # Lighthouse audit
 npm install -g lighthouse
-lighthouse http://localhost:3000 --view
+lighthouse http://localhost:3001 --view
 ```
 
 #### Проверка размера bundle
@@ -180,7 +180,7 @@ npm run build
 ### 1. Backend + Frontend
 
 1. Запустите оба сервиса
-2. Откройте http://localhost:3000
+2. Откройте http://localhost:3001
 3. Откройте DevTools (F12) → Network
 4. Выполните расчет
 5. **Проверьте**: 

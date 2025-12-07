@@ -37,7 +37,7 @@ tmux rename-window -t $SESSION_NAME:0 'Backend'
 tmux send-keys -t $SESSION_NAME:0 'cd backend' C-m
 tmux send-keys -t $SESSION_NAME:0 'source venv/bin/activate 2>/dev/null || python3 -m venv venv && source venv/bin/activate' C-m
 tmux send-keys -t $SESSION_NAME:0 'pip install -r requirements.txt' C-m
-tmux send-keys -t $SESSION_NAME:0 'uvicorn main:app --reload --host 0.0.0.0 --port 8000' C-m
+tmux send-keys -t $SESSION_NAME:0 'uvicorn main:app --reload --host 0.0.0.0 --port 8001' C-m
 
 # Окно 2: Frontend
 tmux new-window -t $SESSION_NAME:1 -n 'Frontend'
@@ -48,9 +48,9 @@ tmux send-keys -t $SESSION_NAME:1 'npm run dev' C-m
 # Окно 3: Команды
 tmux new-window -t $SESSION_NAME:2 -n 'Commands'
 tmux send-keys -t $SESSION_NAME:2 'echo "SNEE Graf Development Environment"' C-m
-tmux send-keys -t $SESSION_NAME:2 'echo "Backend:  http://localhost:8000"' C-m
-tmux send-keys -t $SESSION_NAME:2 'echo "Frontend: http://localhost:3000"' C-m
-tmux send-keys -t $SESSION_NAME:2 'echo "API Docs: http://localhost:8000/docs"' C-m
+tmux send-keys -t $SESSION_NAME:2 'echo "Backend:  http://localhost:8001"' C-m
+tmux send-keys -t $SESSION_NAME:2 'echo "Frontend: http://localhost:3001"' C-m
+tmux send-keys -t $SESSION_NAME:2 'echo "API Docs: http://localhost:8001/docs"' C-m
 tmux send-keys -t $SESSION_NAME:2 'echo ""' C-m
 tmux send-keys -t $SESSION_NAME:2 'echo "Use Ctrl+B then number to switch windows"' C-m
 tmux send-keys -t $SESSION_NAME:2 'echo "Use Ctrl+B then D to detach"' C-m
