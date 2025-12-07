@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Battery, Info, RotateCcw, Zap } from 'lucide-react';
 
-const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters }) => {
+const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, maxAbsValue }) => {
   // Расчет максимальных значений
-  const maxPower = Math.max(...loadProfile); // Максимум мощности баланса
+  const maxPower = maxAbsValue || Math.max(...loadProfile.map(v => Math.abs(v))); // Максимум мощности баланса по модулю
   const totalSurplus = loadProfile.filter(v => v > 0).reduce((a, b) => a + b, 0); // Избыток энергии
   const maxDurationHours = loadProfile.filter(v => v < 0).length; // Количество часов в отрицательной зоне
   const minDeficit = Math.abs(Math.min(...loadProfile)) / parameters.efficiency; // Максимальный дефицит с учетом КПД

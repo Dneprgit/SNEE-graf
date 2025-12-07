@@ -181,6 +181,7 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
           loadProfile={loadProfile}
           parameters={parameters}
           setParameters={setParameters}
+          maxAbsValue={maxAbsValue}
         />
 
         {/* Основной график */}
