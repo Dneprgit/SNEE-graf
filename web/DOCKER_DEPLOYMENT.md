@@ -105,9 +105,14 @@ $env:DOCKER_USERNAME = "your_dockerhub_username"
 
 # Собираем Backend образ
 docker build -f Dockerfile.backend.prod -t ${env:DOCKER_USERNAME}/snee-backend:latest ..
+# Собираем Backend образ
+docker build -f Dockerfile.backend.prod -t end2040/snee-backend:latest ..
 
 # Собираем Frontend образ
 docker build -f Dockerfile.frontend.prod -t ${env:DOCKER_USERNAME}/snee-frontend:latest ..
+
+# Собираем Frontend образ
+docker build -f Dockerfile.frontend.prod -t end2040/snee-frontend:latest ..
 ```
 
 **Примечание:** Замените `your_dockerhub_username` на ваше имя пользователя в Docker Hub.
@@ -117,6 +122,8 @@ docker build -f Dockerfile.frontend.prod -t ${env:DOCKER_USERNAME}/snee-frontend
 ```powershell
 # Тест Backend
 docker run -d -p 8001:8001 --name test-backend ${env:DOCKER_USERNAME}/snee-backend:latest
+# Тест Backend
+docker run -d -p 8001:8001 --name test-backend end2040/snee-backend:latest
 
 # Проверка
 curl http://localhost:8001/api/v1/health
@@ -127,7 +134,8 @@ docker rm test-backend
 
 # Тест Frontend
 docker run -d -p 3001:80 --name test-frontend ${env:DOCKER_USERNAME}/snee-frontend:latest
-
+# Тест Frontend
+docker run -d -p 3001:80 --name test-frontend end2040/snee-frontend:latest
 # Откройте в браузере: http://localhost:3001
 
 # Остановка
@@ -152,9 +160,12 @@ docker login
 ```powershell
 # Push Backend
 docker push ${env:DOCKER_USERNAME}/snee-backend:latest
-
+ Push Backend
+docker push end2040/snee-backend:latest
 # Push Frontend
 docker push ${env:DOCKER_USERNAME}/snee-frontend:latest
+# Push Frontend
+docker push end2040/snee-frontend:latest
 ```
 
 ### 2.3. Проверка на Docker Hub

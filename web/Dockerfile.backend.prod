@@ -14,18 +14,8 @@ COPY backend/requirements.txt .
 # Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Создаем директорию для родительских модулей
-RUN mkdir -p /parent
-
-# Копируем родительские модули (для импорта)
-COPY energy_storage_calculator.py /parent/
-COPY data_manager.py /parent/
-
 # Копируем код backend
 COPY backend/ .
-
-# Добавляем родительскую директорию в PYTHONPATH
-ENV PYTHONPATH=/parent:$PYTHONPATH
 
 # Открываем порт
 EXPOSE 8001

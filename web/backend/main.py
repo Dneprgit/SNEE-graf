@@ -9,15 +9,12 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import sys
 import os
-
-# Добавляем путь к родительской директории для импорта модулей
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-
-from energy_storage_calculator import EnergyStorageCalculator
-from data_manager import DataManager
 import numpy as np
 import pandas as pd
 from io import BytesIO
+
+from energy_storage_calculator import EnergyStorageCalculator
+from data_manager import DataManager
 
 app = FastAPI(
     title="СНЭЭ Graf API",

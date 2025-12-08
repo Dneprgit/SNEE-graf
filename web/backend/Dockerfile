@@ -13,13 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код приложения
 COPY . .
 
-# Копируем родительские модули (для импорта)
-COPY ../../energy_storage_calculator.py /parent/
-COPY ../../data_manager.py /parent/
-
-# Добавляем родительскую директорию в PYTHONPATH
-ENV PYTHONPATH=/parent:$PYTHONPATH
-
 # Открываем порт
 EXPOSE 8001
 
