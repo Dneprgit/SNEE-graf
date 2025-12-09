@@ -104,7 +104,7 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
           Диспетчерский график работы СНЭЭ и анализ эффективности
         </p>
 
-        {/* Сводная информация */}
+        {/* Сводная информация
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -126,7 +126,7 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
             </button>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               {
                 label: 'Покрытие дефицита',
@@ -174,7 +174,7 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
               </motion.div>
             ))}
           </div>
-        </motion.div>
+        </motion.div> */}
 
         {/* Интерактивный выбор параметров */}
         <BatteryInteractiveSection
@@ -184,14 +184,92 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
           maxAbsValue={maxAbsValue}
         />
 
-        {/* Основной график */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          viewport={{ once: true }}
-          className="card mb-8"
-        >
+
+
+        {/* Контейнер для сводной информации и графика */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(auto,300px)_1fr] gap-6 mb-8">
+          {/* Сводная информация */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            viewport={{ once: true }}
+            className="card"
+          >
+            <div className="flex flex-col gap-2 mb-4">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                <Activity className="w-5 h-5 mr-2 text-primary-600" />
+                Ключевые показатели
+              </h3>
+              <button
+                onClick={exportResults}
+                className="btn-secondary text-xs flex items-center justify-center"
+              >
+                <Download className="w-3 h-3 mr-1" />
+                Экспорт в Excel
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                {
+                  label: 'Покрытие дефицита',
+                  value: `${summary.deficit_coverage_percent}%`,
+                  subValue: `${summary.deficit_covered_mwh} МВтч`,
+                  color: 'emerald',
+                  icon: '✓',
+                },
+                {
+                  label: 'Использование избытка',
+                  value: `${summary.surplus_utilization_percent}%`,
+                  subValue: `${summary.surplus_utilized_mwh} МВтч`,
+                  color: 'blue',
+                  icon: '⚡',
+                },
+                {
+                  label: 'Суммарный заряд',
+                  value: `${summary.total_charge_mwh} МВтч`,
+                  subValue: `max ${summary.max_charge_power_mw} МВт`,
+                  color: 'purple',
+                  icon: '↓',
+                },
+                {
+                  label: 'Суммарный разряд',
+                  value: `${summary.total_discharge_mwh} МВтч`,
+                  subValue: `max ${summary.max_discharge_power_mw} МВт`,
+                  color: 'orange',
+                  icon: '↑',
+                },
+              ].map((stat, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
+                  viewport={{ once: true }}
+                  className={`bg-gradient-to-br from-${stat.color}-50 to-${stat.color}-100 border-2 border-${stat.color}-200 rounded-lg p-3 flex items-center gap-3`}
+                >
+                  <div className="text-2xl flex-shrink-0">{stat.icon}</div>
+                  <div className="flex-1">
+                    <div className={`text-2xl font-bold text-${stat.color}-700`}>
+                      {stat.value}
+                    </div>
+                    <div className="text-xs font-semibold text-gray-700">{stat.label}</div>
+                    <div className="text-xs text-gray-600">{stat.subValue}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Основной график */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            viewport={{ once: true }}
+            className="card"
+          >
           <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
             <BarChart3 className="w-6 h-6 mr-2 text-primary-600" />
             Диспетчерский график работы СНЭЭ
@@ -257,7 +335,9 @@ const ChartsSection = ({ loadProfile, calculationResult, parameters, setParamete
               />
             </ComposedChart>
           </ResponsiveContainer>
-        </motion.div>
+          </motion.div>
+        </div>
+
 
         {/* График SOC */}
         <motion.div

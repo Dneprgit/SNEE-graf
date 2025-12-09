@@ -141,13 +141,19 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
     }
   }, [isDraggingHeight, isDraggingWidth, dragStartY, dragStartX, dragStartPower, dragStartCapacity, scaleY, scaleX, maxPower, maxDurationHours, batteryDuration, batteryCapacity, batteryPower]);
   
-  // Функция сброса к рекомендуемым параметрам
+  // Функция установки оптимальных параметров
   const resetToRecommended = () => {
-    const recommendedPower = Math.round(maxPower * 0.6 / 10) * 10;
-    const recommendedCapacity = Math.round(recommendedPower * 4 / 100) * 100;
-    
-    setBatteryPower(recommendedPower);
-    setBatteryCapacity(recommendedCapacity);
+    if (optimalPower && optimalCapacity) {
+      setBatteryPower(Math.round(optimalPower));
+      setBatteryCapacity(Math.round(optimalCapacity));
+    } else {
+      // Если оптимальные параметры не рассчитаны, используем приблизительные
+      const recommendedPower = Math.round(maxPower * 0.6 / 10) * 10;
+      const recommendedCapacity = Math.round(recommendedPower * 4 / 100) * 100;
+      
+      setBatteryPower(recommendedPower);
+      setBatteryCapacity(recommendedCapacity);
+    }
   };
   
   return (
@@ -177,6 +183,8 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                     <li>Тяните <span className="font-bold text-green-700">зеленый маркер</span> вверх/вниз для изменения мощности инвертора</li>
                     <li>Тяните <span className="font-bold text-blue-700">синий маркер</span> влево/вправо для изменения емкости батареи</li>
                     <li><span className="font-bold text-green-700">Зеленая</span> и <span className="font-bold text-blue-700">синяя</span> пунктирные линии показывают оптимальные параметры мощности и длительности</li>
+                    <li><span className="font-bold text-red-700">Красная</span> пунктирная линия показывает минимально необходимую мощность для покрытия максимального дефицита</li>
+                  
                   </ul>
                 </div>
               </div>
@@ -202,18 +210,25 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                 <div className="text-xs text-gray-600 mb-0.5">Емкость батареи</div>
                 <div className="text-2xl font-bold text-blue-700">{batteryCapacity.toFixed(0)} МВтч</div>
               </div>
+
+              <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border-2 border-amber-300">
+                    <div className="text-xs text-gray-600 mb-0.5">Время работы на номинальной мощности</div>
+                    <div className="text-2xl font-bold text-amber-700">{(batteryCapacity / batteryPower).toFixed(1)} ч</div>
+              </div>
               
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
+              {/* <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
                 <div className="text-xs text-gray-600 mb-0.5">КПД цикла</div>
                 <div className="text-2xl font-bold text-purple-700">{(parameters.efficiency * 100).toFixed(0)}%</div>
-              </div>
+              </div> */}
               <button
               onClick={resetToRecommended}
-              className="w-full btn-secondary text-sm flex items-center justify-center"
+              disabled={isLoadingOptimal}
+              className={`w-full btn-secondary text-sm flex items-center justify-center ${isLoadingOptimal ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title={optimalPower && optimalCapacity ? `Установить: ${optimalPower.toFixed(0)} МВт, ${optimalCapacity.toFixed(0)} МВтч` : 'Установить оптимальные параметры'}
             >
               <RotateCcw className="w-4 h-4 mr-2" />
-              Рекомендуемые параметры
-            </button>
+              {isLoadingOptimal ? 'Расчет...' : 'Установить оценочные параметры'}
+              </button>
             </div>
 
 
@@ -277,14 +292,14 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                       opacity="0.7"
                     />
                     <text
-                      x={padding - 5}
+                      x={padding + maxWidth + 5}
                       y={viewHeight - padding - optimalPower * scaleY}
                       fill="#10b981"
                       fontSize="10"
                       fontWeight="bold"
-                      textAnchor="end"
+                      //textAnchor="end"
                     >
-                      {optimalPower.toFixed(0)} МВт (опт)
+                      {optimalPower.toFixed(0)} МВт
                     </text>
                     
                     {/* Оптимальная длительность - вертикальная линия */}
@@ -305,13 +320,13 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                           />
                           <text
                             x={optimalDurationX}
-                            y={viewHeight - padding + 35}
+                            y={viewHeight - padding - maxHeight-10}
                             fill="#3b82f6"
                             fontSize="10"
                             fontWeight="bold"
                             textAnchor="middle"
                           >
-                            {optimalDuration.toFixed(1)} ч (опт)
+                            {optimalDuration.toFixed(1)} ч
                           </text>
                         </>
                       ) : null;
@@ -363,7 +378,7 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                     >
                       {minDeficit.toFixed(0)} МВт
                     </text>
-                    <text
+                    {/* <text
                       x={padding+10}
                       y={viewHeight - padding - minDeficit * scaleY - 10}
                       fill="#ef4444"
@@ -371,7 +386,7 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                       fontWeight="600"
                     >
                       Минимально необходимая мощность для покрытия максимального дефицита
-                    </text>
+                    </text> */}
                   </>
                 )}
                 
@@ -528,7 +543,7 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                   </div>
                   
                   <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border-2 border-amber-300">
-                    <div className="text-xs text-gray-600 mb-0.5">Длительность (оптимальная)</div>
+                    <div className="text-xs text-gray-600 mb-0.5">Время работы на номинальной мощности</div>
                     <div className="text-2xl font-bold text-amber-700">{(optimalCapacity / optimalPower).toFixed(1)} ч</div>
                   </div>
                 </>
