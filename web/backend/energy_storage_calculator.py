@@ -208,3 +208,109 @@ class EnergyStorageCalculator:
             'resulting_max_surplus_mw': round(np.max(resulting_balance), 2),
         }
 
+
+def calculate_optimal_parameters(load_profile: List[float], efficiency: float) -> Tuple[float, float]:
+    """
+    Расчет оптимальных параметров мощности инвертора и емкости батареи
+    
+    Реализация алгоритма VariatePowerAndVolume2 из VBA кода.
+    Находит минимальные значения мощности и емкости, при которых
+    дефицит энергии и мощности минимизируются.
+    
+    Args:
+        load_profile: Суточный профиль баланса мощности (24 часа)
+        efficiency: КПД цикла (0-1)
+    
+    Returns:
+        Tuple (optimal_power_mw, optimal_capacity_mwh)
+    """
+    if len(load_profile) != 24:
+        raise ValueError("Профиль должен содержать 24 значения")
+    if efficiency <= 0 or efficiency > 1:
+        raise ValueError("КПД должен быть в диапазоне (0, 1]")
+    
+    load = np.array(load_profile, dtype=float)
+    half_cycle_eff = np.sqrt(efficiency)
+    
+    x_tol = 0.000001  # Погрешность по мощности
+    y_tol = 0.001     # Погрешность по энергии
+    im = 24
+    
+    # 1. Определение масштаба
+    rated_power_max = np.max(np.abs(load)) * 1.1
+    
+    max_charge_capacity = np.sum(np.maximum(load, 0))
+    max_discharge_capacity = np.sum(np.maximum(-load, 0))
+    rated_capacity_max = max(max_charge_capacity, max_discharge_capacity) * 1.1
+    
+    # 2. Расчет минимальных дефицитов при максимальных параметрах
+    calc_max = EnergyStorageCalculator(rated_power_max, rated_capacity_max, efficiency)
+    eess_max = calc_max.calculate_dispatch_schedule(load_profile)
+    result_max = load + eess_max
+    
+    min_def_max_power = -np.min(result_max)
+    min_def_energy = -np.sum(result_max[result_max < 0])
+    
+    # 3. Определение минимальной емкости (бинарный поиск)
+    lb = 0.0
+    ub = rated_capacity_max
+    
+    while ub - lb > x_tol:
+        rated_capacity_test = 0.5 * lb + 0.5 * ub
+        
+        calc_test = EnergyStorageCalculator(rated_power_max, rated_capacity_test, efficiency)
+        eess_test = calc_test.calculate_dispatch_schedule(load_profile)
+        result_test = load + eess_test
+        
+        def_max_power = -np.min(result_test)
+        def_energy = -np.sum(result_test[result_test < 0])
+        
+        # Проверка критерия оптимальности
+        criterion = (def_energy - min_def_energy) + im * (def_max_power - min_def_max_power)
+        
+        if criterion < im * y_tol:
+            ub = rated_capacity_test
+        else:
+            lb = rated_capacity_test
+    
+    optimal_capacity = ub
+    
+    # 4. Определение минимальной мощности (бинарный поиск)
+    lb = 0.0
+    ub = rated_power_max
+    
+    while ub - lb > x_tol:
+        rated_power_test = 0.5 * lb + 0.5 * ub
+        
+        calc_test = EnergyStorageCalculator(rated_power_test, rated_capacity_max, efficiency)
+        eess_test = calc_test.calculate_dispatch_schedule(load_profile)
+        result_test = load + eess_test
+        
+        def_max_power = -np.min(result_test)
+        def_energy = -np.sum(result_test[result_test < 0])
+        
+        # Проверка критерия оптимальности
+        criterion = (def_energy - min_def_energy) + im * (def_max_power - min_def_max_power)
+        
+        if criterion < im * y_tol:
+            ub = rated_power_test
+        else:
+            lb = rated_power_test
+    
+    optimal_power = ub
+    
+    # 5. Финальная проверка
+    calc_final = EnergyStorageCalculator(optimal_power, optimal_capacity, efficiency)
+    eess_final = calc_final.calculate_dispatch_schedule(load_profile)
+    result_final = load + eess_final
+    
+    def_max_power_final = -np.min(result_final)
+    def_energy_final = -np.sum(result_final[result_final < 0])
+    
+    criterion_final = (def_energy_final - min_def_energy) + im * (def_max_power_final - min_def_max_power)
+    
+    # Проверка, что точка на минимуме
+    assert criterion_final < 2 * im * y_tol, "Оптимальная точка не найдена"
+    
+    return round(optimal_power, 2), round(optimal_capacity, 2)
+
