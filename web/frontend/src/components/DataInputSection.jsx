@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, Download, FileText, Calculator } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
@@ -42,11 +42,39 @@ const DataInputSection = ({
   });
 
   const handleParameterChange = (field, value) => {
-    setParameters(prev => ({
-      ...prev,
-      [field]: parseFloat(value) || 0,
-    }));
+    const numValue = parseFloat(value) || 0;
+    
+    setParameters(prev => {
+      const updated = { ...prev, [field]: numValue };
+      
+      // Пересчет при изменении мощности инвертора
+      if (field === 'rated_power_mw' && numValue > 0) {
+        updated.runtime_hours = Math.round((prev.rated_capacity_mwh / numValue) * 10) / 10;
+      }
+      
+      // Пересчет при изменении емкости батареи
+      if (field === 'rated_capacity_mwh' && prev.rated_power_mw > 0) {
+        updated.runtime_hours = Math.round((numValue / prev.rated_power_mw) * 10) / 10;
+      }
+      
+      // Пересчет при изменении времени работы
+      if (field === 'runtime_hours' && prev.rated_power_mw > 0) {
+        updated.rated_capacity_mwh = numValue * prev.rated_power_mw;
+      }
+      
+      return updated;
+    });
   };
+
+  // Автоматический расчет времени работы при загрузке данных
+  useEffect(() => {
+    if (parameters.rated_power_mw > 0 && parameters.rated_capacity_mwh > 0 && !parameters.runtime_hours) {
+      setParameters(prev => ({
+        ...prev,
+        runtime_hours: Math.round((prev.rated_capacity_mwh / prev.rated_power_mw) * 10) / 10,
+      }));
+    }
+  }, [parameters.rated_power_mw, parameters.rated_capacity_mwh]);
 
   const loadDefaultProfile = async () => {
     try {
@@ -203,6 +231,23 @@ const DataInputSection = ({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Время работы на номинальной мощности, ч
+                </label>
+                <input
+                  type="number"
+                  value={parameters.runtime_hours || ''}
+                  onChange={(e) => handleParameterChange('runtime_hours', e.target.value)}
+                  className="input-field"
+                  min="0"
+                  step="0.1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Автоматически рассчитывается как Емкость / Мощность
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   КПД цикла
                 </label>
                 <input
@@ -234,7 +279,7 @@ const DataInputSection = ({
                 <FileText className="w-6 h-6 mr-2 text-primary-600" />
                 Редактирование значений
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-1">
+              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-1">
                 {loadProfile.map((value, index) => (
                   <div key={index} className="flex flex-col">
                     <label className="text-xs font-semibold text-gray-600 mb-1">

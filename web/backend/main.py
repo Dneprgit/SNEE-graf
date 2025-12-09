@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from io import BytesIO
 
-from energy_storage_calculator import EnergyStorageCalculator
+from energy_storage_calculator import EnergyStorageCalculator, calculate_optimal_parameters
 from data_manager import DataManager
 
 app = FastAPI(
@@ -223,6 +223,52 @@ async def validate_profile(load_profile: List[float]):
             "valid": False,
             "error": f"Ошибка при валидации: {str(e)}"
         }
+
+
+class OptimalParametersRequest(BaseModel):
+    """Запрос на расчет оптимальных параметров СНЭЭ"""
+    load_profile: List[float] = Field(..., min_items=24, max_items=24, 
+                                      description="Суточный профиль баланса мощности (24 часа)")
+    efficiency: float = Field(..., gt=0, le=1, description="КПД цикла (0-1)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "load_profile": [
+                    1320, 1515, 1623, 1769, 1854, 1791, 1409, 860, 227, -261,
+                    -618, -779, -845, -927, -927, -927, -862, -799, -669, -535,
+                    -638, -370, 59, 963
+                ],
+                "efficiency": 0.95
+            }
+        }
+
+
+@app.post("/api/v1/calculate-optimal-parameters")
+async def calculate_optimal_params(request: OptimalParametersRequest):
+    """
+    Расчет оптимальных параметров мощности инвертора и емкости батареи
+    
+    Реализует алгоритм VariatePowerAndVolume2 из VBA кода.
+    Находит минимальные значения мощности и емкости, при которых
+    дефицит энергии и мощности минимизируются.
+    """
+    try:
+        optimal_power, optimal_capacity = calculate_optimal_parameters(
+            request.load_profile,
+            request.efficiency
+        )
+        
+        return {
+            "optimal_power_mw": optimal_power,
+            "optimal_capacity_mwh": optimal_capacity,
+            "message": "Оптимальные параметры успешно рассчитаны"
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при расчете оптимальных параметров: {str(e)}")
 
 
 def calculate_soc(eess_schedule: np.ndarray, rated_capacity: float) -> List[float]:

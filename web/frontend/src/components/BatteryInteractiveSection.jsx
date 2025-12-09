@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Battery, Info, RotateCcw, Zap } from 'lucide-react';
+import { apiService } from '../services/api';
 
 const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, maxAbsValue }) => {
   // Расчет максимальных значений
@@ -12,6 +13,11 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
   // Состояние для размеров батареи
   const [batteryPower, setBatteryPower] = useState(parameters.rated_power_mw);
   const [batteryCapacity, setBatteryCapacity] = useState(parameters.rated_capacity_mwh);
+  
+  // Состояние для оптимальных параметров
+  const [optimalPower, setOptimalPower] = useState(null);
+  const [optimalCapacity, setOptimalCapacity] = useState(null);
+  const [isLoadingOptimal, setIsLoadingOptimal] = useState(false);
   
   // Состояние для drag & resize
   const [isDraggingHeight, setIsDraggingHeight] = useState(false);
@@ -60,6 +66,32 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
     setBatteryPower(parameters.rated_power_mw);
     setBatteryCapacity(parameters.rated_capacity_mwh);
   }, [parameters.rated_power_mw, parameters.rated_capacity_mwh]);
+
+  // Расчет оптимальных параметров при изменении профиля нагрузки или КПД
+  useEffect(() => {
+    const calculateOptimal = async () => {
+      if (!loadProfile || loadProfile.length !== 24) return;
+      
+      setIsLoadingOptimal(true);
+      try {
+        const result = await apiService.calculateOptimalParameters({
+          load_profile: loadProfile,
+          efficiency: parameters.efficiency
+        });
+        
+        setOptimalPower(result.optimal_power_mw);
+        setOptimalCapacity(result.optimal_capacity_mwh);
+      } catch (error) {
+        console.error('Ошибка при расчете оптимальных параметров:', error);
+        setOptimalPower(null);
+        setOptimalCapacity(null);
+      } finally {
+        setIsLoadingOptimal(false);
+      }
+    };
+    
+    calculateOptimal();
+  }, [loadProfile, parameters.efficiency]);
   
   // Обработчики для drag высоты
   const handleMouseMove = (e) => {
@@ -126,7 +158,7 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
       viewport={{ once: true }}
       className="mb-8"
     >
-      <div className="card max-w-6xl mx-auto">
+      <div className="card max-w-7xl mx-auto">
         <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
           <Battery className="w-6 h-6 mr-2 text-primary-600" />
           Интерактивный выбор параметров СНЭЭ
@@ -135,63 +167,59 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
         <div>
           {/* Инфо панель */}
           <div className="mb-6">
-            <div className="flex items-center text-lg font-semibold text-gray-800 mb-4">
-              <Info className="w-6 h-6 mr-2 text-primary-600" />
-              Текущие параметры
-            </div>
             
-            {/* Параметры в одну строку */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
-                <div className="text-xs text-gray-600 mb-0.5">Мощность инвертора</div>
-                <div className="text-2xl font-bold text-green-700">{batteryPower.toFixed(0)} МВт</div>
-                <div className="text-[10px] text-gray-500 mt-0.5">
-                  Макс: {maxPower.toFixed(0)} МВт
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
-                <div className="text-xs text-gray-600 mb-0.5">Емкость батареи</div>
-                <div className="text-2xl font-bold text-blue-700">{batteryCapacity.toFixed(0)} МВтч</div>
-                <div className="text-[10px] text-gray-500 mt-0.5">
-                  {batteryDuration.toFixed(1)} ч • Макс: {maxDurationHours.toFixed(1)} ч
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
-                <div className="text-xs text-gray-600 mb-0.5">КПД цикла</div>
-                <div className="text-2xl font-bold text-purple-700">{(parameters.efficiency * 100).toFixed(0)}%</div>
-                <div className="text-[10px] text-gray-500 mt-0.5">
-                  Эффективность
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-amber-50 rounded-lg p-3 border-2 border-amber-200 text-sm text-amber-900 mb-3">
+          <div className="bg-amber-50 rounded-lg p-3 border-2 border-amber-200 text-sm text-amber-900 mb-1">
               <div className="flex items-start">
                 <Zap className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-amber-600" />
                 <div>
                   <strong className="block mb-1">Как использовать:</strong>
                   <ul className="list-disc list-inside space-y-0.5 text-xs">
-                    <li>Тяните <span className="font-bold text-green-700">зеленый маркер</span> вверх/вниз для изменения мощности</li>
-                    <li>Тяните <span className="font-bold text-blue-700">синий маркер</span> влево/вправо для изменения емкости</li>
-                    <li>Пунктирная рамка показывает максимальные размеры</li>
+                    <li>Тяните <span className="font-bold text-green-700">зеленый маркер</span> вверх/вниз для изменения мощности инвертора</li>
+                    <li>Тяните <span className="font-bold text-blue-700">синий маркер</span> влево/вправо для изменения емкости батареи</li>
+                    <li><span className="font-bold text-green-700">Зеленая</span> и <span className="font-bold text-blue-700">синяя</span> пунктирные линии показывают оптимальные параметры мощности и длительности</li>
                   </ul>
                 </div>
               </div>
             </div>
+
+
+
+            {/*Сетка Интерактивных Параметров */}
             
-            <button
+            <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_auto] gap-3 mb-4">
+            {/* Текущие параметры */}
+            <div className="grid grid-cols-1 gap-4 max-w-[250px]">
+            <div className="flex items-center text-lg font-semibold text-gray-800">
+              <Info className="w-6 h-6 mr-2 text-primary-600" />
+              Текущие параметры
+            </div>
+              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
+                <div className="text-xs text-gray-600 mb-0.5">Мощность инвертора</div>
+                <div className="text-2xl font-bold text-green-700">{batteryPower.toFixed(0)} МВт</div>
+              </div>
+              
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
+                <div className="text-xs text-gray-600 mb-0.5">Емкость батареи</div>
+                <div className="text-2xl font-bold text-blue-700">{batteryCapacity.toFixed(0)} МВтч</div>
+              </div>
+              
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
+                <div className="text-xs text-gray-600 mb-0.5">КПД цикла</div>
+                <div className="text-2xl font-bold text-purple-700">{(parameters.efficiency * 100).toFixed(0)}%</div>
+              </div>
+              <button
               onClick={resetToRecommended}
               className="w-full btn-secondary text-sm flex items-center justify-center"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Рекомендуемые параметры
             </button>
-          </div>
+            </div>
+
+
           
           {/* SVG батарея */}
-          <div className="flex items-center justify-center mt-6">
+          <div className="flex items-center justify-center">
               <svg
                 ref={svgRef}
                 viewBox={`0 0 ${viewWidth} ${viewHeight}`}
@@ -233,6 +261,63 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                   strokeDasharray="8,4"
                   opacity="0.6"
                 />
+                
+                {/* Оптимальные параметры (пунктирные линии) */}
+                {optimalPower && optimalCapacity && (
+                  <>
+                    {/* Оптимальная мощность - горизонтальная линия */}
+                    <line
+                      x1={padding}
+                      y1={viewHeight - padding - optimalPower * scaleY}
+                      x2={padding + maxWidth}
+                      y2={viewHeight - padding - optimalPower * scaleY}
+                      stroke="#10b981"
+                      strokeWidth="2"
+                      strokeDasharray="6,3"
+                      opacity="0.7"
+                    />
+                    <text
+                      x={padding - 5}
+                      y={viewHeight - padding - optimalPower * scaleY}
+                      fill="#10b981"
+                      fontSize="10"
+                      fontWeight="bold"
+                      textAnchor="end"
+                    >
+                      {optimalPower.toFixed(0)} МВт (опт)
+                    </text>
+                    
+                    {/* Оптимальная длительность - вертикальная линия */}
+                    {(() => {
+                      const optimalDuration = optimalCapacity / optimalPower;
+                      const optimalDurationX = padding + optimalDuration * scaleX;
+                      return optimalDurationX <= padding + maxWidth ? (
+                        <>
+                          <line
+                            x1={optimalDurationX}
+                            y1={viewHeight - padding}
+                            x2={optimalDurationX}
+                            y2={viewHeight - padding - maxHeight}
+                            stroke="#3b82f6"
+                            strokeWidth="2"
+                            strokeDasharray="6,3"
+                            opacity="0.7"
+                          />
+                          <text
+                            x={optimalDurationX}
+                            y={viewHeight - padding + 35}
+                            fill="#3b82f6"
+                            fontSize="10"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                          >
+                            {optimalDuration.toFixed(1)} ч (опт)
+                          </text>
+                        </>
+                      ) : null;
+                    })()}
+                  </>
+                )}
                 
                 {/* Подписи максимумов */}
                 <text
@@ -418,6 +503,58 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                 </text>
               </svg>
           </div>
+
+          {/* Оценочные параметры */}
+          <div className="grid grid-cols-1 gap-4 max-w-[240px]">
+          <div className="flex items-center text-lg font-semibold text-gray-800">
+              <Info className="w-6 h-6 mr-2 text-primary-600" />
+              Оценочные параметры
+            </div>
+              
+              {isLoadingOptimal ? (
+                <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-300 text-center">
+                  <div className="text-sm text-gray-600">Расчет оптимальных параметров...</div>
+                </div>
+              ) : optimalPower && optimalCapacity ? (
+                <>
+                  <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
+                    <div className="text-xs text-gray-600 mb-0.5">Мощность инвертора (оптимальная)</div>
+                    <div className="text-2xl font-bold text-green-700">{optimalPower.toFixed(0)} МВт</div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
+                    <div className="text-xs text-gray-600 mb-0.5">Емкость батареи (оптимальная)</div>
+                    <div className="text-2xl font-bold text-blue-700">{optimalCapacity.toFixed(0)} МВтч</div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border-2 border-amber-300">
+                    <div className="text-xs text-gray-600 mb-0.5">Длительность (оптимальная)</div>
+                    <div className="text-2xl font-bold text-amber-700">{(optimalCapacity / optimalPower).toFixed(1)} ч</div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-300 text-center">
+                  <div className="text-sm text-gray-600">Оптимальные параметры недоступны</div>
+                </div>
+              )}
+              
+
+
+
+
+            </div>
+
+
+
+
+
+
+          </div>
+            
+            
+          </div>
+
+
         </div>
       </div>
     </motion.div>

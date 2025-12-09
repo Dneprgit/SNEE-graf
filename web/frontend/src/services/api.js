@@ -56,6 +56,12 @@ export const apiService = {
     });
     return response.data;
   },
+
+  // Рассчитать оптимальные параметры СНЭЭ
+  async calculateOptimalParameters(data) {
+    const response = await api.post('/api/v1/calculate-optimal-parameters', data);
+    return response.data;
+  },
 };
 
 export default api;

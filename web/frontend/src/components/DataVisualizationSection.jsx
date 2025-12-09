@@ -14,6 +14,8 @@ const DataVisualizationSection = ({ loadProfile, onCalculate, isCalculating, err
     avg: loadProfile.reduce((a, b) => a + b, 0) / loadProfile.length,
     surplus: loadProfile.filter(v => v > 0).reduce((a, b) => a + b, 0),
     deficit: Math.abs(loadProfile.filter(v => v < 0).reduce((a, b) => a + b, 0)),
+    surplusTime: loadProfile.filter(v => v > 0).length,
+    deficitTime: loadProfile.filter(v => v < 0).length,
   };
 
   return (
@@ -28,15 +30,17 @@ const DataVisualizationSection = ({ loadProfile, onCalculate, isCalculating, err
         <p className="section-subtitle text-center">
           Интерактивный просмотр и редактирование профиля баланса мощности
         </p>
-
+        {/* Контейнер для статистики и графика */}
+        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 mb-8 max-w-7xl mx-auto">
         {/* Статистика */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-2 gap-4">
           {[
-            { label: 'Максимум', value: stats.max.toFixed(1), unit: 'МВт', icon: TrendingUp, color: 'green' },
-            { label: 'Минимум', value: stats.min.toFixed(1), unit: 'МВт', icon: TrendingDown, color: 'red' },
-            { label: 'Среднее', value: stats.avg.toFixed(1), unit: 'МВт', icon: Edit, color: 'blue' },
-            { label: 'Избыток', value: stats.surplus.toFixed(1), unit: 'МВтч', icon: TrendingUp, color: 'emerald' },
-            { label: 'Дефицит', value: stats.deficit.toFixed(1), unit: 'МВтч', icon: TrendingDown, color: 'orange' },
+            { label: <>Максимальный<br/>избыток<br/>мощности,</>, value: stats.max.toFixed(0), unit: 'МВт', icon: TrendingUp, color: 'green' },
+            { label: <>Максимальный<br/>дефицит<br/>мощности,</>, value: stats.min.toFixed(0), unit: 'МВт', icon: TrendingDown, color: 'red' },
+            { label: <>Избыток<br/>электрической<br/>энергии,</>, value: stats.surplus.toFixed(0), unit: 'МВтч', icon: TrendingUp, color: 'green' },
+            { label: <>Дефицит<br/>электрической<br/>энергии,</>, value: stats.deficit.toFixed(0), unit: 'МВтч', icon: TrendingDown, color: 'red' },
+            { label: <>Время<br/>избытка,</>, value: stats.surplusTime, unit: 'ч', icon: TrendingUp, color: 'green' },
+            { label: <>Время<br/>дефицита,</>, value: stats.deficitTime, unit: 'ч', icon: TrendingDown, color: 'red' },
           ].map((stat, index) => (
             <motion.div
               key={index}
@@ -62,7 +66,7 @@ const DataVisualizationSection = ({ loadProfile, onCalculate, isCalculating, err
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           viewport={{ once: true }}
-          className="card mb-8"
+          className="card"
         >
           <h3 className="text-xl font-bold text-gray-800 mb-4">
             Суточный профиль баланса мощности
@@ -102,7 +106,7 @@ const DataVisualizationSection = ({ loadProfile, onCalculate, isCalculating, err
             </AreaChart>
           </ResponsiveContainer>
         </motion.div>
-
+        </div>
         {/* Столбчатая диаграмма */}
 {/*         <motion.div
           initial={{ opacity: 0, y: 20 }}
