@@ -44,13 +44,14 @@ python -m venv venv
 # Windows:
 venv\Scripts\activate
 # Linux/Mac:
-source venv/bin/activate
+#source venv/bin/activate
 
 # Установите зависимости (только первый раз)
 pip install -r requirements.txt
 
 # Запустите сервер
-python -m uvicorn main:app --reload
+python -m uvicorn main:app --reload --port 8001
+
 ```
 
 Backend будет доступен на: http://localhost:8001

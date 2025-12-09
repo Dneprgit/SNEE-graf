@@ -207,4 +207,3 @@ class EnergyStorageCalculator:
             'resulting_max_deficit_mw': round(-np.min(resulting_balance), 2),
             'resulting_max_surplus_mw': round(np.max(resulting_balance), 2),
         }
-
