@@ -85,7 +85,7 @@ const DataInputSection = ({
           Загрузите профиль баланса мощности и настройте параметры СНЭЭ
         </p>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-full mx-auto">
           {/* Загрузка данных */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -220,46 +220,46 @@ const DataInputSection = ({
               </div>
             </div>
           </motion.div>
-        </div>
 
-        {/* Таблица редактирования */}
-        {loadProfile && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            viewport={{ once: true }}
-            className="card mt-8"
-          >
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-              <FileText className="w-6 h-6 mr-2 text-primary-600" />
-              Редактирование значений
-            </h3>
-            <div className="grid grid-cols-6 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1">
-              {loadProfile.map((value, index) => (
-                <div key={index} className="flex flex-col">
-                  <label className="text-xs font-semibold text-gray-600 mb-1">
-                    Час {index + 1}
-                  </label>
-                  <input
-                    type="number"
-                    value={value}
-                    onChange={(e) => {
-                      const updated = [...loadProfile];
-                      updated[index] = parseFloat(e.target.value) || 0;
-                      setLoadProfile(updated);
-                    }}
-                    className="input-field text-sm py-1 px-1"
-                    step="100"
-                  />
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-4">
-              💡 Положительные значения — избыток энергии, отрицательные — дефицит
-            </p>
-          </motion.div>
-        )}
+          {/* Таблица редактирования */}
+          {loadProfile && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              viewport={{ once: true }}
+              className="card"
+            >
+              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <FileText className="w-6 h-6 mr-2 text-primary-600" />
+                Редактирование значений
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-1">
+                {loadProfile.map((value, index) => (
+                  <div key={index} className="flex flex-col">
+                    <label className="text-xs font-semibold text-gray-600 mb-1">
+                      Час {index + 1}
+                    </label>
+                    <input
+                      type="number"
+                      value={value}
+                      onChange={(e) => {
+                        const updated = [...loadProfile];
+                        updated[index] = parseFloat(e.target.value) || 0;
+                        setLoadProfile(updated);
+                      }}
+                      className="input-field text-sm py-1 px-1"
+                      step="100"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-4">
+                💡 Положительные значения — избыток энергии, отрицательные — дефицит
+              </p>
+            </motion.div>
+          )}
+        </div>
       </motion.div>
     </section>
   );
