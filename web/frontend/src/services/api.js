@@ -3,10 +3,10 @@ import axios from 'axios';
 // Используем пустой baseURL - все пути указаны полностью в методах
 // Это позволяет работать через nginx reverse proxy без необходимости задавать VITE_API_URL
 
-//const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:8001');
+//const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  //(import.meta.env.MODE === 'production' ? '' : 'http://localhost:8001');
 
 //const API_BASE_URL = 'http://localhost:8001';
 
