@@ -1,21 +1,34 @@
-# Используем официальный образ Python
+# Backend Dockerfile для SNEE Graf
 FROM python:3.11-slim
 
-# Устанавливаем рабочую директорию
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Рабочая директория
 WORKDIR /app
 
-# Копируем файлы зависимостей
+# Копирование requirements и установка зависимостей
 COPY requirements.txt .
-
-# Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем код приложения
+# Копирование кода приложения
 COPY . .
 
-# Открываем порт
+# Создание непривилегированного пользователя
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8002/api/v1/health')" || exit 1
+
+# Expose порт
 EXPOSE 8002
 
-# Команда запуска
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
-
+# Запуск приложения
+CMD ["python", "main.py"]

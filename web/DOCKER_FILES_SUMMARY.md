@@ -1,412 +1,467 @@
-# 📦 Обзор файлов для Docker развертывания
+# 📦 Docker Files Summary - SNEE Graf
 
-**Все файлы, созданные для развертывания SNЭЭ Graf через Docker**
+Полный список созданных файлов для Docker развертывания.
 
----
+## 📁 Созданные файлы
 
-## 📋 Быстрая навигация
+### 🐳 Docker Конфигурация
 
-| Тип | Файл | Описание |
-|-----|------|----------|
-| 📖 | [README_DOCKER.md](README_DOCKER.md) | Главный обзор Docker развертывания |
-| 📘 | [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) | Полная пошаговая инструкция |
-| ⚡ | [QUICKSTART_DOCKER.md](QUICKSTART_DOCKER.md) | Быстрый старт |
-| 📝 | [COMMANDS.md](COMMANDS.md) | Шпаргалка по командам |
-| 🐳 | [Dockerfile.backend.prod](Dockerfile.backend.prod) | Production образ backend |
-| 🐳 | [Dockerfile.frontend.prod](Dockerfile.frontend.prod) | Production образ frontend |
-| 🔧 | [docker-compose.prod.yml](docker-compose.prod.yml) | Production конфигурация |
-| 🌐 | [nginx-server.conf](nginx-server.conf) | Nginx конфигурация для сервера |
-| 🚫 | [.dockerignore](.dockerignore) | Исключения для Docker build |
-| 📄 | [backend/env.example.prod](backend/env.example.prod) | Пример переменных backend |
-| 📄 | [frontend/env.example.prod](frontend/env.example.prod) | Пример переменных frontend |
-
-### Скрипты автоматизации (scripts/)
-
-| Скрипт | Назначение |
-|--------|------------|
-| [install-server.sh](scripts/install-server.sh) | Первоначальная установка |
-| [check-status.sh](scripts/check-status.sh) | Проверка статуса |
-| [update.sh](scripts/update.sh) | Обновление проекта |
-| [restart.sh](scripts/restart.sh) | Перезапуск сервисов |
-| [logs.sh](scripts/logs.sh) | Просмотр логов |
-| [README.md](scripts/README.md) | Документация скриптов |
-
----
-
-## 🎯 С чего начать?
-
-### 1️⃣ Для первого развертывания
-
-Начните с чтения **[README_DOCKER.md](README_DOCKER.md)** - там есть навигация по всем документам.
-
-Затем следуйте **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - там пошаговая инструкция.
-
-### 2️⃣ Если уже знакомы с процессом
-
-Используйте **[QUICKSTART_DOCKER.md](QUICKSTART_DOCKER.md)** для быстрого деплоя.
-
-### 3️⃣ Для поиска команд
-
-Открывайте **[COMMANDS.md](COMMANDS.md)** - там все команды с примерами.
-
----
-
-## 📁 Детальное описание файлов
-
-### 📖 Документация
-
-#### README_DOCKER.md
-**Главный файл** с обзором всего процесса Docker развертывания.
-
-**Содержит:**
-- Навигацию по всем документам
-- Архитектуру развертывания
-- Workflow процесса
-- Безопасность и мониторинг
-
-**Когда читать:** Первым делом для понимания общей картины.
-
----
-
-#### DOCKER_DEPLOYMENT.md
-**Самая подробная инструкция** - 800+ строк пошаговых действий.
-
-**Содержит:**
-- 7 больших частей от подготовки до мониторинга
-- Скриншоты команд с ожидаемым выводом
-- Решение типичных проблем
-- Чек-лист развертывания
-
-**Когда читать:** При первом развертывании или когда нужны детали.
-
----
-
-#### QUICKSTART_DOCKER.md
-**Краткая версия** для быстрого деплоя.
-
-**Содержит:**
-- Только необходимые команды
-- Минимальные конфигурации
-- Быстрое обновление
-
-**Когда читать:** Когда уже знаете процесс и нужна шпаргалка.
-
----
-
-#### COMMANDS.md
-**Справочник команд** - все команды Docker, Nginx, SSL.
-
-**Содержит:**
-- Команды Docker и Docker Compose
-- Команды Nginx
-- SSL сертификаты (Let's Encrypt)
-- Мониторинг и диагностика
-- Резервное копирование
-- Полезные скрипты
-
-**Когда читать:** Для быстрого поиска нужной команды.
-
----
-
-### 🐳 Docker файлы
-
-#### Dockerfile.backend.prod
-Production Dockerfile для FastAPI backend.
+#### Backend
+```
+web/backend/
+├── Dockerfile                  # Backend Docker image (Python 3.11)
+└── .dockerignore              # Исключения для backend build
+```
 
 **Особенности:**
-- Базовый образ: `python:3.11-slim`
-- Копирует родительские модули для импорта
-- Устанавливает зависимости из requirements.txt
-- Запускает Uvicorn с 2 workers
-- Порт: 8001
+- ✅ Multi-stage не требуется (Python приложение)
+- ✅ Непривилегированный пользователь (appuser)
+- ✅ Health check на `/api/v1/health`
+- ✅ Порт 8002
 
-**Размер образа:** ~200MB
-
----
-
-#### Dockerfile.frontend.prod
-Multi-stage Production Dockerfile для React frontend.
-
-**Stage 1 - Builder:**
-- Базовый образ: `node:18-alpine`
-- Собирает production build (`npm run build`)
-
-**Stage 2 - Runtime:**
-- Базовый образ: `nginx:alpine`
-- Копирует собранные файлы
-- Настраивает Nginx для SPA
-- Порт: 80
-
-**Размер образа:** ~50MB
-
----
-
-#### docker-compose.prod.yml
-Production конфигурация Docker Compose.
-
-**Сервисы:**
-- `snee-backend` - FastAPI API (порт 8001)
-- `snee-frontend` - React + Nginx (порт 3001)
-
-**Настройки:**
-- `restart: always` - автоперезапуск
-- Health checks для мониторинга
-- Изолированная сеть `snee-network`
-
----
-
-#### .dockerignore
-Исключения для Docker build.
-
-**Исключает:**
-- `node_modules/`, `venv/`
-- `__pycache__/`, `*.pyc`
-- `.git/`, `.env`
-- Логи, временные файлы
-- Документацию (кроме README)
-
-**Эффект:** Уменьшает размер контекста сборки и образа.
-
----
-
-### 🌐 Nginx конфигурация
-
-#### nginx-server.conf
-Готовая production конфигурация Nginx для сервера.
-
-**Настроено:**
-- ✅ HTTP → HTTPS редирект
-- ✅ SSL/TLS (Let's Encrypt)
-- ✅ Security headers (HSTS, XSS Protection)
-- ✅ Gzip сжатие
-- ✅ Proxy для backend API
-- ✅ Proxy для frontend
-- ✅ Таймауты и лимиты
-
-**Upstreams:**
-- `snee_backend` → 127.0.0.1:8001
-- `snee_frontend` → 127.0.0.1:3001
-
-**Locations:**
-- `/api` → проксирует на backend
-- `/docs`, `/redoc`, `/openapi.json` → API документация
-- `/` → проксирует на frontend
-
----
-
-### 📄 Переменные окружения
-
-#### backend/env.example.prod
-Пример переменных окружения для production backend.
-
-**Переменные:**
-```env
-ENVIRONMENT=production
-API_TITLE=SNEE Graf API
-ALLOWED_ORIGINS=https://snee.companykd.world
-MAX_UPLOAD_SIZE=10485760
-LOG_LEVEL=INFO
-WORKERS=2
+#### Frontend
+```
+web/frontend/
+├── Dockerfile                  # Frontend multi-stage build (Node + Nginx)
+├── .dockerignore              # Исключения для frontend build
+└── nginx.conf                 # Nginx конфигурация для SPA
 ```
 
----
+**Особенности:**
+- ✅ Multi-stage build (builder + nginx)
+- ✅ Production ready nginx
+- ✅ SPA routing (try_files)
+- ✅ Gzip compression
+- ✅ Security headers
+- ✅ Порт 80
 
-#### frontend/env.example.prod
-Пример переменных окружения для production frontend.
+### 🎼 Orchestration
 
-**Переменные:**
-```env
-VITE_API_URL=https://snee.companykd.world/api
-VITE_APP_TITLE=СНЭЭ Graf
-VITE_MODE=production
+```
+web/
+├── docker-compose.yml          # Development/простое развертывание
+├── docker-compose.prod.yml     # Production с nginx reverse proxy
+└── .env.production.example     # Пример environment переменных
 ```
 
----
-
-### 🛠️ Скрипты автоматизации
-
-#### scripts/install-server.sh
-Автоматическая установка проекта на чистый сервер.
-
-**Что делает:**
-1. Обновляет систему
-2. Устанавливает Docker и Docker Compose
-3. Создает директории
-4. Создает docker-compose.yml
-5. Загружает и запускает контейнеры
-6. Проверяет работоспособность
-
-**Использование:**
-```bash
-sudo ./install-server.sh
-```
-
----
-
-#### scripts/check-status.sh
-Комплексная проверка статуса всех компонентов.
-
-**Проверяет:**
-- Docker и контейнеры
+**docker-compose.yml:**
+- Backend на порту 8002
+- Frontend на порту 80
 - Health checks
-- API endpoints
-- Nginx
-- Использование ресурсов
-- SSL сертификаты
-- Ошибки в логах
+- Базовая конфигурация
 
-**Использование:**
-```bash
-./check-status.sh
+**docker-compose.prod.yml:**
+- Backend (internal)
+- Frontend (internal)
+- Nginx reverse proxy (80, 443)
+- SSL termination
+- Resource limits
+- Production настройки
+
+### 🌐 Nginx Reverse Proxy
+
+```
+web/nginx/
+├── nginx.conf                  # Production reverse proxy config
+└── ssl/                        # SSL сертификаты (создать вручную)
+    ├── cert.pem
+    └── key.pem
+```
+
+**Особенности:**
+- ✅ SSL/TLS termination
+- ✅ HTTP → HTTPS redirect
+- ✅ Rate limiting (API: 10 r/s, General: 30 r/s)
+- ✅ Gzip compression
+- ✅ Security headers (HSTS, XSS, etc.)
+- ✅ Proxy для backend API
+- ✅ Health check endpoints
+
+### 📜 Скрипты
+
+```
+web/
+└── deploy.sh                   # Автоматический deployment скрипт
+```
+
+**Функции:**
+- Проверка Docker/Docker Compose
+- Выбор dev/prod режима
+- Создание SSL сертификатов
+- Проверка .env файлов
+- Build и запуск
+- Health checks
+- Вывод статуса
+
+### 📚 Документация
+
+```
+web/
+├── DOCKER_DEPLOYMENT.md        # Полная инструкция по развертыванию
+├── DOCKER_QUICK_START.md       # Быстрый старт (5 минут)
+└── DOCKER_FILES_SUMMARY.md     # Этот файл (сводка)
 ```
 
 ---
 
-#### scripts/update.sh
-Безопасное обновление проекта до новой версии.
+## 🗂️ Структура проекта с Docker
 
-**Что делает:**
-1. Создает backup
-2. Скачивает новые образы
-3. Пересоздает контейнеры
-4. Проверяет работоспособность
-5. Удаляет старые образы
-
-**Использование:**
-```bash
-./update.sh
+```
+web/
+├── backend/
+│   ├── Dockerfile              ✅ Создан
+│   ├── .dockerignore          ✅ Создан
+│   ├── requirements.txt       ✅ Существует
+│   ├── main.py                ✅ Существует
+│   └── ...                    (другие файлы проекта)
+│
+├── frontend/
+│   ├── Dockerfile             ✅ Создан
+│   ├── .dockerignore         ✅ Создан
+│   ├── nginx.conf            ✅ Создан
+│   ├── package.json          ✅ Существует
+│   └── ...                   (другие файлы проекта)
+│
+├── nginx/
+│   ├── nginx.conf            ✅ Создан
+│   └── ssl/                  ⚠️  Нужно создать вручную
+│       ├── cert.pem
+│       └── key.pem
+│
+├── docker-compose.yml         ✅ Создан
+├── docker-compose.prod.yml    ✅ Создан
+├── .env.production.example    ⚠️  Заблокирован (создать вручную)
+├── deploy.sh                  ✅ Создан
+│
+├── DOCKER_DEPLOYMENT.md       ✅ Создан
+├── DOCKER_QUICK_START.md      ✅ Создан
+└── DOCKER_FILES_SUMMARY.md    ✅ Создан (этот файл)
+│
+├── data/                      📁 Создается автоматически
+└── logs/                      📁 Создается автоматически
+    ├── backend/
+    └── nginx/
 ```
 
 ---
 
-#### scripts/restart.sh
-Перезапуск сервисов.
+## ✅ Что готово
 
-**Использование:**
-```bash
-./restart.sh [backend|frontend|all]
-```
+### Полностью реализовано
+
+- [x] **Dockerfile для backend** - Python 3.11, непривилегированный пользователь
+- [x] **Dockerfile для frontend** - Multi-stage build, Nginx Alpine
+- [x] **.dockerignore** для backend и frontend
+- [x] **docker-compose.yml** - Development конфигурация
+- [x] **docker-compose.prod.yml** - Production с SSL и nginx
+- [x] **nginx.conf** (frontend) - SPA routing, compression, security
+- [x] **nginx.conf** (reverse proxy) - SSL termination, rate limiting
+- [x] **deploy.sh** - Автоматический deployment скрипт
+- [x] **Документация** - Полная инструкция + Quick Start
+
+### Требует действий пользователя
+
+- [ ] **Создать `.env.production`** - Скопировать из `.env.production.example`
+- [ ] **Создать SSL сертификаты** - Let's Encrypt или self-signed
+- [ ] **Настроить DNS** - Указать домен на сервер (для продакшн)
 
 ---
 
-#### scripts/logs.sh
-Просмотр логов.
+## 🚀 Как использовать
 
-**Использование:**
-```bash
-./logs.sh [backend|frontend|nginx|all]
-```
-
----
-
-## 🚀 Типичный workflow
-
-### Первое развертывание
+### Development (локально)
 
 ```bash
-# 1. Локально: Сборка образов
 cd web
-docker build -f Dockerfile.backend.prod -t username/snee-backend:latest ..
-docker build -f Dockerfile.frontend.prod -t username/snee-frontend:latest ..
-
-# 2. Push в Docker Hub
-docker push username/snee-backend:latest
-docker push username/snee-frontend:latest
-
-# 3. На сервере: Установка
-sudo ./scripts/install-server.sh
-
-# 4. Настройка Nginx
-sudo nano /etc/nginx/sites-available/snee-graf
-# (копируем nginx-server.conf)
-
-# 5. SSL сертификат
-sudo certbot --nginx -d snee.companykd.world
-
-# 6. Проверка
-./scripts/check-status.sh
+docker compose up -d
 ```
+
+Открыть: http://localhost
+
+### Production (на сервере)
+
+```bash
+cd web
+
+# 1. Подготовить environment
+cp .env.production.example .env.production
+nano .env.production
+
+# 2. SSL сертификаты
+mkdir -p nginx/ssl
+# Скопировать cert.pem и key.pem
+
+# 3. Запустить
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### С помощью скрипта
+
+```bash
+cd web
+./deploy.sh
+# Следовать инструкциям
+```
+
+---
+
+## 📊 Архитектура Docker
+
+### Development (docker-compose.yml)
+
+```
+┌─────────────────────┐
+│   Browser           │
+└──────────┬──────────┘
+           │
+    ┌──────┴──────┐
+    │             │
+    ▼             ▼
+┌─────────┐   ┌──────────┐
+│Frontend │   │ Backend  │
+│  :80    │   │  :8002   │
+└─────────┘   └──────────┘
+```
+
+### Production (docker-compose.prod.yml)
+
+```
+┌─────────────────────┐
+│   Browser           │
+└──────────┬──────────┘
+           │ :443 (HTTPS)
+           ▼
+┌─────────────────────┐
+│   Nginx Proxy       │
+│   SSL Termination   │
+│   Rate Limiting     │
+└──────────┬──────────┘
+           │
+    ┌──────┴──────┐
+    │ internal    │
+    ▼             ▼
+┌─────────┐   ┌──────────┐
+│Frontend │   │ Backend  │
+│nginx:80 │   │  :8002   │
+└─────────┘   └──────────┘
+```
+
+---
+
+## 🔒 Безопасность
+
+### Реализовано
+
+✅ **Непривилегированные контейнеры**
+- Backend запускается от appuser (UID 1000)
+- Frontend на nginx alpine (минимальный образ)
+
+✅ **Health checks**
+- Автоматический мониторинг состояния
+- Перезапуск при падении
+
+✅ **Resource limits**
+- CPU и memory limits в production
+- Защита от DOS
+
+✅ **Security headers**
+- HSTS, X-Frame-Options, X-Content-Type-Options
+- XSS Protection, Referrer-Policy
+
+✅ **Rate limiting**
+- API: 10 запросов/сек
+- General: 30 запросов/сек
+
+✅ **.dockerignore**
+- Исключение чувствительных данных
+- Минимизация размера образов
+
+### Требует настройки
+
+⚠️ **SSL/TLS**
+- Получить настоящие сертификаты (Let's Encrypt)
+- Настроить автообновление
+
+⚠️ **Environment переменные**
+- Не коммитить .env.production
+- Использовать secrets для паролей
+
+⚠️ **Firewall**
+- Настроить UFW/iptables
+- Открыть только 80, 443, 22
+
+---
+
+## 📈 Производительность
+
+### Оптимизации
+
+✅ **Multi-stage build**
+- Frontend: Node builder + Nginx runner
+- Минимальный размер финального образа
+
+✅ **Gzip compression**
+- Сжатие статики и API ответов
+- Экономия трафика до 70%
+
+✅ **Static file caching**
+- Cache-Control для JS/CSS/images
+- 1 год кэширования
+
+✅ **Keepalive connections**
+- Backend: 32 keepalive connections
+- Nginx: оптимизированные таймауты
+
+### Размеры образов
+
+- **Backend**: ~200 MB (Python 3.11 slim + scipy)
+- **Frontend**: ~25 MB (Nginx Alpine + React build)
+- **Nginx Proxy**: ~40 MB (Nginx Alpine)
+
+**Итого**: ~265 MB для всего стека
+
+---
+
+## 🧪 Тестирование
+
+### Проверка локально
+
+```bash
+# Build и запуск
+docker compose up -d
+
+# Проверка статуса
+docker compose ps
+
+# Health checks
+curl http://localhost:8002/api/v1/health
+curl http://localhost/health
+
+# Логи
+docker compose logs -f
+```
+
+### Проверка production
+
+```bash
+# Build
+docker compose -f docker-compose.prod.yml build
+
+# Запуск
+docker compose -f docker-compose.prod.yml up -d
+
+# Health checks
+curl https://localhost/health
+curl https://localhost:8002/api/v1/health
+
+# SSL проверка
+openssl s_client -connect localhost:443
+```
+
+---
+
+## 🔧 Обслуживание
 
 ### Обновление
 
 ```bash
-# 1. Локально: Пересборка
-docker build -f Dockerfile.backend.prod -t username/snee-backend:latest ..
-docker push username/snee-backend:latest
+# Получить код
+git pull
 
-# 2. На сервере: Обновление
-./scripts/update.sh
+# Rebuild и recreate
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
----
+### Backup
 
-## 📊 Архитектура
+```bash
+# Данные
+tar -czf backup-$(date +%Y%m%d).tar.gz data/
 
-```
-Internet
-    ↓
-Nginx (443) + SSL
-    ↓
-    ├─→ /api → Backend Container (8001)
-    └─→ /    → Frontend Container (3001)
+# Логи
+tar -czf logs-$(date +%Y%m%d).tar.gz logs/
 ```
 
----
+### Очистка
 
-## ✅ Чек-лист файлов
+```bash
+# Остановка
+docker compose down
 
-Перед развертыванием убедитесь, что у вас есть:
+# Удаление образов
+docker image prune -a
 
-**Docker файлы:**
-- [ ] Dockerfile.backend.prod
-- [ ] Dockerfile.frontend.prod
-- [ ] docker-compose.prod.yml
-- [ ] .dockerignore
-
-**Конфигурации:**
-- [ ] nginx-server.conf
-- [ ] backend/env.example.prod
-- [ ] frontend/env.example.prod
-
-**Документация:**
-- [ ] README_DOCKER.md
-- [ ] DOCKER_DEPLOYMENT.md
-- [ ] QUICKSTART_DOCKER.md
-- [ ] COMMANDS.md
-
-**Скрипты:**
-- [ ] scripts/install-server.sh
-- [ ] scripts/check-status.sh
-- [ ] scripts/update.sh
-- [ ] scripts/restart.sh
-- [ ] scripts/logs.sh
-- [ ] scripts/README.md
-
----
-
-## 🎓 Рекомендуемый порядок изучения
-
-1. **[README_DOCKER.md](README_DOCKER.md)** - общая картина
-2. **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - детальная инструкция
-3. **[scripts/README.md](scripts/README.md)** - скрипты автоматизации
-4. **[COMMANDS.md](COMMANDS.md)** - держите под рукой
-
-**Быстрый путь:**
-- Если спешите → **[QUICKSTART_DOCKER.md](QUICKSTART_DOCKER.md)**
+# Полная очистка
+docker system prune -a --volumes
+```
 
 ---
 
 ## 📞 Поддержка
 
-При проблемах:
-1. Проверьте [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) раздел "Решение проблем"
-2. Запустите `./scripts/check-status.sh`
-3. Изучите логи: `./scripts/logs.sh all`
-4. Посмотрите [COMMANDS.md](COMMANDS.md) для диагностики
+### Документация
+
+1. **Quick Start**: [DOCKER_QUICK_START.md](DOCKER_QUICK_START.md) - 5 минут
+2. **Full Guide**: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) - Полная инструкция
+3. **Application**: [README_SCIPY_FIX.md](README_SCIPY_FIX.md) - О приложении
+
+### Troubleshooting
+
+Смотрите раздел "Troubleshooting" в [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
+
+### Команды
+
+```bash
+# Статус
+docker compose ps
+
+# Логи
+docker compose logs -f [service]
+
+# Перезапуск
+docker compose restart [service]
+
+# Exec
+docker compose exec backend bash
+docker compose exec frontend sh
+
+# Stats
+docker stats
+```
 
 ---
 
-**Создано для проекта SNЭЭ Graf**  
-**Версия документации: 1.0**  
-**Дата: Декабрь 2024**
+## ✨ Особенности
 
+### Преимущества Docker решения
+
+1. **🚀 Простота развертывания**
+   - Один файл docker-compose.yml
+   - Автоматический скрипт deploy.sh
+   - Без ручной установки зависимостей
+
+2. **🔒 Безопасность**
+   - Изолированные контейнеры
+   - Непривилегированные пользователи
+   - Security headers и rate limiting
+
+3. **📦 Портативность**
+   - Работает на любой ОС с Docker
+   - Одинаковое окружение dev/prod
+   - Легкая миграция между серверами
+
+4. **⚡ Производительность**
+   - Оптимизированные образы
+   - Nginx для статики
+   - Gzip compression
+
+5. **🛠️ Простота обслуживания**
+   - Health checks
+   - Автоматический restart
+   - Легкое обновление
+
+---
+
+**Все готово для продакшн развертывания!** 🎉
+
+*Последнее обновление: 2025-12-12*

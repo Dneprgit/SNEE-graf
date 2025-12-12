@@ -1,25 +1,38 @@
-# Используем Node.js образ
-FROM node:18-alpine
+# Multi-stage build для Frontend
+# Stage 1: Build
+FROM node:18-alpine AS builder
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем package файлы
+# Копирование package files
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm install
+# Установка зависимостей
+RUN npm ci --only=production
 
-# Копируем остальные файлы
+# Копирование исходного кода
 COPY . .
 
-# Открываем порт
-EXPOSE 3002
+# Build приложения
+ARG VITE_API_URL=http://localhost:8002
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build
 
-# Команда запуска для разработки
-CMD ["npm", "run", "dev", "--", "--host"]
+# Stage 2: Production with nginx
+FROM nginx:alpine
 
-# Для продакшена используйте:
-# RUN npm run build
-# CMD ["npm", "run", "preview", "--", "--host"]
+# Копирование nginx конфигурации
+COPY nginx.conf /etc/nginx/nginx.conf
 
+# Копирование билда из предыдущего stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:80/health || exit 1
+
+# Expose порт
+EXPOSE 80
+
+# Запуск nginx
+CMD ["nginx", "-g", "daemon off;"]

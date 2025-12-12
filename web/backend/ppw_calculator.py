@@ -7,7 +7,7 @@ from typing import Tuple, List
 from quadratic_optimizer import solve_qp_problem, check_termination_code
 
 
-MAX_REAL_NUMBER = 1e+300
+MAX_REAL_NUMBER = np.inf  # Используем np.inf вместо больших чисел
 
 
 class PPWCalculator:

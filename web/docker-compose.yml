@@ -1,43 +1,58 @@
 version: '3.8'
 
 services:
+  # Backend Service
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: snee-backend
+    container_name: snee-graf-backend
     restart: unless-stopped
     ports:
       - "8002:8002"
-    volumes:
-      - ./backend:/app
-      - ..:/parent
     environment:
-      - PYTHONUNBUFFERED=1
-    command: uvicorn main:app --host 0.0.0.0 --port 8002 --reload
+      - API_HOST=0.0.0.0
+      - API_PORT=8002
+      - API_DEBUG=False
+      - CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173
+    volumes:
+      # Для персистентности данных (если нужно)
+      - ./data:/app/data
     networks:
       - snee-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8002/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # Frontend Service
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: snee-frontend
+      args:
+        VITE_API_URL: http://localhost:8002
+    container_name: snee-graf-frontend
     restart: unless-stopped
     ports:
-      - "3002:3002"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:8002
-    command: npm run dev -- --host
-    networks:
-      - snee-network
+      - "80:80"
     depends_on:
       - backend
+    networks:
+      - snee-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 networks:
   snee-network:
     driver: bridge
 
+volumes:
+  data:
+    driver: local
