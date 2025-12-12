@@ -62,6 +62,22 @@ export const apiService = {
     const response = await api.post('/api/v1/calculate-optimal-parameters', data);
     return response.data;
   },
+
+  // ============================================================================
+  // PPW Variant API (Второй вариант с квадратичной оптимизацией)
+  // ============================================================================
+
+  // Рассчитать график СНЭЭ для PPW варианта
+  async calculatePPWSchedule(data) {
+    const response = await api.post('/api/v1/ppw/calculate-load', data);
+    return response.data;
+  },
+
+  // Рассчитать оптимальные параметры для PPW варианта
+  async calculatePPWOptimalParameters(data) {
+    const response = await api.post('/api/v1/ppw/calculate-optimal-parameters', data);
+    return response.data;
+  },
 };
 
 export default api;

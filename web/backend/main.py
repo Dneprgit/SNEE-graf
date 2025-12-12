@@ -15,6 +15,7 @@ from io import BytesIO
 
 from energy_storage_calculator import EnergyStorageCalculator, calculate_optimal_parameters
 from data_manager import DataManager
+from ppw_calculator import PPWCalculator
 
 app = FastAPI(
     title="СНЭЭ Graf API",
@@ -271,6 +272,180 @@ async def calculate_optimal_params(request: OptimalParametersRequest):
         raise HTTPException(status_code=500, detail=f"Ошибка при расчете оптимальных параметров: {str(e)}")
 
 
+# ============================================================================
+# PPW Variant API (Второй вариант с квадратичной оптимизацией)
+# ============================================================================
+
+class PPWCalculateLoadRequest(BaseModel):
+    """Запрос на расчет графика СНЭЭ для PPW варианта"""
+    system_load: List[float] = Field(..., min_items=24, max_items=24,
+                                     description="Суточный баланс мощности энергосистемы (24 часа)")
+    rated_power_in_mw: float = Field(..., gt=0, description="Номинальная активная входная мощность в МВт")
+    rated_power_out_mw: float = Field(..., gt=0, description="Номинальная активная выходная мощность в МВт")
+    capacity_mwh: float = Field(..., gt=0, description="Энергия, фактически отдаваемая в рабочем диапазоне в МВтч")
+    efficiency: float = Field(..., gt=0, le=1, description="КПД цикла (0-1)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "system_load": [
+                    27, 38, 84, 137.54, 21.33, -115.19, -166.18, -185.59, -130.30, -48.17,
+                    37.55, 152, 103, 175, 99, 49, -47, 7, -130, -176, -117, -222, -205, -166
+                ],
+                "rated_power_in_mw": 95,
+                "rated_power_out_mw": 140,
+                "capacity_mwh": 360,
+                "efficiency": 0.95
+            }
+        }
+
+
+class PPWCalculateLoadResponse(BaseModel):
+    """Ответ с результатами расчета графика СНЭЭ для PPW варианта"""
+    eess_energy_available: List[float] = Field(..., description="Энергия в батарее на каждый час (МВтч)")
+    eess_load: List[float] = Field(..., description="График нагрузки СНЭЭ (+ разряд, - заряд)")
+    resulting_balance: List[float] = Field(..., description="Результирующий баланс мощности")
+    soc: List[float] = Field(..., description="Состояние заряда батареи (SOC)")
+    summary: dict = Field(..., description="Сводная информация о работе СНЭЭ")
+    system_load_deficit: float = Field(..., description="Дефицит мощности с учетом СНЭЭ")
+    system_load_reserve: float = Field(..., description="Резерв мощности с учетом СНЭЭ")
+    termination_code: int = Field(..., description="Код завершения оптимизации")
+
+
+class PPWOptimalParametersRequest(BaseModel):
+    """Запрос на расчет оптимальных параметров СНЭЭ для PPW варианта"""
+    system_load: List[float] = Field(..., min_items=24, max_items=24,
+                                     description="Суточный баланс мощности энергосистемы (24 часа)")
+    efficiency: float = Field(..., gt=0, le=1, description="КПД цикла (0-1)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "system_load": [
+                    27, 38, 84, 137.54, 21.33, -115.19, -166.18, -185.59, -130.30, -48.17,
+                    37.55, 152, 103, 175, 99, 49, -47, 7, -130, -176, -117, -222, -205, -166
+                ],
+                "efficiency": 0.95
+            }
+        }
+
+
+class PPWOptimalParametersResponse(BaseModel):
+    """Ответ с оптимальными параметрами СНЭЭ для PPW варианта"""
+    rated_power_in_mw: float = Field(..., description="Оптимальная номинальная активная входная мощность (МВт)")
+    rated_power_out_mw: float = Field(..., description="Оптимальная номинальная активная выходная мощность (МВт)")
+    capacity_mwh: float = Field(..., description="Оптимальная энергия в рабочем диапазоне (МВтч)")
+    eess_energy_available: List[float] = Field(..., description="Энергия в батарее на каждый час (МВтч)")
+    eess_load: List[float] = Field(..., description="График нагрузки СНЭЭ")
+    resulting_balance: List[float] = Field(..., description="Результирующий баланс мощности")
+    soc: List[float] = Field(..., description="Состояние заряда батареи (SOC)")
+    summary: dict = Field(..., description="Сводная информация")
+    system_load_deficit: float = Field(..., description="Дефицит мощности с учетом СНЭЭ")
+    termination_code: int = Field(..., description="Код завершения оптимизации")
+
+
+@app.post("/api/v1/ppw/calculate-load", response_model=PPWCalculateLoadResponse)
+async def calculate_ppw_load(request: PPWCalculateLoadRequest):
+    """
+    Расчет графика работы СНЭЭ для заданных параметров (второй вариант PPW)
+    
+    Использует квадратичную оптимизацию (IPM метод) для расчета
+    оптимального графика нагрузки СНЭЭ при заданных параметрах.
+    """
+    try:
+        # Создание калькулятора
+        calculator = PPWCalculator(efficiency=request.efficiency)
+        
+        # Расчет графика
+        eess_energy_available, eess_load, system_load_deficit, system_load_reserve, termination_code = \
+            calculator.calculate_optimal_load(
+                system_load=request.system_load,
+                rated_power_in=request.rated_power_in_mw,
+                rated_power_out=request.rated_power_out_mw,
+                capacity=request.capacity_mwh
+            )
+        
+        # Расчет результирующего баланса
+        resulting_balance = [
+            request.system_load[i] + eess_load[i]
+            for i in range(24)
+        ]
+        
+        # Расчет SOC
+        soc = calculate_soc(eess_load, request.capacity_mwh)
+        
+        # Получение сводной информации
+        summary = calculator.get_summary(request.system_load, eess_load)
+        
+        return PPWCalculateLoadResponse(
+            eess_energy_available=eess_energy_available.tolist(),
+            eess_load=eess_load.tolist(),
+            resulting_balance=resulting_balance,
+            soc=soc,
+            summary=summary,
+            system_load_deficit=float(system_load_deficit),
+            system_load_reserve=float(system_load_reserve),
+            termination_code=int(termination_code)
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при расчете графика PPW: {str(e)}")
+
+
+@app.post("/api/v1/ppw/calculate-optimal-parameters", response_model=PPWOptimalParametersResponse)
+async def calculate_ppw_optimal_parameters(request: PPWOptimalParametersRequest):
+    """
+    Расчет оптимальных параметров мощности и емкости СНЭЭ (второй вариант PPW)
+    
+    Использует квадратичную оптимизацию для нахождения минимальных значений
+    номинальной входной/выходной мощности и емкости, при которых дефицит
+    энергии и мощности минимизируются.
+    """
+    try:
+        # Создание калькулятора
+        calculator = PPWCalculator(efficiency=request.efficiency)
+        
+        # Расчет оптимальных параметров
+        rated_power_in, rated_power_out, capacity, eess_energy_available, eess_load, system_load_deficit, termination_code = \
+            calculator.calculate_optimized_parameters(system_load=request.system_load)
+        
+        # Расчет результирующего баланса
+        resulting_balance = [
+            request.system_load[i] + eess_load[i]
+            for i in range(24)
+        ]
+        
+        # Расчет SOC
+        soc = calculate_soc(eess_load, capacity)
+        
+        # Получение сводной информации
+        summary = calculator.get_summary(request.system_load, eess_load)
+        
+        return PPWOptimalParametersResponse(
+            rated_power_in_mw=round(float(rated_power_in), 2),
+            rated_power_out_mw=round(float(rated_power_out), 2),
+            capacity_mwh=round(float(capacity), 2),
+            eess_energy_available=eess_energy_available.tolist(),
+            eess_load=eess_load.tolist(),
+            resulting_balance=resulting_balance,
+            soc=soc,
+            summary=summary,
+            system_load_deficit=float(system_load_deficit),
+            termination_code=int(termination_code)
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при расчете оптимальных параметров PPW: {str(e)}")
+
+
+# ============================================================================
+# Вспомогательные функции
+# ============================================================================
+
 def calculate_soc(eess_schedule: np.ndarray, rated_capacity: float) -> List[float]:
     """
     Расчет состояния заряда батареи в течение суток
@@ -299,5 +474,5 @@ def calculate_soc(eess_schedule: np.ndarray, rated_capacity: float) -> List[floa
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8002, reload=False)
 

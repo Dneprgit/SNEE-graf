@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Battery, Zap, BarChart3, Map } from 'lucide-react';
 
-const Hero = () => {
+const Hero = ({ activeVariant, setActiveVariant }) => {
   const features = [
     { icon: Battery, text: 'Оптимизация СНЭЭ' },
     { icon: Zap, text: 'Реальное время' },
@@ -85,11 +85,42 @@ const Hero = () => {
             по алгоритму water-filling и интерактивной визуализацией данных
           </motion.p>
 
-          {/* Features */}
+          {/* Variant Tabs */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
+            className="flex justify-center gap-4 mb-8"
+          >
+            <button 
+              onClick={() => setActiveVariant('v1')}
+              className={`px-8 py-4 rounded-xl transition-all duration-300 ${
+                activeVariant === 'v1' 
+                  ? 'bg-white text-primary-900 shadow-lg scale-105' 
+                  : 'bg-white/10 hover:bg-white/20 text-white'
+              }`}
+            >
+              <div className="font-bold text-lg">Вариант 1</div>
+              <div className="text-sm opacity-80">Алгоритм water-filling</div>
+            </button>
+            <button 
+              onClick={() => setActiveVariant('ppw')}
+              className={`px-8 py-4 rounded-xl transition-all duration-300 ${
+                activeVariant === 'ppw' 
+                  ? 'bg-white text-primary-900 shadow-lg scale-105' 
+                  : 'bg-white/10 hover:bg-white/20 text-white'
+              }`}
+            >
+              <div className="font-bold text-lg">Вариант 2 (PPW)</div>
+              <div className="text-sm opacity-80">Квадратичная оптимизация</div>
+            </button>
+          </motion.div>
+
+          {/* Features */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.7 }}
             className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto"
           >
             {features.map((feature, index) => (
@@ -97,7 +128,7 @@ const Hero = () => {
                 key={index}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
+                transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
                 className="bg-white/10 backdrop-blur-lg rounded-xl p-4 hover:bg-white/20 transition-all duration-300"
               >
                 <feature.icon className="w-8 h-8 mx-auto mb-2" />
