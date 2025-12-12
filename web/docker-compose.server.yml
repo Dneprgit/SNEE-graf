@@ -1,9 +1,12 @@
 version: '3.8'
 
 services:
-  snee-backend:
+  # ==========================================
+  # Проект dneprovskii.ru (порты 8001, 3001)
+  # ==========================================
+  snee-backend-old:
     image: end2040/snee-backend:latest
-    container_name: snee-backend
+    container_name: snee-backend-old
     restart: always
     ports:
       - "8001:8001"
@@ -19,16 +22,54 @@ services:
       retries: 3
       start_period: 40s
 
-  snee-frontend:
+  snee-frontend-old:
     image: end2040/snee-frontend:latest
-    container_name: snee-frontend
+    container_name: snee-frontend-old
     restart: always
     ports:
       - "3001:80"
     networks:
       - snee-network
     depends_on:
-      - snee-backend
+      - snee-backend-old
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ==========================================
+  # Проект so-spes.ru (порты 8002, 3002)
+  # ==========================================
+  snee-backend-spes:
+    image: end2040/snee_web_spes-backend:latest
+    container_name: snee-backend-spes
+    restart: always
+    ports:
+      - "8002:8002"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
+    networks:
+      - snee-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  snee-frontend-spes:
+    image: end2040/snee_web_spes-frontend:latest
+    container_name: snee-frontend-spes
+    restart: always
+    ports:
+      - "3002:80"
+    networks:
+      - snee-network
+    depends_on:
+      - snee-backend-spes
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s

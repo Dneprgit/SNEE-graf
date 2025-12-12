@@ -356,7 +356,7 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                 </text>
                 
                 {/* Линия минимально необходимой мощности */}
-                {minDeficit > 0 && (
+                {/* {minDeficit > 0 && (
                   <>
                     <line
                       x1={padding}
@@ -377,7 +377,7 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                       //textAnchor="end"
                     >
                       {minDeficit.toFixed(0)} МВт
-                    </text>
+                    </text> */}
                     {/* <text
                       x={padding+10}
                       y={viewHeight - padding - minDeficit * scaleY - 10}
@@ -387,8 +387,8 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
                     >
                       Минимально необходимая мощность для покрытия максимального дефицита
                     </text> */}
-                  </>
-                )}
+                  {/* </>
+                )} */}
                 
                 {/* Батарея */}
                 <g>

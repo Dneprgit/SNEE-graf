@@ -69,7 +69,7 @@ echo ""
 echo "═══ API Endpoints ═══"
 
 # Health check
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/api/v1/health 2>/dev/null)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8002/api/v1/health 2>/dev/null)
 if [ "$HTTP_CODE" == "200" ]; then
     echo -e "${GREEN}✓${NC} Backend API (/api/v1/health): HTTP $HTTP_CODE"
 else
@@ -77,11 +77,11 @@ else
 fi
 
 # Frontend
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 2>/dev/null)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3002 2>/dev/null)
 if [ "$HTTP_CODE" == "200" ]; then
-    echo -e "${GREEN}✓${NC} Frontend (http://localhost:3001): HTTP $HTTP_CODE"
+    echo -e "${GREEN}✓${NC} Frontend (http://localhost:3002): HTTP $HTTP_CODE"
 else
-    echo -e "${RED}✗${NC} Frontend (http://localhost:3001): HTTP $HTTP_CODE"
+    echo -e "${RED}✗${NC} Frontend (http://localhost:3002): HTTP $HTTP_CODE"
 fi
 echo ""
 
@@ -118,7 +118,7 @@ echo ""
 # 7. SSL сертификаты (если установлен certbot)
 if command -v certbot &> /dev/null; then
     echo "═══ SSL Сертификаты ═══"
-    CERT_INFO=$(certbot certificates 2>/dev/null | grep -A 3 "snee.companykd.world" | grep "Expiry Date")
+    CERT_INFO=$(certbot certificates 2>/dev/null | grep -A 3 "so-spes.ru" | grep "Expiry Date")
     if [ ! -z "$CERT_INFO" ]; then
         echo -e "${GREEN}✓${NC} SSL сертификат найден"
         echo "$CERT_INFO"

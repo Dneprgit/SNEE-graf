@@ -59,7 +59,7 @@ echo ""
 
 # Проверка Backend
 echo -n "Backend API: "
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/api/v1/health)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8002/api/v1/health)
 if [ "$HTTP_CODE" == "200" ]; then
     echo -e "${GREEN}✓ OK (HTTP $HTTP_CODE)${NC}"
 else
@@ -68,7 +68,7 @@ fi
 
 # Проверка Frontend
 echo -n "Frontend: "
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3002)
 if [ "$HTTP_CODE" == "200" ]; then
     echo -e "${GREEN}✓ OK (HTTP $HTTP_CODE)${NC}"
 else

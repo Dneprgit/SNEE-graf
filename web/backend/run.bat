@@ -12,7 +12,7 @@ if exist venv (
 )
 
 REM Запуск сервера
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8001
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8002
 
 pause
 

@@ -97,7 +97,7 @@ VITE_API_URL=https://snee.companykd.world/api
 Откройте PowerShell в директории проекта:
 
 ```powershell
-# Переходим в папку web
+#1 Переходим в папку web
 cd web
 
 # Устанавливаем переменную с вашим Docker Hub username
@@ -105,15 +105,18 @@ $env:DOCKER_USERNAME = "your_dockerhub_username"
 
 # Собираем Backend образ
 docker build -f Dockerfile.backend.prod -t ${env:DOCKER_USERNAME}/snee-backend:latest ..
-# Собираем Backend образ
+#2 Собираем Backend образ
 docker build -f Dockerfile.backend.prod -t end2040/snee-backend:latest ..
+
+docker build -f Dockerfile.backend.prod -t end2040/snee_web_spes-backend:latest .
 
 # Собираем Frontend образ
 docker build -f Dockerfile.frontend.prod -t ${env:DOCKER_USERNAME}/snee-frontend:latest ..
 
-# Собираем Frontend образ
+#3 Собираем Frontend образ
 docker build -f Dockerfile.frontend.prod -t end2040/snee-frontend:latest ..
 ```
+docker build -f Dockerfile.frontend.prod -t end2040/snee_web_spes-frontend:latest .
 
 **Примечание:** Замените `your_dockerhub_username` на ваше имя пользователя в Docker Hub.
 
@@ -125,6 +128,7 @@ docker run -d -p 8001:8001 --name test-backend ${env:DOCKER_USERNAME}/snee-backe
 # Тест Backend
 docker run -d -p 8001:8001 --name test-backend end2040/snee-backend:latest
 
+docker run -d -p 8002:8002 --name test-backend2 end2040/snee_web_spes-backend:latest
 # Проверка
 curl http://localhost:8001/api/v1/health
 
@@ -136,6 +140,8 @@ docker rm test-backend
 docker run -d -p 3001:80 --name test-frontend ${env:DOCKER_USERNAME}/snee-frontend:latest
 # Тест Frontend
 docker run -d -p 3001:80 --name test-frontend end2040/snee-frontend:latest
+
+docker run -d -p 3002:80 --name test-frontend2 end2040/snee_web_spes-frontend:latest
 # Откройте в браузере: http://localhost:3001
 
 # Остановка

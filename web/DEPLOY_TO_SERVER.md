@@ -1,18 +1,29 @@
-# 🚀 Развертывание на сервере Reg.ru
+# 🚀 Развертывание на сервере
 
-**Образы успешно загружены в Docker Hub!**
-
-- ✅ `end2040/snee-backend:latest`
-- ✅ `end2040/snee-frontend:latest`
+Этот файл содержит инструкции по развертыванию **двух проектов** одновременно:
+- **dneprovskii.ru** - старый проект (порты 8001, 3001)
+- **so-spes.ru** - новый проект (порты 8002, 3002)
 
 ---
 
-## 📋 Следующие шаги
+## 📦 Docker образы
+
+### Старый проект (dneprovskii.ru):
+- ✅ `end2040/snee-backend:latest`
+- ✅ `end2040/snee-frontend:latest`
+
+### Новый проект (so-spes.ru):
+- ✅ `end2040/snee_web_spes-backend:latest`
+- ✅ `end2040/snee_web_spes-frontend:latest`
+
+---
+
+## 📋 Пошаговая инструкция
 
 ### 1. Подключитесь к серверу
 
 ```bash
-ssh root@194.67.84.241
+ssh root@YOUR_SERVER_IP
 ```
 
 ### 2. Создайте директорию проекта
@@ -28,15 +39,18 @@ cd /opt/snee-graf
 nano docker-compose.yml
 ```
 
-Вставьте содержимое (скопируйте из `docker-compose.server.yml`):
+Вставьте содержимое:
 
 ```yaml
 version: '3.8'
 
 services:
-  snee-backend:
+  # ==========================================
+  # Проект dneprovskii.ru (порты 8001, 3001)
+  # ==========================================
+  snee-backend-old:
     image: end2040/snee-backend:latest
-    container_name: snee-backend
+    container_name: snee-backend-old
     restart: always
     ports:
       - "8001:8001"
@@ -52,16 +66,54 @@ services:
       retries: 3
       start_period: 40s
 
-  snee-frontend:
+  snee-frontend-old:
     image: end2040/snee-frontend:latest
-    container_name: snee-frontend
+    container_name: snee-frontend-old
     restart: always
     ports:
       - "3001:80"
     networks:
       - snee-network
     depends_on:
-      - snee-backend
+      - snee-backend-old
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ==========================================
+  # Проект so-spes.ru (порты 8002, 3002)
+  # ==========================================
+  snee-backend-spes:
+    image: end2040/snee_web_spes-backend:latest
+    container_name: snee-backend-spes
+    restart: always
+    ports:
+      - "8002:8002"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
+    networks:
+      - snee-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  snee-frontend-spes:
+    image: end2040/snee_web_spes-frontend:latest
+    container_name: snee-frontend-spes
+    restart: always
+    ports:
+      - "3002:80"
+    networks:
+      - snee-network
+    depends_on:
+      - snee-backend-spes
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
@@ -94,14 +146,16 @@ docker-compose up -d
 # Статус контейнеров
 docker-compose ps
 
+# Проверка старого проекта (dneprovskii.ru)
+curl http://localhost:8001/api/v1/health
+curl http://localhost:3001
+
+# Проверка нового проекта (so-spes.ru)
+curl http://localhost:8002/api/v1/health
+curl http://localhost:3002
+
 # Логи
 docker-compose logs -f
-
-# Проверка API
-curl http://localhost:8001/api/v1/health
-
-# Проверка Frontend
-curl http://localhost:3001
 ```
 
 ---
@@ -114,47 +168,257 @@ curl http://localhost:3001
 sudo nano /etc/nginx/sites-available/snee-graf
 ```
 
-Вставьте содержимое из файла `nginx-server.conf`
+Вставьте содержимое из файла `nginx-server.conf` (см. в проекте)
 
 ### 2. Активируйте конфигурацию
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/snee-graf /etc/nginx/sites-enabled/
+# Создайте символическую ссылку
+sudo ln -sf /etc/nginx/sites-available/snee-graf /etc/nginx/sites-enabled/
+
+# Проверьте конфигурацию
 sudo nginx -t
+
+# Перезагрузите Nginx
 sudo systemctl reload nginx
 ```
 
-### 3. Настройте DNS (если нужен поддомен)
+### 3. Настройте DNS
 
-Добавьте A-запись для `snee.companykd.world` → `194.67.84.241`
+Убедитесь, что DNS записи указывают на ваш сервер:
 
-### 4. Получите SSL сертификат
+```
+A     dneprovskii.ru      → [IP сервера]
+A     www.dneprovskii.ru  → [IP сервера]
+A     so-spes.ru          → [IP сервера]
+A     www.so-spes.ru      → [IP сервера]
+```
+
+### 4. Получите SSL сертификаты
 
 ```bash
-sudo certbot --nginx -d snee.companykd.world
+# Для dneprovskii.ru (если ещё не получен)
+sudo certbot --nginx -d dneprovskii.ru -d www.dneprovskii.ru
+
+# Для so-spes.ru
+sudo certbot --nginx -d so-spes.ru -d www.so-spes.ru
 ```
 
 ---
 
-## ✅ Проверка
+## ✅ Проверка работоспособности
 
-После всех настроек проверьте:
+После всех настроек проверьте оба сайта:
+
+### Проверка dneprovskii.ru (старый проект):
 
 ```bash
 # API через Nginx
-curl https://snee.companykd.world/api/v1/health
+curl https://dneprovskii.ru/api/v1/health
 
 # Frontend через браузер
-https://snee.companykd.world
+https://dneprovskii.ru
+```
+
+### Проверка so-spes.ru (новый проект):
+
+```bash
+# API через Nginx
+curl https://so-spes.ru/api/v1/health
+
+# Frontend через браузер
+https://so-spes.ru
 ```
 
 ---
 
-## 📚 Полная документация
+## 📊 Статус контейнеров
 
-Для детальной информации смотрите:
+Должны быть запущены 4 контейнера:
+
+```bash
+docker ps
+
+# Ожидаемый результат:
+# snee-backend-old     (порт 8001)
+# snee-frontend-old    (порт 3001)
+# snee-backend-spes    (порт 8002)
+# snee-frontend-spes   (порт 3002)
+```
+
+---
+
+## 🔄 Обновление проектов
+
+### Обновление старого проекта (dneprovskii.ru):
+
+```bash
+cd /opt/snee-graf
+docker-compose stop snee-backend-old snee-frontend-old
+docker-compose rm -f snee-backend-old snee-frontend-old
+docker rmi end2040/snee-backend:latest end2040/snee-frontend:latest
+docker-compose pull snee-backend-old snee-frontend-old
+docker-compose up -d snee-backend-old snee-frontend-old
+```
+
+### Обновление нового проекта (so-spes.ru):
+
+```bash
+cd /opt/snee-graf
+docker-compose stop snee-backend-spes snee-frontend-spes
+docker-compose rm -f snee-backend-spes snee-frontend-spes
+docker rmi end2040/snee_web_spes-backend:latest end2040/snee_web_spes-frontend:latest
+docker-compose pull snee-backend-spes snee-frontend-spes
+docker-compose up -d snee-backend-spes snee-frontend-spes
+```
+
+### Обновление обоих проектов сразу:
+
+```bash
+cd /opt/snee-graf
+docker-compose down
+docker rmi end2040/snee-backend:latest end2040/snee-frontend:latest \
+           end2040/snee_web_spes-backend:latest end2040/snee_web_spes-frontend:latest
+docker-compose pull
+docker-compose up -d
+```
+
+---
+
+## 🧹 Полезные команды
+
+### Просмотр логов
+
+```bash
+# Все логи
+docker-compose logs -f
+
+# Только старый проект
+docker-compose logs -f snee-backend-old snee-frontend-old
+
+# Только новый проект
+docker-compose logs -f snee-backend-spes snee-frontend-spes
+
+# Последние 50 строк
+docker-compose logs --tail=50
+```
+
+### Перезапуск контейнеров
+
+```bash
+# Перезапустить все
+docker-compose restart
+
+# Перезапустить только старый проект
+docker-compose restart snee-backend-old snee-frontend-old
+
+# Перезапустить только новый проект
+docker-compose restart snee-backend-spes snee-frontend-spes
+```
+
+### Проверка здоровья
+
+```bash
+# Статус всех контейнеров
+docker-compose ps
+
+# Health check API старого проекта
+curl http://localhost:8001/api/v1/health
+
+# Health check API нового проекта
+curl http://localhost:8002/api/v1/health
+```
+
+### Очистка
+
+```bash
+# Удалить неиспользуемые образы
+docker image prune -f
+
+# Удалить неиспользуемые контейнеры
+docker container prune -f
+
+# Посмотреть использование диска
+docker system df
+```
+
+---
+
+## 🔧 Решение проблем
+
+### Порт уже занят
+
+Если порт занят, найдите процесс:
+
+```bash
+sudo lsof -i :8001
+sudo lsof -i :8002
+sudo lsof -i :3001
+sudo lsof -i :3002
+```
+
+### Контейнер не запускается
+
+```bash
+# Проверьте логи конкретного контейнера
+docker logs snee-backend-old
+docker logs snee-backend-spes
+
+# Проверьте образы
+docker images | grep snee
+```
+
+### Nginx не может подключиться
+
+```bash
+# Проверьте, что все контейнеры запущены
+docker ps | grep snee
+
+# Проверьте, что порты слушаются
+netstat -tulpn | grep 8001
+netstat -tulpn | grep 8002
+netstat -tulpn | grep 3001
+netstat -tulpn | grep 3002
+
+# Проверьте логи Nginx
+sudo tail -f /var/log/nginx/snee-dneprovskii-error.log
+sudo tail -f /var/log/nginx/snee-spes-error.log
+
+# Перезапустите Nginx
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+---
+
+## 📚 Дополнительная документация
+
 - **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - полная пошаговая инструкция
-- **[INDEX_DOCKER.md](INDEX_DOCKER.md)** - навигация по документации
+- **[MIGRATION_TO_SO-SPES.md](MIGRATION_TO_SO-SPES.md)** - инструкция по миграции на новый домен
+- **[PORTS_INFO.md](PORTS_INFO.md)** - информация о портах
+- **[nginx-server.conf](nginx-server.conf)** - конфигурация Nginx
+
+---
+
+## 📝 Архитектура
+
+```
+Сервер Reg.ru
+├── Docker Containers
+│   ├── snee-backend-old    (dneprovskii.ru:8001)
+│   ├── snee-frontend-old   (dneprovskii.ru:3001)
+│   ├── snee-backend-spes   (so-spes.ru:8002)
+│   └── snee-frontend-spes  (so-spes.ru:3002)
+│
+└── Nginx
+    ├── dneprovskii.ru      → 127.0.0.1:8001/3001
+    └── so-spes.ru          → 127.0.0.1:8002/3002
+```
+
+---
+
+**Оба проекта могут работать одновременно! 🎉**
+
 
 ---
 

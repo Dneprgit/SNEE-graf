@@ -30,7 +30,7 @@ case $SERVICE in
         echo -e "${GREEN}✓ Backend перезапущен${NC}"
         sleep 5
         echo "Проверка:"
-        curl -s http://localhost:8001/api/v1/health | jq
+        curl -s http://localhost:8002/api/v1/health | jq
         ;;
     
     frontend)
@@ -39,7 +39,7 @@ case $SERVICE in
         echo -e "${GREEN}✓ Frontend перезапущен${NC}"
         sleep 5
         echo "Проверка:"
-        curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:3001
+        curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:3002
         ;;
     
     all)

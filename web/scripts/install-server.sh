@@ -75,29 +75,29 @@ version: '3.8'
 
 services:
   snee-backend:
-    image: ${DOCKER_USERNAME}/snee-backend:latest
+    image: ${DOCKER_USERNAME}/snee_web_spes-backend:latest
     container_name: snee-backend
     restart: always
     ports:
-      - "8001:8001"
+      - "8002:8002"
     environment:
       - PYTHONUNBUFFERED=1
       - ENVIRONMENT=production
     networks:
       - snee-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
   snee-frontend:
-    image: ${DOCKER_USERNAME}/snee-frontend:latest
+    image: ${DOCKER_USERNAME}/snee_web_spes-frontend:latest
     container_name: snee-frontend
     restart: always
     ports:
-      - "3001:80"
+      - "3002:80"
     networks:
       - snee-network
     depends_on:
@@ -135,7 +135,7 @@ echo ""
 
 # Backend check
 echo -n "Backend API: "
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/api/v1/health)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8002/api/v1/health)
 if [ "$HTTP_CODE" == "200" ]; then
     echo -e "${GREEN}✓ OK${NC}"
 else
@@ -144,7 +144,7 @@ fi
 
 # Frontend check
 echo -n "Frontend: "
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3002)
 if [ "$HTTP_CODE" == "200" ]; then
     echo -e "${GREEN}✓ OK${NC}"
 else

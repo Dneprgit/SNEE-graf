@@ -299,5 +299,5 @@ def calculate_soc(eess_schedule: np.ndarray, rated_capacity: float) -> List[floa
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8002, reload=True)
 

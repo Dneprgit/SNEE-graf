@@ -4,23 +4,18 @@
 
 ### Локальная разработка (без Docker)
 ```
-Backend:   http://localhost:8001
-Frontend:  http://localhost:3001
+Backend:   http://localhost:8002
+Frontend:  http://localhost:3002
 ```
 
-### Production на сервере Reg.ru (194.67.84.241)
+### Production на сервере
 ```
-Backend:   http://194.67.84.241:8001
-Frontend:  http://194.67.84.241:3001
+Backend:   http://localhost:8002
+Frontend:  http://localhost:3002
 
 Через домен (с Nginx + SSL):
-https://snee.companykd.world
-```
-
-### Другие проекты на том же сервере
-```
-CompanyKD: http://194.67.84.241:5000
-           https://companykd.world
+https://so-spes.ru
+https://www.so-spes.ru
 ```
 
 ---
@@ -29,26 +24,34 @@ CompanyKD: http://194.67.84.241:5000
 
 ### Внутренние порты контейнеров
 ```
-snee-backend:   порт 8001 внутри контейнера
+snee-backend:   порт 8002 внутри контейнера
 snee-frontend:  порт 80 внутри контейнера (Nginx)
 ```
 
 ### Проброс портов (host:container)
 ```
-Backend:   8001:8001
-Frontend:  3001:80
+Backend:   8002:8002
+Frontend:  3002:80
 ```
 
-**Команда в docker-compose.prod.yml:**
+**Docker Hub репозиторий:**
+```
+end2040/snee_web_spes-backend:latest
+end2040/snee_web_spes-frontend:latest
+```
+
+**Команда в docker-compose.server.yml:**
 ```yaml
 services:
   snee-backend:
+    image: end2040/snee_web_spes-backend:latest
     ports:
-      - "8001:8001"
+      - "8002:8002"
   
   snee-frontend:
+    image: end2040/snee_web_spes-frontend:latest
     ports:
-      - "3001:80"
+      - "3002:80"
 ```
 
 ---
@@ -58,11 +61,11 @@ services:
 ### Upstreams
 ```nginx
 upstream snee_backend {
-    server 127.0.0.1:8001;
+    server 127.0.0.1:8002;
 }
 
 upstream snee_frontend {
-    server 127.0.0.1:3001;
+    server 127.0.0.1:3002;
 }
 ```
 
@@ -70,16 +73,16 @@ upstream snee_frontend {
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name snee.companykd.world;
+    server_name so-spes.ru www.so-spes.ru;
     
     # Frontend
     location / {
-        proxy_pass http://snee_frontend;  # → 127.0.0.1:3001
+        proxy_pass http://snee_frontend;  # → 127.0.0.1:3002
     }
     
     # Backend API
     location /api {
-        proxy_pass http://snee_backend;    # → 127.0.0.1:8001
+        proxy_pass http://snee_backend;    # → 127.0.0.1:8002
     }
 }
 ```
@@ -92,20 +95,20 @@ server {
 
 ```
 1. Пользователь открывает:
-   https://snee.companykd.world
+   https://so-spes.ru
 
 2. Nginx получает запрос на порту 443 (HTTPS)
 
 3. Nginx проксирует на frontend контейнер:
-   127.0.0.1:3001 (Docker порт snee-frontend)
+   127.0.0.1:3002 (Docker порт snee-frontend)
 
 4. Frontend отдает React приложение
 
 5. React приложение делает API запросы:
-   https://snee.companykd.world/api/v1/...
+   https://so-spes.ru/api/v1/...
 
 6. Nginx проксирует API запросы на backend:
-   127.0.0.1:8001 (Docker порт snee-backend)
+   127.0.0.1:8002 (Docker порт snee-backend)
 
 7. Backend обрабатывает и возвращает результат
 ```
@@ -116,8 +119,8 @@ server {
    ↓ HTTPS (443)
 Nginx (SSL терминация)
    ↓
-   ├─→ / (frontend) → 127.0.0.1:3001 → Docker snee-frontend
-   └─→ /api         → 127.0.0.1:8001 → Docker snee-backend
+   ├─→ / (frontend) → 127.0.0.1:3002 → Docker snee-frontend
+   └─→ /api         → 127.0.0.1:8002 → Docker snee-backend
 ```
 
 ---
@@ -128,36 +131,36 @@ Nginx (SSL терминация)
 
 ```bash
 # Проверка, что порты слушаются
-sudo netstat -tulpn | grep :8001
-sudo netstat -tulpn | grep :3001
+sudo netstat -tulpn | grep :8002
+sudo netstat -tulpn | grep :3002
 sudo netstat -tulpn | grep :443
 
 # Или через ss
-sudo ss -tulpn | grep :8001
-sudo ss -tulpn | grep :3001
+sudo ss -tulpn | grep :8002
+sudo ss -tulpn | grep :3002
 
 # Проверка Docker контейнеров
 docker ps --format "table {{.Names}}\t{{.Ports}}"
 
 # Должно показать:
-# snee-backend    0.0.0.0:8001->8001/tcp
-# snee-frontend   0.0.0.0:3001->80/tcp
+# snee-backend    0.0.0.0:8002->8002/tcp
+# snee-frontend   0.0.0.0:3002->80/tcp
 ```
 
 ### Тестирование endpoints
 
 ```bash
 # Backend API
-curl http://localhost:8001/api/v1/health
-curl https://snee.companykd.world/api/v1/health
+curl http://localhost:8002/api/v1/health
+curl https://so-spes.ru/api/v1/health
 
 # Frontend
-curl http://localhost:3001
-curl https://snee.companykd.world
+curl http://localhost:3002
+curl https://so-spes.ru
 
 # С сервера
-curl http://127.0.0.1:8001/api/v1/health
-curl http://127.0.0.1:3001
+curl http://127.0.0.1:8002/api/v1/health
+curl http://127.0.0.1:3002
 ```
 
 ---
@@ -180,7 +183,7 @@ sudo ufw allow 80/tcp
 sudo ufw status
 ```
 
-**Важно:** Порты 8001 и 3001 должны быть доступны только локально (127.0.0.1), не извне!
+**Важно:** Порты 8002 и 3002 должны быть доступны только локально (127.0.0.1), не извне!
 
 ---
 
@@ -190,11 +193,11 @@ sudo ufw status
 
 ```bash
 # Найти процесс на порту
-sudo lsof -i :8001
-sudo lsof -i :3001
+sudo lsof -i :8002
+sudo lsof -i :3002
 
 # Или
-sudo netstat -tulpn | grep :8001
+sudo netstat -tulpn | grep :8002
 
 # Убить процесс (замените PID)
 sudo kill -9 PID
@@ -207,7 +210,7 @@ sudo kill -9 PID
 docker stop snee-backend
 
 # Проверить, освободился ли порт
-sudo lsof -i :8001
+sudo lsof -i :8002
 
 # Перезапустить
 docker start snee-backend
@@ -220,8 +223,8 @@ docker start snee-backend
 docker ps | grep snee
 
 # Проверить, что порты слушаются
-curl http://127.0.0.1:8001/api/v1/health
-curl http://127.0.0.1:3001
+curl http://127.0.0.1:8002/api/v1/health
+curl http://127.0.0.1:3002
 
 # Проверить логи Nginx
 sudo tail -f /var/log/nginx/snee-graf-error.log
@@ -241,7 +244,7 @@ sudo systemctl restart nginx
 services:
   snee-backend:
     ports:
-      - "НОВЫЙ_ПОРТ:8001"  # Например "9001:8001"
+      - "НОВЫЙ_ПОРТ:8002"  # Например "9001:8002"
   
   snee-frontend:
     ports:
@@ -281,7 +284,8 @@ sudo systemctl reload nginx
 ---
 
 **Текущая конфигурация портов:**
-- ✅ Backend: 8001 (локально и продакшен)
-- ✅ Frontend: 3001 (локально и продакшен)
-- ✅ CompanyKD: 5000 (продакшен, существующий проект)
+- ✅ Backend: 8002 (локально и продакшен)
+- ✅ Frontend: 3002 (локально и продакшен)
+- ✅ Домен: so-spes.ru, www.so-spes.ru
+- ✅ Docker Hub: end2040/snee_web_spes
 
