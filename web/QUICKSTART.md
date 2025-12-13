@@ -18,8 +18,8 @@ start-dev.bat
 ```
 
 Это откроет два окна терминала:
-- Backend (FastAPI) на http://localhost:8001
-- Frontend (React) на http://localhost:3001
+- Backend (FastAPI) на http://localhost:8002
+- Frontend (React) на http://localhost:3002
 
 ### Linux/Mac
 
@@ -50,12 +50,12 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # Запустите сервер
-python -m uvicorn main:app --reload --port 8001
+python -m uvicorn main:app --reload --port 8002
 
 ```
 
-Backend будет доступен на: http://localhost:8001
-API документация: http://localhost:8001/docs
+Backend будет доступен на: http://localhost:8002
+API документация: http://localhost:8002/docs
 
 ### 2. Запуск Frontend
 
@@ -71,11 +71,11 @@ npm install
 npm run dev
 ```
 
-Frontend будет доступен на: http://localhost:3001
+Frontend будет доступен на: http://localhost:3002
 
 ## 🎉 Готово!
 
-Откройте браузер и перейдите на http://localhost:3001
+Откройте браузер и перейдите на http://localhost:3002
 
 ## Что дальше?
 
@@ -146,7 +146,7 @@ web/
 curl http://localhost:8001/api/v1/health
 
 # Тестирование API
-curl -X POST http://localhost:8001/api/v1/calculate \
+curl -X POST http://localhost:8002/api/v1/calculate \
   -H "Content-Type: application/json" \
   -d @test_data.json
 ```
