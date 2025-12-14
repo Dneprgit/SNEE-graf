@@ -100,6 +100,70 @@ const DataInputSection = ({
     XLSX.writeFile(wb, 'snee_template.xlsx');
   };
 
+  // Компонент для редактирования значения с локальным состоянием
+  const EditableValueInput = ({ value, index, onChange }) => {
+    const [localValue, setLocalValue] = useState(String(value));
+    
+    useEffect(() => {
+      setLocalValue(String(value));
+    }, [value]);
+    
+    const normalizeValue = (inputValue) => {
+      if (inputValue === '' || inputValue === '-') {
+        return 0;
+      } else {
+        const numValue = parseFloat(inputValue);
+        return isNaN(numValue) ? 0 : numValue;
+      }
+    };
+    
+    const handleBlur = (e) => {
+      const normalized = normalizeValue(e.target.value);
+      onChange(index, normalized);
+    };
+    
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const normalized = normalizeValue(e.target.value);
+        onChange(index, normalized);
+        
+        // Переводим фокус на следующий input по data-атрибуту
+        // Используем setTimeout для надежного перевода фокуса после обновления DOM React
+        setTimeout(() => {
+          const nextIndex = index + 1;
+          // Ищем следующее поле по всему документу
+          const nextInput = document.querySelector(`input[data-field-index="${nextIndex}"]`);
+          if (nextInput) {
+            nextInput.focus();
+            // Выделяем содержимое для быстрого ввода нового значения
+            nextInput.select();
+          }
+        }, 50);
+      }
+    };
+    
+    return (
+      <div className="flex flex-col">
+        <label className="text-xs font-semibold text-gray-600 mb-1">
+          Час {index + 1}
+        </label>
+        <input
+          type="number"
+          data-field-index={index}
+          value={localValue}
+          onChange={(e) => {
+            setLocalValue(e.target.value);
+          }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className="input-field text-sm py-1 px-1"
+          step="100"
+        />
+      </div>
+    );
+  };
+
   return (
     <section id="data-input" className="section-container bg-white/50">
       <motion.div
@@ -110,10 +174,9 @@ const DataInputSection = ({
       >
         <h2 className="section-title text-center">Исходные данные</h2>
         <p className="section-subtitle text-center">
-          Загрузите профиль баланса мощности и настройте параметры СНЭЭ
+          Загрузите баланс мощности и настройте параметры СНЭЭ
         </p>
-
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-full mx-auto">
+        <div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6 max-w-full mx-auto">
           {/* Загрузка данных */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -124,7 +187,7 @@ const DataInputSection = ({
           >
             <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
               <Upload className="w-6 h-6 mr-2 text-primary-600" />
-              Загрузка профиля
+              Загрузка баланса мощности
             </h3>
 
             {/* Drag & Drop зона */}
@@ -267,36 +330,30 @@ const DataInputSection = ({
           </motion.div>
 
           {/* Таблица редактирования */}
-          {loadProfile && (
+            {loadProfile && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
               viewport={{ once: true }}
-              className="card"
+              className="card md:col-span-2 xl:col-span-2"
             >
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center" gap-2>
                 <FileText className="w-6 h-6 mr-2 text-primary-600" />
                 Редактирование значений
               </h3>
-              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-1">
+              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-12 xl:grid-cols-12 2xl:grid-cols-24 gap-1">
                 {loadProfile.map((value, index) => (
-                  <div key={index} className="flex flex-col">
-                    <label className="text-xs font-semibold text-gray-600 mb-1">
-                      Час {index + 1}
-                    </label>
-                    <input
-                      type="number"
-                      value={value}
-                      onChange={(e) => {
-                        const updated = [...loadProfile];
-                        updated[index] = parseFloat(e.target.value) || 0;
-                        setLoadProfile(updated);
-                      }}
-                      className="input-field text-sm py-1 px-1"
-                      step="100"
-                    />
-                  </div>
+                  <EditableValueInput
+                    key={index}
+                    value={value}
+                    index={index}
+                    onChange={(idx, newValue) => {
+                      const updated = [...loadProfile];
+                      updated[idx] = newValue;
+                      setLoadProfile(updated);
+                    }}
+                  />
                 ))}
               </div>
               <p className="text-xs text-gray-500 mt-4">
@@ -304,7 +361,8 @@ const DataInputSection = ({
               </p>
             </motion.div>
           )}
-        </div>
+          </div>
+
       </motion.div>
     </section>
   );
