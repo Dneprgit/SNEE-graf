@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Battery, Zap, BarChart3, Map } from 'lucide-react';
 
-const Hero = () => {
+const Hero = ({ algorithm, setAlgorithm }) => {
   const features = [
     { icon: Battery, text: 'Оптимизация СНЭЭ' },
     { icon: Zap, text: 'Реальное время' },
@@ -79,11 +79,45 @@ const Hero = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="text-lg text-blue-200 mb-12 max-w-3xl mx-auto"
+            className="text-lg text-blue-200 mb-8 max-w-3xl mx-auto"
           >
             Система накопления электрической энергии с расчетом оптимального графика работы
-            по алгоритму water-filling и интерактивной визуализацией данных
+            по алгоритму {algorithm === 'wf' ? 'water-filling' : 'квадратичной оптимизации'} и интерактивной визуализацией данных
           </motion.p>
+
+          {/* Algorithm Selector */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.55 }}
+            className="mb-12 max-w-md mx-auto"
+          >
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4">
+              <p className="text-sm text-blue-100 mb-3 font-medium">Выберите алгоритм расчета:</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setAlgorithm('wf')}
+                  className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-300 ${
+                    algorithm === 'wf'
+                      ? 'bg-white text-primary-700 shadow-lg scale-105'
+                      : 'bg-white/20 text-white hover:bg-white/30'
+                  }`}
+                >
+                  Water-Filling
+                </button>
+                <button
+                  onClick={() => setAlgorithm('qp')}
+                  className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-300 ${
+                    algorithm === 'qp'
+                      ? 'bg-white text-primary-700 shadow-lg scale-105'
+                      : 'bg-white/20 text-white hover:bg-white/30'
+                  }`}
+                >
+                  Квадратичная оптимизация
+                </button>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Features */}
           <motion.div

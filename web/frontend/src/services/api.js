@@ -62,6 +62,20 @@ export const apiService = {
     const response = await api.post('/api/v1/calculate-optimal-parameters', data);
     return response.data;
   },
+
+  // =============== QP Варианты ===============
+  
+  // Рассчитать диспетчерский график (QP)
+  async calculateSchedule_qp(data) {
+    const response = await api.post('/api/v1/calculate-qp', data);
+    return response.data;
+  },
+
+  // Рассчитать оптимальные параметры СНЭЭ (QP)
+  async calculateOptimalParameters_qp(data) {
+    const response = await api.post('/api/v1/calculate-optimal-parameters-qp', data);
+    return response.data;
+  },
 };
 
 export default api;

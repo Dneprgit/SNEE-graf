@@ -13,7 +13,10 @@ import numpy as np
 import pandas as pd
 from io import BytesIO
 
-from energy_storage_calculator import EnergyStorageCalculator, calculate_optimal_parameters
+from energy_storage_calculator import (
+    EnergyStorageCalculator, calculate_optimal_parameters,
+    EnergyStorageCalculator_qp, calculate_optimal_parameters_qp
+)
 from data_manager import DataManager
 
 app = FastAPI(
@@ -295,6 +298,79 @@ def calculate_soc(eess_schedule: np.ndarray, rated_capacity: float) -> List[floa
         soc.append(new_soc)
     
     return soc[1:]  # Возвращаем без начального нуля
+
+
+# =============== QP Варианты ===============
+
+@app.post("/api/v1/calculate-qp", response_model=CalculationResponse)
+async def calculate_dispatch_schedule_qp(request: CalculationRequest):
+    """
+    Расчет диспетчерского графика работы СНЭЭ (QP вариант)
+    
+    Принимает профиль баланса мощности и параметры СНЭЭ,
+    возвращает оптимальный график работы и статистику
+    """
+    try:
+        # Создание калькулятора
+        calculator = EnergyStorageCalculator_qp(
+            rated_power_mw=request.rated_power_mw,
+            rated_capacity_mwh=request.rated_capacity_mwh,
+            efficiency=request.efficiency
+        )
+        
+        # Расчет графика
+        eess_schedule = calculator.calculate_dispatch_schedule(request.load_profile)
+        
+        # Расчет результирующего баланса
+        resulting_balance = [
+            request.load_profile[i] + eess_schedule[i] 
+            for i in range(24)
+        ]
+        
+        # Расчет SOC (состояния заряда)
+        soc = calculate_soc(eess_schedule, request.rated_capacity_mwh)
+        
+        # Получение сводной информации
+        summary = calculator.get_summary(request.load_profile, eess_schedule)
+        
+        return CalculationResponse(
+            eess_schedule=eess_schedule.tolist(),
+            resulting_balance=resulting_balance,
+            soc=soc,
+            summary=summary
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при расчете: {str(e)}")
+
+
+@app.post("/api/v1/calculate-optimal-parameters-qp")
+async def calculate_optimal_params_qp(request: OptimalParametersRequest):
+    """
+    Расчет оптимальных параметров мощности инвертора и емкости батареи (QP вариант)
+    
+    Реализует алгоритм VariatePowerAndVolume2 из VBA кода.
+    Находит минимальные значения мощности и емкости, при которых
+    дефицит энергии и мощности минимизируются.
+    """
+    try:
+        optimal_power, optimal_capacity = calculate_optimal_parameters_qp(
+            request.load_profile,
+            request.efficiency
+        )
+        
+        return {
+            "optimal_power_mw": optimal_power,
+            "optimal_capacity_mwh": optimal_capacity,
+            "message": "Оптимальные параметры успешно рассчитаны (QP)"
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при расчете оптимальных параметров: {str(e)}")
 
 
 if __name__ == "__main__":

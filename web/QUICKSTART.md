@@ -93,7 +93,7 @@ Frontend будет доступен на: http://localhost:3002
 **Решение**: Убедитесь, что вы в правильной директории и активировали venv:
 ```bash
 cd web/backend
-source venv/bin/activate  # или venv\Scripts\activate на Windows
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
