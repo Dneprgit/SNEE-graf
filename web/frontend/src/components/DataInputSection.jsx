@@ -13,6 +13,8 @@ const DataInputSection = ({
   setError,
 }) => {
   const [uploadStatus, setUploadStatus] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null); // { name, data }
+  const [lastExcelData, setLastExcelData] = useState(null);
 
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -24,6 +26,8 @@ const DataInputSection = ({
     try {
       const data = await apiService.uploadExcel(file);
       setLoadProfile(data.load_profile);
+      setLastExcelData(data.load_profile); // Сохраняем данные для восстановления
+      setUploadedFile({ name: file.name, data: data.load_profile });
       setUploadStatus('Файл успешно загружен!');
       setTimeout(() => setUploadStatus(null), 3000);
     } catch (err) {
@@ -77,6 +81,15 @@ const DataInputSection = ({
   }, [parameters.rated_power_mw, parameters.rated_capacity_mwh]);
 
   const loadDefaultProfile = async () => {
+    // Если есть загруженный Excel файл, восстанавливаем данные из него
+    if (lastExcelData) {
+      setLoadProfile(lastExcelData);
+      setUploadStatus(`Восстановлены данные из ${uploadedFile.name}`);
+      setTimeout(() => setUploadStatus(null), 3000);
+      return;
+    }
+    
+    // Иначе загружаем профиль по умолчанию
     try {
       const data = await apiService.getDefaultProfile();
       setLoadProfile(data.load_profile);
@@ -101,7 +114,7 @@ const DataInputSection = ({
   };
 
   // Компонент для редактирования значения с локальным состоянием
-  const EditableValueInput = ({ value, index, onChange }) => {
+  const EditableValueInput = ({ value, index, onChange, onBulkPaste, totalFields }) => {
     const [localValue, setLocalValue] = useState(String(value));
     
     useEffect(() => {
@@ -143,6 +156,38 @@ const DataInputSection = ({
       }
     };
     
+    const handlePaste = (e) => {
+      // Получаем данные из буфера обмена
+      const pastedData = e.clipboardData.getData('text');
+      
+      if (!pastedData) return;
+      
+      // Разбиваем данные по переносам строк и табуляции
+      // Excel копирует данные с табуляцией между ячейками и переносами строк между строками
+      const rows = pastedData.split(/[\r\n]+/).filter(row => row.trim());
+      
+      // Собираем все значения из всех строк и столбцов
+      const values = [];
+      rows.forEach(row => {
+        const cells = row.split('\t');
+        cells.forEach(cell => {
+          const trimmed = cell.trim();
+          if (trimmed !== '') {
+            const num = parseFloat(trimmed);
+            if (!isNaN(num)) {
+              values.push(num);
+            }
+          }
+        });
+      });
+      
+      // Если есть данные для вставки
+      if (values.length > 0) {
+        e.preventDefault();
+        onBulkPaste(index, values);
+      }
+    };
+    
     return (
       <div className="flex flex-col">
         <label className="text-xs font-semibold text-gray-600 mb-1">
@@ -157,6 +202,7 @@ const DataInputSection = ({
           }}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           className="input-field text-sm py-1 px-1"
           step="100"
         />
@@ -199,6 +245,18 @@ const DataInputSection = ({
               <FileText className="w-12 h-12 mx-auto mb-4 text-primary-600" />
               {isDragActive ? (
                 <p className="text-primary-700 font-semibold">Отпустите файл здесь...</p>
+              ) : uploadedFile ? (
+                <>
+                  <p className="text-green-700 font-semibold mb-2">
+                    ✓ Excel файл загружен
+                  </p>
+                  <p className="text-gray-700 font-medium mb-2">
+                    {uploadedFile.name}
+                  </p>
+                  <p className="text-gray-500 text-sm">
+                    Перетащите или кликните для загрузки другого файла
+                  </p>
+                </>
               ) : (
                 <>
                   <p className="text-gray-700 font-medium mb-2">
@@ -226,7 +284,7 @@ const DataInputSection = ({
                 onClick={loadDefaultProfile}
                 className="flex-1 btn-secondary text-sm"
               >
-                Профиль по умолчанию
+                {uploadedFile ? 'Восстановить данные из Excel' : 'Профиль по умолчанию'}
               </button>
               <button
                 onClick={downloadTemplate}
@@ -263,7 +321,7 @@ const DataInputSection = ({
               Параметры СНЭЭ
             </h3>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Мощность инвертора, МВт
@@ -340,7 +398,7 @@ const DataInputSection = ({
             >
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center" gap-2>
                 <FileText className="w-6 h-6 mr-2 text-primary-600" />
-                Редактирование значений
+                Редактирование значений баланса мощности
               </h3>
               <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-12 xl:grid-cols-12 2xl:grid-cols-24 gap-1">
                 {loadProfile.map((value, index) => (
@@ -348,17 +406,34 @@ const DataInputSection = ({
                     key={index}
                     value={value}
                     index={index}
+                    totalFields={loadProfile.length}
                     onChange={(idx, newValue) => {
                       const updated = [...loadProfile];
                       updated[idx] = newValue;
                       setLoadProfile(updated);
                     }}
+                    onBulkPaste={(startIndex, values) => {
+                      const updated = [...loadProfile];
+                      // Вставляем значения начиная с текущего индекса
+                      values.forEach((val, i) => {
+                        const targetIndex = startIndex + i;
+                        if (targetIndex < updated.length) {
+                          updated[targetIndex] = val;
+                        }
+                      });
+                      setLoadProfile(updated);
+                    }}
                   />
                 ))}
               </div>
-              <p className="text-xs text-gray-500 mt-4">
-                💡 Положительные значения — избыток энергии, отрицательные — дефицит
-              </p>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-gray-500">
+                  💡 Положительные значения — избыток энергии, отрицательные — дефицит
+                </p>
+                <p className="text-xs text-blue-600 font-medium">
+                  📋 Совет: Вы можете скопировать данные из Excel и вставить их с помощью Ctrl+V в любое поле — значения автоматически заполнятся по порядку
+                </p>
+              </div>
             </motion.div>
           )}
           </div>
