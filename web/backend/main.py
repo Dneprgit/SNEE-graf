@@ -52,8 +52,8 @@ class CalculationRequest(BaseModel):
                     37.5, 152, 103, 175, 99, 49, -47, 7, -130, -176,
                     -117, -222, -205, -166
                 ],
-                "rated_power_mw": 50,
-                "rated_capacity_mwh": 500,
+                "rated_power_mw": 54,
+                "rated_capacity_mwh": 535,
                 "efficiency": 0.95
             }
         }
@@ -319,7 +319,7 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest):
         )
         
         # Расчет графика
-        eess_schedule = calculator.calculate_dispatch_schedule(request.load_profile)
+        eess_schedule = calculator.calculate_dispatch_schedule_qp(request.load_profile)
         
         # Расчет результирующего баланса
         resulting_balance = [
@@ -331,7 +331,7 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest):
         soc = calculate_soc(eess_schedule, request.rated_capacity_mwh)
         
         # Получение сводной информации
-        summary = calculator.get_summary(request.load_profile, eess_schedule)
+        summary = calculator.get_summary_qp(request.load_profile, eess_schedule)
         
         return CalculationResponse(
             eess_schedule=eess_schedule.tolist(),

@@ -341,7 +341,7 @@ class EnergyStorageCalculator_qp:
         self.efficiency = efficiency
         self.half_cycle_efficiency = np.sqrt(efficiency)  # КПД полуцикла
         
-    def calculate_dispatch_schedule(self, load_profile: List[float]) -> np.ndarray:
+    def calculate_dispatch_schedule_qp(self, load_profile: List[float]) -> np.ndarray:
         """
         Расчет диспетчерского графика СНЭЭ (QP вариант)
         
@@ -382,14 +382,14 @@ class EnergyStorageCalculator_qp:
         # 3. Определение уровня для заряда (water-filling)
         ub_charge = load.copy()
         lb_charge = ub_charge - (max_charge_internal / self.half_cycle_efficiency)
-        charge_level = self._get_level_bounded(
+        charge_level = self._get_level_bounded_gp(
             lb_charge, ub_charge, -1, used_capacity / self.half_cycle_efficiency
         )
         
         # 4. Определение уровня для разряда (water-filling)
         lb_discharge = load.copy()
         ub_discharge = lb_discharge + (max_discharge_internal * self.half_cycle_efficiency)
-        discharge_level = self._get_level_bounded(
+        discharge_level = self._get_level_bounded_gp(
             lb_discharge, ub_discharge, 1, used_capacity * self.half_cycle_efficiency
         )
         
@@ -421,7 +421,7 @@ class EnergyStorageCalculator_qp:
                 
         return eess_load
     
-    def _get_level_bounded(self, lb: np.ndarray, ub: np.ndarray, 
+    def _get_level_bounded_gp(self, lb: np.ndarray, ub: np.ndarray, 
                           dir_factor: int, area: float) -> float:
         """
         Water-filling алгоритм для определения уровня заряда/разряда (QP вариант)
@@ -467,7 +467,7 @@ class EnergyStorageCalculator_qp:
                 
         return level * direction
     
-    def get_summary(self, load_profile: List[float], 
+    def get_summary_qp(self, load_profile: List[float], 
                    eess_schedule: np.ndarray) -> dict:
         """
         Получение сводной информации о работе СНЭЭ (QP вариант)
