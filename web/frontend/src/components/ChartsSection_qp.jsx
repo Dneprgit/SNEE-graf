@@ -45,7 +45,7 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParam
   const socChartData = soc.map((value, index) => ({
     hour: index + 1,
     soc: parseFloat(value.toFixed(2)),
-    capacity: parameters.rated_capacity_mwh,
+    capacity: parameters.dblCapacity_pq,
   }));
 
   // Вычисление максимального значения для оси Y основного графика
@@ -88,9 +88,10 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParam
       ['Использование избытка, %', summary.surplus_utilization_percent],
       ['', ''],
       ['Параметры СНЭЭ', ''],
-      ['Мощность инвертора, МВт', parameters.rated_power_mw],
-      ['Емкость батареи, МВтч', parameters.rated_capacity_mwh],
-      ['КПД цикла', parameters.efficiency],
+      ['Номинальная активная входная мощность (dblNIn), МВт', parameters.dblNIn_pq],
+      ['Номинальная активная выходная мощность (dblNOut), МВт', parameters.dblNOut_pq],
+      ['Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity), МВтч', parameters.dblCapacity_pq],
+      ['Энергоэффективность (КПД) (dblEfficiency)', parameters.dblEfficiency_pq],
     ];
 
     const wb = XLSX.utils.book_new();
@@ -310,12 +311,12 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParam
               />
               <Legend />
               <ReferenceLine
-                y={parameters.rated_capacity_mwh}
+                y={parameters.dblCapacity_pq}
                 stroke="#ef4444"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 label={{
-                  value: `Макс. емкость: ${parameters.rated_capacity_mwh} МВтч`,
+                  value: `Макс. емкость: ${parameters.dblCapacity_pq} МВтч`,
                   position: 'right',
                   fill: '#ef4444',
                 }}

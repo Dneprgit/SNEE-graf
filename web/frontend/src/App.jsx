@@ -30,9 +30,10 @@ function App() {
   // Состояния для варианта Quadratic Programming
   const [loadProfile_qp, setLoadProfile_qp] = useState(null);
   const [parameters_qp, setParameters_qp] = useState({
-    rated_power_mw: 500,
-    rated_capacity_mwh: 2000,
-    efficiency: 0.95,
+    dblNIn_pq: 115,
+    dblNOut_pq: 145,
+    dblCapacity_pq: 535,
+    dblEfficiency_pq: 0.95,
   });
   const [calculationResult_qp, setCalculationResult_qp] = useState(null);
   const [isCalculating_qp, setIsCalculating_qp] = useState(false);
@@ -82,7 +83,7 @@ function App() {
       }, 500); // Debounce 500ms
       return () => clearTimeout(timer);
     }
-  }, [parameters_qp.rated_power_mw, parameters_qp.rated_capacity_mwh, parameters_qp.efficiency]);
+  }, [parameters_qp.dblNIn_pq, parameters_qp.dblNOut_pq, parameters_qp.dblCapacity_pq, parameters_qp.dblEfficiency_pq]);
 
   const handleCalculate = async () => {
     if (!loadProfile || loadProfile.length !== 24) {
@@ -120,7 +121,7 @@ function App() {
     }
 
     // Проверяем валидность КПД
-    if (!parameters_qp.efficiency || parameters_qp.efficiency <= 0 || parameters_qp.efficiency > 1) {
+    if (!parameters_qp.dblEfficiency_pq || parameters_qp.dblEfficiency_pq <= 0 || parameters_qp.dblEfficiency_pq > 1) {
       setError_qp('КПД должен быть в диапазоне от 0 до 1 (например, 0.95)');
       return;
     }
@@ -131,7 +132,9 @@ function App() {
     try {
       const result = await apiService.calculateSchedule_qp({
         load_profile: loadProfile_qp,
-        ...parameters_qp,
+        rated_power_mw: parameters_qp.dblNOut_pq,
+        rated_capacity_mwh: parameters_qp.dblCapacity_pq,
+        efficiency: parameters_qp.dblEfficiency_pq,
       });
       setCalculationResult_qp(result);
     } catch (err) {

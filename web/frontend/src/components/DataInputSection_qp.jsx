@@ -15,12 +15,12 @@ const DataInputSection_qp = ({
   const [uploadStatus, setUploadStatus] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null); // { name, data }
   const [lastExcelData, setLastExcelData] = useState(null);
-  const [efficiencyInput, setEfficiencyInput] = useState(String(parameters.efficiency || ''));
+  const [efficiencyInput, setEfficiencyInput] = useState(String(parameters.dblEfficiency_pq || ''));
 
   // Синхронизация локального состояния efficiency с внешним параметром
   useEffect(() => {
-    setEfficiencyInput(String(parameters.efficiency || ''));
-  }, [parameters.efficiency]);
+    setEfficiencyInput(String(parameters.dblEfficiency_pq || ''));
+  }, [parameters.dblEfficiency_pq]);
 
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -57,19 +57,19 @@ const DataInputSection_qp = ({
     setParameters(prev => {
       const updated = { ...prev, [field]: numValue };
       
-      // Пересчет при изменении мощности инвертора
-      if (field === 'rated_power_mw' && numValue > 0) {
-        updated.runtime_hours = Math.round((prev.rated_capacity_mwh / numValue) * 10) / 10;
+      // Пересчет при изменении выходной мощности
+      if (field === 'dblNOut_pq' && numValue > 0) {
+        updated.runtime_hours = Math.round((prev.dblCapacity_pq / numValue) * 10) / 10;
       }
       
       // Пересчет при изменении емкости батареи
-      if (field === 'rated_capacity_mwh' && prev.rated_power_mw > 0) {
-        updated.runtime_hours = Math.round((numValue / prev.rated_power_mw) * 10) / 10;
+      if (field === 'dblCapacity_pq' && prev.dblNOut_pq > 0) {
+        updated.runtime_hours = Math.round((numValue / prev.dblNOut_pq) * 10) / 10;
       }
       
       // Пересчет при изменении времени работы
-      if (field === 'runtime_hours' && prev.rated_power_mw > 0) {
-        updated.rated_capacity_mwh = numValue * prev.rated_power_mw;
+      if (field === 'runtime_hours' && prev.dblNOut_pq > 0) {
+        updated.dblCapacity_pq = numValue * prev.dblNOut_pq;
       }
       
       return updated;
@@ -84,22 +84,22 @@ const DataInputSection_qp = ({
   const handleEfficiencyBlur = () => {
     const numValue = parseFloat(efficiencyInput);
     if (!isNaN(numValue) && numValue > 0 && numValue <= 1) {
-      setParameters(prev => ({ ...prev, efficiency: numValue }));
+      setParameters(prev => ({ ...prev, dblEfficiency_pq: numValue }));
     } else {
       // Возвращаем предыдущее корректное значение
-      setEfficiencyInput(String(parameters.efficiency));
+      setEfficiencyInput(String(parameters.dblEfficiency_pq));
     }
   };
 
   // Автоматический расчет времени работы при загрузке данных
   useEffect(() => {
-    if (parameters.rated_power_mw > 0 && parameters.rated_capacity_mwh > 0 && !parameters.runtime_hours) {
+    if (parameters.dblNOut_pq > 0 && parameters.dblCapacity_pq > 0 && !parameters.runtime_hours) {
       setParameters(prev => ({
         ...prev,
-        runtime_hours: Math.round((prev.rated_capacity_mwh / prev.rated_power_mw) * 10) / 10,
+        runtime_hours: Math.round((prev.dblCapacity_pq / prev.dblNOut_pq) * 10) / 10,
       }));
     }
-  }, [parameters.rated_power_mw, parameters.rated_capacity_mwh]);
+  }, [parameters.dblNOut_pq, parameters.dblCapacity_pq]);
 
   const loadDefaultProfile = async () => {
     // Если есть загруженный Excel файл, восстанавливаем данные из него
@@ -345,12 +345,12 @@ const DataInputSection_qp = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Мощность инвертора, МВт
+                  Номинальная активная входная мощность (dblNIn), МВт
                 </label>
                 <input
                   type="number"
-                  value={parameters.rated_power_mw}
-                  onChange={(e) => handleParameterChange('rated_power_mw', e.target.value)}
+                  value={parameters.dblNIn_pq}
+                  onChange={(e) => handleParameterChange('dblNIn_pq', e.target.value)}
                   className="input-field"
                   min="0"
                   step="10"
@@ -359,12 +359,26 @@ const DataInputSection_qp = ({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Емкость батареи, МВтч
+                  Номинальная активная выходная мощность (dblNOut), МВт
                 </label>
                 <input
                   type="number"
-                  value={parameters.rated_capacity_mwh}
-                  onChange={(e) => handleParameterChange('rated_capacity_mwh', e.target.value)}
+                  value={parameters.dblNOut_pq}
+                  onChange={(e) => handleParameterChange('dblNOut_pq', e.target.value)}
+                  className="input-field"
+                  min="0"
+                  step="10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity), МВтч
+                </label>
+                <input
+                  type="number"
+                  value={parameters.dblCapacity_pq}
+                  onChange={(e) => handleParameterChange('dblCapacity_pq', e.target.value)}
                   className="input-field"
                   min="0"
                   step="100"
@@ -390,7 +404,7 @@ const DataInputSection_qp = ({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  КПД цикла
+                  Энергоэффективность (КПД) (dblEfficiency)
                 </label>
                 <input
                   type="number"

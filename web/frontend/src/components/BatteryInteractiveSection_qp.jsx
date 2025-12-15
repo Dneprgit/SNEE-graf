@@ -8,11 +8,11 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   const maxPower = maxAbsValue || Math.max(...loadProfile.map(v => Math.abs(v))); // Максимум мощности баланса по модулю
   const totalSurplus = loadProfile.filter(v => v > 0).reduce((a, b) => a + b, 0); // Избыток энергии
   const maxDurationHours = loadProfile.filter(v => v < 0).length; // Количество часов в отрицательной зоне
-  const minDeficit = Math.abs(Math.min(...loadProfile)) / parameters.efficiency; // Максимальный дефицит с учетом КПД
+  const minDeficit = Math.abs(Math.min(...loadProfile)) / parameters.dblEfficiency_pq; // Максимальный дефицит с учетом КПД
   
   // Состояние для размеров батареи
-  const [batteryPower, setBatteryPower] = useState(parameters.rated_power_mw);
-  const [batteryCapacity, setBatteryCapacity] = useState(parameters.rated_capacity_mwh);
+  const [batteryPower, setBatteryPower] = useState(parameters.dblNOut_pq);
+  const [batteryCapacity, setBatteryCapacity] = useState(parameters.dblCapacity_pq);
   
   // Локальное состояние для оптимальных параметров (расширенный набор)
   const [optimalParams, setOptimalParamsLocal] = useState({
@@ -56,23 +56,23 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   
   // Обновление параметров при изменении
   useEffect(() => {
-    if (batteryPower !== parameters.rated_power_mw || batteryCapacity !== parameters.rated_capacity_mwh) {
+    if (batteryPower !== parameters.dblNOut_pq || batteryCapacity !== parameters.dblCapacity_pq) {
       const timer = setTimeout(() => {
         setParameters(prev => ({
           ...prev,
-          rated_power_mw: batteryPower,
-          rated_capacity_mwh: batteryCapacity,
+          dblNOut_pq: batteryPower,
+          dblCapacity_pq: batteryCapacity,
         }));
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [batteryPower, batteryCapacity, parameters.rated_power_mw, parameters.rated_capacity_mwh, setParameters]);
+  }, [batteryPower, batteryCapacity, parameters.dblNOut_pq, parameters.dblCapacity_pq, setParameters]);
   
   // Синхронизация размеров батареи при изменении параметров извне
   useEffect(() => {
-    setBatteryPower(parameters.rated_power_mw);
-    setBatteryCapacity(parameters.rated_capacity_mwh);
-  }, [parameters.rated_power_mw, parameters.rated_capacity_mwh]);
+    setBatteryPower(parameters.dblNOut_pq);
+    setBatteryCapacity(parameters.dblCapacity_pq);
+  }, [parameters.dblNOut_pq, parameters.dblCapacity_pq]);
 
   // Расчет оптимальных параметров при изменении профиля нагрузки или КПД
   useEffect(() => {
@@ -80,7 +80,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       if (!loadProfile || loadProfile.length !== 24) return;
       
       // Проверяем валидность КПД перед отправкой запроса
-      if (!parameters.efficiency || parameters.efficiency <= 0 || parameters.efficiency > 1) {
+      if (!parameters.dblEfficiency_pq || parameters.dblEfficiency_pq <= 0 || parameters.dblEfficiency_pq > 1) {
         return;
       }
       
@@ -88,12 +88,12 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       try {
         const result = await apiService.calculateOptimalParameters_qp({
           load_profile: loadProfile,
-          efficiency: parameters.efficiency
+          efficiency: parameters.dblEfficiency_pq
         });
         
         // Рассчитываем дополнительные параметры на фронтенде
         const discharge_time = result.optimal_capacity_mwh / result.optimal_power_out_mw;
-        const charge_energy = result.optimal_capacity_mwh / parameters.efficiency;
+        const charge_energy = result.optimal_capacity_mwh / parameters.dblEfficiency_pq;
         const charge_time = charge_energy / result.optimal_power_in_mw;
         
         const newOptimalParams = {
@@ -131,7 +131,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
     };
     
     calculateOptimal();
-  }, [loadProfile, parameters.efficiency]);
+  }, [loadProfile, parameters.dblEfficiency_pq]);
   
   // Обработчики для drag высоты
   const handleMouseMove = (e) => {
@@ -240,14 +240,24 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
               <Info className="w-6 h-6 mr-2 text-primary-600" />
               Текущие параметры
             </div>
+              <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border-2 border-red-300">
+                <div className="text-xs text-gray-600 mb-0.5">Номинальная активная входная мощность (dblNIn)</div>
+                <div className="text-2xl font-bold text-red-700">{parameters.dblNIn_pq.toFixed(0)} МВт</div>
+              </div>
+
               <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
-                <div className="text-xs text-gray-600 mb-0.5">Мощность инвертора</div>
+                <div className="text-xs text-gray-600 mb-0.5">Номинальная активная выходная мощность (dblNOut)</div>
                 <div className="text-2xl font-bold text-green-700">{batteryPower.toFixed(0)} МВт</div>
               </div>
               
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
-                <div className="text-xs text-gray-600 mb-0.5">Емкость батареи</div>
+                <div className="text-xs text-gray-600 mb-0.5">Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity)</div>
                 <div className="text-2xl font-bold text-blue-700">{batteryCapacity.toFixed(0)} МВтч</div>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
+                <div className="text-xs text-gray-600 mb-0.5">Энергоэффективность (КПД) (dblEfficiency)</div>
+                <div className="text-2xl font-bold text-purple-700">{(parameters.dblEfficiency_pq * 100).toFixed(0)}%</div>
               </div>
 
               <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border-2 border-amber-300">

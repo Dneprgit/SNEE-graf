@@ -9,7 +9,7 @@ const SchematicSection_qp = ({ calculationResult, parameters }) => {
   const currentPower = eess_schedule[selectedHour - 1];
   const currentSOC = soc[selectedHour - 1];
   const currentBalance = resulting_balance[selectedHour - 1];
-  const socPercent = (currentSOC / parameters.rated_capacity_mwh) * 100;
+  const socPercent = (currentSOC / parameters.dblCapacity_pq) * 100;
 
   const isCharging = currentPower < 0;
   const isDischarging = currentPower > 0;
@@ -175,7 +175,7 @@ const SchematicSection_qp = ({ calculationResult, parameters }) => {
                 Инвертор
               </text>
               <text x="500" y="335" textAnchor="middle" className="text-sm" fill="#dbeafe">
-                {parameters.rated_power_mw} МВт
+                {parameters.dblNOut_pq} МВт
               </text>
             </g>
 
