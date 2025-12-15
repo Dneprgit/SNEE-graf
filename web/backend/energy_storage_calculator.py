@@ -520,108 +520,178 @@ class EnergyStorageCalculator_qp:
         }
 
 
-def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float) -> Tuple[float, float]:
+def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float) -> dict:
     """
-    Расчет оптимальных параметров мощности инвертора и емкости батареи (QP вариант)
+    Расчет оптимальных параметров через квадратичную оптимизацию (scipy)
     
-    Реализация алгоритма VariatePowerAndVolume2 из VBA кода.
-    Находит минимальные значения мощности и емкости, при которых
-    дефицит энергии и мощности минимизируются.
+    Перенос функции GetEESSOptimizedParameters из VBA кода.
+    Использует алгоритм квадратичной оптимизации с двусторонними ограничениями
+    для одновременного поиска оптимальных значений входной мощности, выходной мощности и емкости.
     
     Args:
         load_profile: Суточный профиль баланса мощности (24 часа)
         efficiency: КПД цикла (0-1)
     
     Returns:
-        Tuple (optimal_power_mw, optimal_capacity_mwh)
+        dict с ключами:
+        - optimal_power_in_mw: номинальная входная мощность (dblNIn)
+        - optimal_power_out_mw: номинальная выходная мощность (dblNOut)
+        - optimal_capacity_mwh: емкость батареи (dblCapacity)
+        - deficit_mw: дефицит активной мощности (dblSystemWithENSSLoadDeficite)
     """
+    try:
+        from scipy.optimize import minimize
+        from scipy.sparse import csc_matrix
+    except ImportError:
+        raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
+    
     if len(load_profile) != 24:
         raise ValueError("Профиль должен содержать 24 значения")
     if efficiency <= 0 or efficiency > 1:
         raise ValueError("КПД должен быть в диапазоне (0, 1]")
     
-    load = np.array(load_profile, dtype=float)
-    half_cycle_eff = np.sqrt(efficiency)
+    im = 24  # количество часов
+    n = im * 3 + 4  # 76 переменных: dL[24] + CC[24] + CD[24] + Dmax + Nin + Nout + C
+    k = im * 5  # 120 ограничений: rL[24] + rD[24] + rC[24] + rNi[24] + rNo[24]
     
-    x_tol = 0.000001  # Погрешность по мощности
-    y_tol = 0.001     # Погрешность по энергии
-    im = 24
+    max_real_number = 1e300
     
-    # 1. Определение масштаба
-    rated_power_max = np.max(np.abs(load)) * 1.1
+    # Преобразование load_profile в массив (индексация с 0)
+    dbl_system_load = np.array(load_profile, dtype=float)
     
-    max_charge_capacity = np.sum(np.maximum(load, 0))
-    max_discharge_capacity = np.sum(np.maximum(-load, 0))
-    rated_capacity_max = max(max_charge_capacity, max_discharge_capacity) * 1.1
+    # 1. Построение матрицы A (квадратичная часть целевой функции)
+    # Минимальное диагональное усиление нулевой матрицы
+    A = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        A[i][i] = 0.00000001
     
-    # 2. Расчет минимальных дефицитов при максимальных параметрах
-    calc_max = EnergyStorageCalculator_qp(rated_power_max, rated_capacity_max, efficiency)
-    eess_max = calc_max.calculate_dispatch_schedule(load_profile)
-    result_max = load + eess_max
+    # 2. Вектор b (линейная часть целевой функции - веса для переменных)
+    b = [0.0] * n
+    for i in range(im * 3):
+        b[i] = 0.0
+    b[im * 3] = 1.0      # вес для Dmax (дефицит мощности)
+    b[im * 3 + 1] = 0.02  # вес для Nin (входная мощность)
+    b[im * 3 + 2] = 0.02  # вес для Nout (выходная мощность)
+    b[im * 3 + 3] = 0.0008  # вес для C (емкость)
     
-    min_def_max_power = -np.min(result_max)
-    min_def_energy = -np.sum(result_max[result_max < 0])
+    # 3. Матрица ограничений C и векторы cl, cu
+    C = [[0.0] * n for _ in range(k)]
+    cl = [0.0] * k
+    cu = [0.0] * k
     
-    # 3. Определение минимальной емкости (бинарный поиск)
-    lb = 0.0
-    ub = rated_capacity_max
+    # Заполнение ограничений согласно VB коду
+    # Ограничение rL (баланс энергии): dL[i] - dL[i-1] - CC[i] + CD[i] = 0
+    for i in range(im):
+        j = (i - 1) if i > 0 else (im - 1)  # предыдущий час (циклически)
+        C[i][i] = 1.0          # dL[i]
+        C[i][j] = -1.0         # dL[i-1]
+        C[i][i + im] = -1.0    # -CC[i]
+        C[i][i + im * 2] = 1.0  # CD[i]
+        cl[i] = 0.0
+        cu[i] = 0.0
     
-    while ub - lb > x_tol:
-        rated_capacity_test = 0.5 * lb + 0.5 * ub
-        
-        calc_test = EnergyStorageCalculator_qp(rated_power_max, rated_capacity_test, efficiency)
-        eess_test = calc_test.calculate_dispatch_schedule(load_profile)
-        result_test = load + eess_test
-        
-        def_max_power = -np.min(result_test)
-        def_energy = -np.sum(result_test[result_test < 0])
-        
-        # Проверка критерия оптимальности
-        criterion = (def_energy - min_def_energy) + im * (def_max_power - min_def_max_power)
-        
-        if criterion < im * y_tol:
-            ub = rated_capacity_test
-        else:
-            lb = rated_capacity_test
+    # Ограничение rD (баланс мощности): -CC[i]/η + CD[i] + Dmax >= Load[i]
+    for i in range(im):
+        C[i + im][i + im] = -1.0 / efficiency  # -CC[i]/η
+        C[i + im][i + im * 2] = 1.0  # CD[i]
+        C[i + im][im * 3] = 1.0  # Dmax
+        cl[i + im] = dbl_system_load[i]
+        cu[i + im] = max_real_number
     
-    optimal_capacity = ub
+    # Ограничение rC (емкость): -dL[i] + C >= 0
+    for i in range(im):
+        C[i + im * 2][i] = -1.0  # -dL[i]
+        C[i + im * 2][im * 3 + 3] = 1.0  # C
+        cl[i + im * 2] = 0.0
+        cu[i + im * 2] = max_real_number
     
-    # 4. Определение минимальной мощности (бинарный поиск)
-    lb = 0.0
-    ub = rated_power_max
+    # Ограничение rNi (входная мощность): -CC[i]/η + Nin >= 0
+    for i in range(im):
+        C[i + im * 3][i + im] = -1.0 / efficiency  # -CC[i]/η
+        C[i + im * 3][im * 3 + 1] = 1.0  # Nin
+        cl[i + im * 3] = 0.0
+        cu[i + im * 3] = max_real_number
     
-    while ub - lb > x_tol:
-        rated_power_test = 0.5 * lb + 0.5 * ub
-        
-        calc_test = EnergyStorageCalculator_qp(rated_power_test, rated_capacity_max, efficiency)
-        eess_test = calc_test.calculate_dispatch_schedule(load_profile)
-        result_test = load + eess_test
-        
-        def_max_power = -np.min(result_test)
-        def_energy = -np.sum(result_test[result_test < 0])
-        
-        # Проверка критерия оптимальности
-        criterion = (def_energy - min_def_energy) + im * (def_max_power - min_def_max_power)
-        
-        if criterion < im * y_tol:
-            ub = rated_power_test
-        else:
-            lb = rated_power_test
+    # Ограничение rNo (выходная мощность): -CD[i] + Nout >= 0
+    for i in range(im):
+        C[i + im * 4][i + im * 2] = -1.0  # -CD[i]
+        C[i + im * 4][im * 3 + 2] = 1.0  # Nout
+        cl[i + im * 4] = 0.0
+        cu[i + im * 4] = max_real_number
     
-    optimal_power = ub
+    # 4. Границы переменных (все неотрицательные)
+    lb = [0.0] * n
+    ub = [max_real_number] * n
     
-    # 5. Финальная проверка
-    calc_final = EnergyStorageCalculator_qp(optimal_power, optimal_capacity, efficiency)
-    eess_final = calc_final.calculate_dispatch_schedule(load_profile)
-    result_final = load + eess_final
+    # 5. Масштаб переменных (все равны 1)
+    s = [1.0] * n
     
-    def_max_power_final = -np.min(result_final)
-    def_energy_final = -np.sum(result_final[result_final < 0])
+    # 6. Начальное приближение: x0 = lb + s
+    x0 = [lb[i] + s[i] for i in range(n)]
     
-    criterion_final = (def_energy_final - min_def_energy) + im * (def_max_power_final - min_def_max_power)
+    # 7. Преобразование матриц для scipy
+    A_np = np.array(A)
+    b_np = np.array(b)
+    C_np = np.array(C)
+    cl_np = np.array(cl)
+    cu_np = np.array(cu)
+    lb_np = np.array(lb)
+    ub_np = np.array(ub)
+    x0_np = np.array(x0)
     
-    # Проверка, что точка на минимуме
-    assert criterion_final < 2 * im * y_tol, "Оптимальная точка не найдена"
+    # 8. Определение целевой функции и её градиента
+    # F(x) = 0.5 * x' * A * x + b' * x
+    def objective(x):
+        return 0.5 * np.dot(x, np.dot(A_np, x)) + np.dot(b_np, x)
     
-    return round(optimal_power, 2), round(optimal_capacity, 2)
+    def objective_grad(x):
+        return np.dot(A_np, x) + b_np
+    
+    # 9. Формирование ограничений для scipy
+    # LinearConstraint: cl <= C @ x <= cu
+    from scipy.optimize import LinearConstraint, Bounds
+    
+    # Заменяем бесконечности
+    cu_finite = np.where(cu_np >= max_real_number / 10, np.inf, cu_np)
+    cl_finite = np.where(cl_np <= -max_real_number / 10, -np.inf, cl_np)
+    lb_finite = np.where(lb_np <= -max_real_number / 10, -np.inf, lb_np)
+    ub_finite = np.where(ub_np >= max_real_number / 10, np.inf, ub_np)
+    
+    linear_constraint = LinearConstraint(C_np, cl_finite, cu_finite)
+    bounds = Bounds(lb_finite, ub_finite)
+    
+    # 10. Решение задачи оптимизации
+    result = minimize(
+        objective,
+        x0_np,
+        method='trust-constr',
+        jac=objective_grad,
+        constraints=[linear_constraint],
+        bounds=bounds,
+        options={'verbose': 0, 'maxiter': 1000}
+    )
+    
+    # 11. Проверка результата
+    if not result.success:
+        print(f"Warning: Optimization did not converge. Status: {result.status}, Message: {result.message}")
+    
+    x = result.x
+    
+    # 12. Проверка баланса заряд-разряд
+    balance_check = sum(x[i + im] - x[i + im * 2] for i in range(im))
+    if abs(balance_check) >= 0.001:
+        print(f"Warning: Charge-discharge balance check failed: {balance_check}")
+    
+    # 13. Извлечение результатов
+    dbl_system_with_enss_load_deficite = x[im * 3]
+    dbl_n_in = x[im * 3 + 1]
+    dbl_n_out = x[im * 3 + 2]
+    dbl_capacity = x[im * 3 + 3]
+    
+    return {
+        "optimal_power_in_mw": round(dbl_n_in, 2),
+        "optimal_power_out_mw": round(dbl_n_out, 2),
+        "optimal_capacity_mwh": round(dbl_capacity, 2),
+        "deficit_mw": round(dbl_system_with_enss_load_deficite, 2)
+    }
 

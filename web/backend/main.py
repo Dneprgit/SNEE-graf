@@ -351,19 +351,21 @@ async def calculate_optimal_params_qp(request: OptimalParametersRequest):
     """
     Расчет оптимальных параметров мощности инвертора и емкости батареи (QP вариант)
     
-    Реализует алгоритм VariatePowerAndVolume2 из VBA кода.
-    Находит минимальные значения мощности и емкости, при которых
-    дефицит энергии и мощности минимизируются.
+    Реализует алгоритм квадратичной оптимизации из VBA кода GetEESSOptimizedParameters.
+    Использует библиотеку ALGLIB для одновременного поиска оптимальных значений
+    входной мощности, выходной мощности, емкости и дефицита мощности.
     """
     try:
-        optimal_power, optimal_capacity = calculate_optimal_parameters_qp(
+        result = calculate_optimal_parameters_qp(
             request.load_profile,
             request.efficiency
         )
         
         return {
-            "optimal_power_mw": optimal_power,
-            "optimal_capacity_mwh": optimal_capacity,
+            "optimal_power_in_mw": result["optimal_power_in_mw"],
+            "optimal_power_out_mw": result["optimal_power_out_mw"],
+            "optimal_capacity_mwh": result["optimal_capacity_mwh"],
+            "deficit_mw": result["deficit_mw"],
             "message": "Оптимальные параметры успешно рассчитаны (QP)"
         }
         
