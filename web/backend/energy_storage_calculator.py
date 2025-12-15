@@ -322,14 +322,17 @@ class EnergyStorageCalculator_qp:
     
     HOURS = 24
     
-    def __init__(self, rated_power_mw: float, rated_capacity_mwh: float, efficiency: float):
+    def __init__(self, rated_power_mw: float, rated_capacity_mwh: float, efficiency: float, 
+                 rated_power_in_mw: float = None, rated_power_out_mw: float = None):
         """
         Инициализация калькулятора СНЭЭ
         
         Args:
-            rated_power_mw: Мощность инвертора в МВт
+            rated_power_mw: Мощность инвертора в МВт (используется если не указаны rated_power_in_mw и rated_power_out_mw)
             rated_capacity_mwh: Емкость батареи в МВтч
             efficiency: КПД цикла (0-1)
+            rated_power_in_mw: Номинальная входная мощность в МВт (опционально)
+            rated_power_out_mw: Номинальная выходная мощность в МВт (опционально)
         """
         if rated_power_mw <= 0 or rated_capacity_mwh <= 0:
             raise ValueError("Мощность и емкость должны быть положительными")
@@ -341,9 +344,17 @@ class EnergyStorageCalculator_qp:
         self.efficiency = efficiency
         self.half_cycle_efficiency = np.sqrt(efficiency)  # КПД полуцикла
         
-    def calculate_dispatch_schedule(self, load_profile: List[float]) -> np.ndarray:
+        # Поддержка асимметричных мощностей (Nin и Nout)
+        self.rated_power_in = rated_power_in_mw if rated_power_in_mw is not None else rated_power_mw
+        self.rated_power_out = rated_power_out_mw if rated_power_out_mw is not None else rated_power_mw
+        
+    def calculate_dispatch_schedule_qp(self, load_profile: List[float]) -> np.ndarray:
         """
-        Расчет диспетчерского графика СНЭЭ (QP вариант)
+        Расчет диспетчерского графика СНЭЭ через квадратичную оптимизацию (scipy)
+        
+        Перенос функции GetEESSOptimalLoad из VBA кода.
+        Использует алгоритм квадратичной оптимизации для расчета оптимального
+        графика работы СНЭЭ при известных параметрах (Nin, Nout, Capacity).
         
         Args:
             load_profile: Суточный профиль баланса мощности (24 часа)
@@ -353,72 +364,137 @@ class EnergyStorageCalculator_qp:
             Массив мощности СНЭЭ на шинах (24 часа)
             + разряд (выдача в сеть), - заряд (потребление из сети)
         """
+        from scipy.optimize import minimize, LinearConstraint, Bounds
+        
         if len(load_profile) != self.HOURS:
             raise ValueError(f"Профиль должен содержать {self.HOURS} значений")
-            
+        
+        im = 24
+        n = im * 4 + 2  # 98 переменных
+        k = im * 4      # 96 ограничений
+        max_real_number = 1e300
+        
         load = np.array(load_profile, dtype=float)
+        
+        # 1. Матрица A (квадратичная часть целевой функции)
+        # Диагональная матрица с малым значением для регуляризации
+        A = np.eye(n) * 0.00000001
+        
+        # 2. Вектор b (линейная часть целевой функции)
+        b = np.zeros(n)
+        b[im * 3:im * 4] = 0.04      # Веса для D[i] (дефицит по часам)
+        b[im * 4] = 1.0               # Вес для Dmax (максимальный дефицит)
+        b[im * 4 + 1] = 0.0016        # Вес для Rmax (максимальный резерв)
+        
+        # 3. Матрица ограничений C и векторы cl, cu
+        C = np.zeros((k, n))
+        cl = np.zeros(k)
+        cu = np.full(k, max_real_number)
+        
+        # rL: баланс энергии (24 ограничения)
+        # dL[i] - dL[i-1] - CC[i] + CD[i] = 0
+        for i in range(im):
+            j = (i - 1) if i > 0 else (im - 1)  # Циклический индекс
+            C[i, i] = 1.0           # dL[i]
+            C[i, j] = -1.0          # dL[i-1]
+            C[i, i + im] = -1.0     # -CC[i]
+            C[i, i + im * 2] = 1.0  # CD[i]
+            cl[i] = 0.0
+            cu[i] = 0.0
+        
+        # rD: баланс мощности (24 ограничения)
+        # -CC[i]/η + CD[i] + D[i] >= Load[i]
+        for i in range(im):
+            C[i + im, i + im] = -1.0 / self.efficiency  # -CC[i]/η
+            C[i + im, i + im * 2] = 1.0                  # CD[i]
+            C[i + im, i + im * 3] = 1.0                  # D[i]
+            cl[i + im] = load[i]
+            cu[i + im] = max_real_number
+        
+        # rDmin: резерв (24 ограничения)
+        # CC[i]/η - CD[i] + Rmax >= -Load[i]
+        for i in range(im):
+            C[i + im * 2, i + im] = 1.0 / self.efficiency  # CC[i]/η
+            C[i + im * 2, i + im * 2] = -1.0                # -CD[i]
+            C[i + im * 2, im * 4 + 1] = 1.0                 # Rmax
+            cl[i + im * 2] = -load[i]
+            cu[i + im * 2] = max_real_number
+        
+        # rDmax: дефицит по часам (24 ограничения)
+        # -D[i] + Dmax >= 0  =>  Dmax >= D[i]
+        for i in range(im):
+            C[i + im * 3, i + im * 3] = -1.0  # -D[i]
+            C[i + im * 3, im * 4] = 1.0       # Dmax
+            cl[i + im * 3] = 0.0
+            cu[i + im * 3] = max_real_number
+        
+        # 4. Границы переменных
+        lb = np.zeros(n)
+        ub = np.full(n, max_real_number)
+        
+        # Специфичные границы
+        ub[:im] = self.rated_capacity                        # dL[i]: 0 <= dL[i] <= Capacity
+        ub[im:im*2] = self.rated_power_in * self.efficiency  # CC[i]: 0 <= CC[i] <= Nin * η
+        ub[im*2:im*3] = self.rated_power_out                 # CD[i]: 0 <= CD[i] <= Nout
+        # D[i], Dmax, Rmax: 0 <= x <= ∞ (уже установлено)
+        
+        # 5. Начальное приближение
+        x0 = lb + 1.0
+        
+        # 6. Целевая функция и её градиент
+        def objective(x):
+            return 0.5 * np.dot(x, np.dot(A, x)) + np.dot(b, x)
+        
+        def objective_grad(x):
+            return np.dot(A, x) + b
+        
+        # 7. Преобразование бесконечных значений для SciPy
+        cu_finite = np.where(cu >= max_real_number / 10, np.inf, cu)
+        cl_finite = np.where(cl <= -max_real_number / 10, -np.inf, cl)
+        lb_finite = np.where(lb <= -max_real_number / 10, -np.inf, lb)
+        ub_finite = np.where(ub >= max_real_number / 10, np.inf, ub)
+        
+        linear_constraint = LinearConstraint(C, cl_finite, cu_finite)
+        bounds = Bounds(lb_finite, ub_finite)
+        
+        # 8. Решение задачи квадратичной оптимизации
+        result = minimize(
+            objective,
+            x0,
+            method='trust-constr',
+            jac=objective_grad,
+            constraints=[linear_constraint],
+            bounds=bounds,
+            options={'verbose': 0, 'maxiter': 1000}
+        )
+        
+        if not result.success:
+            print(f"Warning: QP optimization did not converge: {result.message}")
+        
+        x = result.x
+        
+        # 9. Проверка баланса (как в VB коде)
+        balance = sum(x[i + im] - x[i + im * 2] for i in range(im))
+        if abs(balance) >= 0.001:
+            print(f"Warning: Charge-discharge balance: {balance:.6f}")
+        
+        # 10. Извлечение результатов
         eess_load = np.zeros(self.HOURS)
+        for i in range(im):
+            # График нагрузки СНЭЭ: разряд - заряд/η
+            # CD[i] - CC[i]/η
+            eess_load[i] = x[i + im * 2] - x[i + im] / self.efficiency
         
-        # 1. Расчет почасовых лимитов заряда и разряда
-        max_charge_internal = np.minimum(
-            np.maximum(load, 0),
-            self.rated_power
-        ) * self.half_cycle_efficiency
+        # Сохраняем дополнительные результаты для возможного использования
+        self._last_qp_solution = {
+            'energy_available': x[:im],  # dL[i] - уровень энергии
+            'charge': x[im:im*2],        # CC[i] - почасовой заряд
+            'discharge': x[im*2:im*3],   # CD[i] - почасовой разряд
+            'deficit_hourly': x[im*3:im*4],  # D[i] - дефицит по часам
+            'deficit_max': x[im * 4],    # Dmax - максимальный дефицит
+            'reserve_max': x[im * 4 + 1]  # Rmax - максимальный резерв
+        }
         
-        max_discharge_internal = np.minimum(
-            np.maximum(-load, 0) / self.half_cycle_efficiency,
-            self.rated_power
-        )
-        
-        sum_charge = np.sum(max_charge_internal)
-        sum_discharge = np.sum(max_discharge_internal)
-        
-        # 2. Определение используемой энергии
-        used_capacity = min(sum_charge, sum_discharge, self.rated_capacity)
-        
-        if used_capacity <= 0:
-            return eess_load
-            
-        # 3. Определение уровня для заряда (water-filling)
-        ub_charge = load.copy()
-        lb_charge = ub_charge - (max_charge_internal / self.half_cycle_efficiency)
-        charge_level = self._get_level_bounded(
-            lb_charge, ub_charge, -1, used_capacity / self.half_cycle_efficiency
-        )
-        
-        # 4. Определение уровня для разряда (water-filling)
-        lb_discharge = load.copy()
-        ub_discharge = lb_discharge + (max_discharge_internal * self.half_cycle_efficiency)
-        discharge_level = self._get_level_bounded(
-            lb_discharge, ub_discharge, 1, used_capacity * self.half_cycle_efficiency
-        )
-        
-        # 5. Расчет почасового графика мощности
-        balance = 0.0
-        
-        for i in range(self.HOURS):
-            charge = min(
-                max_charge_internal[i],
-                max(load[i] - charge_level, 0) * self.half_cycle_efficiency
-            )
-            
-            discharge = min(
-                max_discharge_internal[i],
-                max(discharge_level - load[i], 0) / self.half_cycle_efficiency
-            )
-            
-            net_internal = discharge - charge
-            balance += net_internal
-            
-            if net_internal > 0:
-                # Разряд: выдаем в сеть с учетом потерь
-                eess_load[i] = net_internal * self.half_cycle_efficiency
-            elif net_internal < 0:
-                # Заряд: забираем из сети с учетом потерь
-                eess_load[i] = net_internal / self.half_cycle_efficiency
-            else:
-                eess_load[i] = 0.0
-                
         return eess_load
     
     def _get_level_bounded(self, lb: np.ndarray, ub: np.ndarray, 
@@ -477,7 +553,7 @@ class EnergyStorageCalculator_qp:
             eess_schedule: Рассчитанный график СНЭЭ
         
         Returns:
-            Словарь с ключевыми показателями
+            Словарь с ключевыми показателями, включая дополнительные параметры из QP решения
         """
         load = np.array(load_profile)
         
@@ -502,7 +578,7 @@ class EnergyStorageCalculator_qp:
         max_charge_power = -np.min(eess_schedule) if np.min(eess_schedule) < 0 else 0
         max_discharge_power = np.max(eess_schedule) if np.max(eess_schedule) > 0 else 0
         
-        return {
+        summary = {
             'total_charge_mwh': round(total_charge, 2),
             'total_discharge_mwh': round(total_discharge, 2),
             'max_charge_power_mw': round(max_charge_power, 2),
@@ -518,6 +594,13 @@ class EnergyStorageCalculator_qp:
             'resulting_max_deficit_mw': round(-np.min(resulting_balance), 2),
             'resulting_max_surplus_mw': round(np.max(resulting_balance), 2),
         }
+        
+        # Добавление параметров из QP решения, если доступны
+        if hasattr(self, '_last_qp_solution') and self._last_qp_solution:
+            summary['qp_deficit_max_mw'] = round(self._last_qp_solution['deficit_max'], 2)
+            summary['qp_reserve_max_mw'] = round(self._last_qp_solution['reserve_max'], 2)
+        
+        return summary
 
 
 def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float) -> dict:

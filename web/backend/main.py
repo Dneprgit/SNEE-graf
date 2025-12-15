@@ -319,7 +319,7 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest):
         )
         
         # Расчет графика
-        eess_schedule = calculator.calculate_dispatch_schedule(request.load_profile)
+        eess_schedule = calculator.calculate_dispatch_schedule_qp(request.load_profile)
         
         # Расчет результирующего баланса
         resulting_balance = [
