@@ -1,9 +1,10 @@
 """
 Модуль расчета диспетчерского графика работы СНЭЭ
-Портирован с VBA алгоритма water-filling
+Портирован с VBA алгоритма water-filling и квадратичной оптимизации (QP)
 """
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict
+from scipy.optimize import minimize, LinearConstraint, Bounds
 
 
 class EnergyStorageCalculator:
@@ -520,108 +521,385 @@ class EnergyStorageCalculator_qp:
         }
 
 
-def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float) -> Tuple[float, float]:
+def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float) -> Dict[str, float]:
     """
-    Расчет оптимальных параметров мощности инвертора и емкости батареи (QP вариант)
+    Расчет оптимальных параметров СНЭЭ методом квадратичной оптимизации (QP)
     
-    Реализация алгоритма VariatePowerAndVolume2 из VBA кода.
-    Находит минимальные значения мощности и емкости, при которых
-    дефицит энергии и мощности минимизируются.
+    Портировано из VBA функции GetEESSOptimizedParameters.
+    Решает задачу квадратичной оптимизации для нахождения оптимальных:
+    - Номинальной активной входной мощности (Nin)
+    - Номинальной активной выходной мощности (Nout)
+    - Энергии, фактически отдаваемой в рабочем диапазоне (Capacity)
     
     Args:
-        load_profile: Суточный профиль баланса мощности (24 часа)
-        efficiency: КПД цикла (0-1)
+        load_profile: Суточный профиль баланса мощности энергосистемы (24 часа)
+                     + не покрываемое потребление, - избыток генерации
+        efficiency: КПД цикла заряда-разряда (0-1)
     
     Returns:
-        Tuple (optimal_power_mw, optimal_capacity_mwh)
+        Dict с оптимальными параметрами:
+        {
+            'nin': Номинальная активная входная мощность, МВт
+            'nout': Номинальная активная выходная мощность, МВт
+            'capacity': Энергия, фактически отдаваемая в рабочем диапазоне, МВтч
+            'deficit': Дефицит мощности результирующий, МВт
+            'eens_energy_available': Массив уровней накопленной энергии (24 часа)
+            'eens_load': Массив нагрузки СНЭЭ (24 часа), + разряд, - заряд
+        }
     """
     if len(load_profile) != 24:
         raise ValueError("Профиль должен содержать 24 значения")
     if efficiency <= 0 or efficiency > 1:
         raise ValueError("КПД должен быть в диапазоне (0, 1]")
     
+    im = 24  # Количество часов
     load = np.array(load_profile, dtype=float)
-    half_cycle_eff = np.sqrt(efficiency)
     
-    x_tol = 0.000001  # Погрешность по мощности
-    y_tol = 0.001     # Погрешность по энергии
-    im = 24
+    # Размерность задачи:
+    # n = im * 3 + 4 = 76 переменных
+    # Переменные x:
+    # x[0:23]   - dL[] - уровень накопленной энергии в батарее (Energy Available)
+    # x[24:47]  - CC[] - заряд в каждый час (внутренний)
+    # x[48:71]  - CD[] - разряд в каждый час (внутренний)
+    # x[72]     - Dmax - дефицит мощности результирующий
+    # x[73]     - Nin  - оптимальная входная мощность
+    # x[74]     - Nout - оптимальная выходная мощность
+    # x[75]     - C    - оптимальная емкость
     
-    # 1. Определение масштаба
-    rated_power_max = np.max(np.abs(load)) * 1.1
+    n = im * 3 + 4  # 76
+    k = im * 5      # 120 ограничений
     
-    max_charge_capacity = np.sum(np.maximum(load, 0))
-    max_discharge_capacity = np.sum(np.maximum(-load, 0))
-    rated_capacity_max = max(max_charge_capacity, max_discharge_capacity) * 1.1
+    max_real_number = 1e300
     
-    # 2. Расчет минимальных дефицитов при максимальных параметрах
-    calc_max = EnergyStorageCalculator_qp(rated_power_max, rated_capacity_max, efficiency)
-    eess_max = calc_max.calculate_dispatch_schedule(load_profile)
-    result_max = load + eess_max
+    # === Построение матрицы A (квадратичный член) ===
+    # Почти нулевая матрица с минимальным диагональным усилением
+    A = np.eye(n) * 0.00000001
     
-    min_def_max_power = -np.min(result_max)
-    min_def_energy = -np.sum(result_max[result_max < 0])
+    # === Построение вектора b (линейный член) ===
+    b = np.zeros(n)
+    # Веса для переменных:
+    # dL[0:23], CC[24:47], CD[48:71] - вес 0
+    b[72] = 1.0      # Dmax - минимизируем дефицит (наивысший приоритет)
+    b[73] = 0.02     # Nin - минимизируем входную мощность
+    b[74] = 0.02     # Nout - минимизируем выходную мощность
+    b[75] = 0.0008   # C - минимизируем емкость
     
-    # 3. Определение минимальной емкости (бинарный поиск)
-    lb = 0.0
-    ub = rated_capacity_max
+    # === Построение матрицы ограничений C и границ cl, cu ===
+    # Линейные ограничения: cl <= C @ x <= cu
+    C = np.zeros((k, n))
+    cl = np.zeros(k)
+    cu = np.zeros(k)
     
-    while ub - lb > x_tol:
-        rated_capacity_test = 0.5 * lb + 0.5 * ub
+    # Группа 1: rL[0:23] - балансовые ограничения (изменение уровня = разряд - заряд)
+    for i in range(im):
+        row = i
+        j = (i - 1) if i > 0 else (im - 1)  # Предыдущий час (циклически)
         
-        calc_test = EnergyStorageCalculator_qp(rated_power_max, rated_capacity_test, efficiency)
-        eess_test = calc_test.calculate_dispatch_schedule(load_profile)
-        result_test = load + eess_test
+        C[row, i] = 1.0           # dL[i]
+        C[row, j] = -1.0          # dL[j] (предыдущий)
+        C[row, i + im] = -1.0     # -CC[i]
+        C[row, i + im * 2] = 1.0  # +CD[i]
         
-        def_max_power = -np.min(result_test)
-        def_energy = -np.sum(result_test[result_test < 0])
+        cl[row] = 0.0
+        cu[row] = 0.0
+    
+    # Группа 2: rD[0:23] - покрытие дефицита нагрузки
+    for i in range(im):
+        row = i + im
         
-        # Проверка критерия оптимальности
-        criterion = (def_energy - min_def_energy) + im * (def_max_power - min_def_max_power)
+        C[row, i + im] = -1.0 / efficiency  # -CC[i] / efficiency
+        C[row, i + im * 2] = 1.0            # +CD[i]
+        C[row, 72] = 1.0                    # +Dmax
         
-        if criterion < im * y_tol:
-            ub = rated_capacity_test
-        else:
-            lb = rated_capacity_test
+        cl[row] = load[i]
+        cu[row] = max_real_number
     
-    optimal_capacity = ub
-    
-    # 4. Определение минимальной мощности (бинарный поиск)
-    lb = 0.0
-    ub = rated_power_max
-    
-    while ub - lb > x_tol:
-        rated_power_test = 0.5 * lb + 0.5 * ub
+    # Группа 3: rC[0:23] - ограничение емкости батареи
+    for i in range(im):
+        row = i + im * 2
         
-        calc_test = EnergyStorageCalculator_qp(rated_power_test, rated_capacity_max, efficiency)
-        eess_test = calc_test.calculate_dispatch_schedule(load_profile)
-        result_test = load + eess_test
+        C[row, i] = -1.0     # -dL[i]
+        C[row, 75] = 1.0     # +C (емкость)
         
-        def_max_power = -np.min(result_test)
-        def_energy = -np.sum(result_test[result_test < 0])
+        cl[row] = 0.0
+        cu[row] = max_real_number
+    
+    # Группа 4: rNi[0:23] - ограничение входной мощности
+    for i in range(im):
+        row = i + im * 3
         
-        # Проверка критерия оптимальности
-        criterion = (def_energy - min_def_energy) + im * (def_max_power - min_def_max_power)
+        C[row, i + im] = -1.0 / efficiency  # -CC[i] / efficiency
+        C[row, 73] = 1.0                    # +Nin
         
-        if criterion < im * y_tol:
-            ub = rated_power_test
-        else:
-            lb = rated_power_test
+        cl[row] = 0.0
+        cu[row] = max_real_number
     
-    optimal_power = ub
+    # Группа 5: rNo[0:23] - ограничение выходной мощности
+    for i in range(im):
+        row = i + im * 4
+        
+        C[row, i + im * 2] = -1.0  # -CD[i]
+        C[row, 74] = 1.0           # +Nout
+        
+        cl[row] = 0.0
+        cu[row] = max_real_number
     
-    # 5. Финальная проверка
-    calc_final = EnergyStorageCalculator_qp(optimal_power, optimal_capacity, efficiency)
-    eess_final = calc_final.calculate_dispatch_schedule(load_profile)
-    result_final = load + eess_final
+    # === Границы переменных ===
+    lb = np.zeros(n)
+    ub = np.full(n, max_real_number)
     
-    def_max_power_final = -np.min(result_final)
-    def_energy_final = -np.sum(result_final[result_final < 0])
+    # === Начальное приближение ===
+    x0 = lb + 1.0
     
-    criterion_final = (def_energy_final - min_def_energy) + im * (def_max_power_final - min_def_max_power)
+    # === Решение задачи квадратичной оптимизации ===
+    # Используем метод trust-constr из scipy
     
-    # Проверка, что точка на минимуме
-    assert criterion_final < 2 * im * y_tol, "Оптимальная точка не найдена"
+    # Целевая функция: 0.5 * x^T @ A @ x + b^T @ x
+    def objective(x):
+        return 0.5 * x @ A @ x + b @ x
     
-    return round(optimal_power, 2), round(optimal_capacity, 2)
+    def objective_grad(x):
+        return A @ x + b
+    
+    def objective_hess(x):
+        return A
+    
+    # Преобразуем cl <= C @ x <= cu в границы для scipy
+    # Обрабатываем большие числа как бесконечности
+    cl_processed = np.where(cl <= -1e100, -np.inf, cl)
+    cu_processed = np.where(cu >= 1e100, np.inf, cu)
+    
+    linear_constraint = LinearConstraint(C, cl_processed, cu_processed)
+    bounds = Bounds(lb, ub)
+    
+    # Решаем задачу оптимизации
+    result = minimize(
+        objective,
+        x0,
+        method='trust-constr',
+        jac=objective_grad,
+        hess=objective_hess,
+        constraints=[linear_constraint],
+        bounds=bounds,
+        options={'maxiter': 1000, 'verbose': 0}
+    )
+    
+    if not result.success:
+        print(f"Предупреждение: оптимизация завершилась с кодом {result.status}: {result.message}")
+    
+    x = result.x
+    
+    # === Извлечение результатов ===
+    dL = x[0:im]
+    CC = x[im:im*2]
+    CD = x[im*2:im*3]
+    Dmax = x[72]
+    Nin = x[73]
+    Nout = x[74]
+    C_capacity = x[75]
+    
+    # Расчет нагрузки СНЭЭ на шинах (с учетом КПД)
+    eens_load = CD - CC / efficiency
+    
+    # Проверка баланса
+    balance = np.sum(CC - CD)
+    if abs(balance) > 0.001:
+        print(f"Предупреждение: баланс заряд-разряд не сходится: {balance:.6f}")
+    
+    return {
+        'nin': round(Nin, 2),
+        'nout': round(Nout, 2),
+        'capacity': round(C_capacity, 2),
+        'deficit': round(Dmax, 2),
+        'eens_energy_available': dL.tolist(),
+        'eens_load': eens_load.tolist()
+    }
+
+
+def calculate_dispatch_schedule_qp(
+    load_profile: List[float],
+    nin: float,
+    nout: float,
+    capacity: float,
+    efficiency: float
+) -> Dict[str, any]:
+    """
+    Расчет диспетчерского графика СНЭЭ методом квадратичной оптимизации (QP)
+    с заданными параметрами
+    
+    Портировано из VBA функции GetEESSOptimalLoad.
+    Решает задачу квадратичной оптимизации для нахождения оптимального
+    графика работы СНЭЭ при заданных параметрах системы.
+    
+    Args:
+        load_profile: Суточный профиль баланса мощности энергосистемы (24 часа)
+        nin: Номинальная активная входная мощность, МВт
+        nout: Номинальная активная выходная мощность, МВт
+        capacity: Энергия, фактически отдаваемая в рабочем диапазоне, МВтч
+        efficiency: КПД цикла заряда-разряда (0-1)
+    
+    Returns:
+        Dict с результатами расчета:
+        {
+            'eens_energy_available': Массив уровней накопленной энергии (24 часа)
+            'eens_load': Массив нагрузки СНЭЭ (24 часа), + разряд, - заряд
+            'deficit': Дефицит мощности результирующий, МВт
+            'reserve': Резерв мощности результирующий, МВт
+        }
+    """
+    if len(load_profile) != 24:
+        raise ValueError("Профиль должен содержать 24 значения")
+    if efficiency <= 0 or efficiency > 1:
+        raise ValueError("КПД должен быть в диапазоне (0, 1]")
+    if nin < 0 or nout < 0 or capacity < 0:
+        raise ValueError("Параметры СНЭЭ должны быть неотрицательными")
+    
+    im = 24  # Количество часов
+    load = np.array(load_profile, dtype=float)
+    
+    # Размерность задачи:
+    # n = im * 4 + 2 = 98 переменных
+    # Переменные x:
+    # x[0:23]   - dL[] - уровень накопленной энергии в батарее
+    # x[24:47]  - CC[] - заряд в каждый час (внутренний)
+    # x[48:71]  - CD[] - разряд в каждый час (внутренний)
+    # x[72:95]  - D[]  - дефицит в каждый час
+    # x[96]     - Dmax - максимальный дефицит мощности
+    # x[97]     - Rmax - максимальный резерв мощности
+    
+    n = im * 4 + 2  # 98
+    k = im * 4      # 96 ограничений
+    
+    max_real_number = 1e300
+    
+    # === Построение матрицы A (квадратичный член) ===
+    A = np.eye(n) * 0.00000001
+    
+    # === Построение вектора b (линейный член) ===
+    b = np.zeros(n)
+    # Веса для переменных:
+    # dL[0:23], CC[24:47], CD[48:71] - вес 0
+    # D[72:95] - вес 0.04 (штраф за дефицит в каждый час)
+    for i in range(72, 96):
+        b[i] = 0.04
+    b[96] = 1.0      # Dmax - минимизируем максимальный дефицит (наивысший приоритет)
+    b[97] = 0.0016   # Rmax - минимизируем максимальный резерв
+    
+    # === Построение матрицы ограничений C и границ cl, cu ===
+    C = np.zeros((k, n))
+    cl = np.zeros(k)
+    cu = np.zeros(k)
+    
+    # Группа 1: rL[0:23] - балансовые ограничения
+    for i in range(im):
+        row = i
+        j = (i - 1) if i > 0 else (im - 1)
+        
+        C[row, i] = 1.0           # dL[i]
+        C[row, j] = -1.0          # dL[j]
+        C[row, i + im] = -1.0     # -CC[i]
+        C[row, i + im * 2] = 1.0  # +CD[i]
+        
+        cl[row] = 0.0
+        cu[row] = 0.0
+    
+    # Группа 2: rD[0:23] - покрытие дефицита нагрузки
+    for i in range(im):
+        row = i + im
+        
+        C[row, i + im] = -1.0 / efficiency  # -CC[i] / efficiency
+        C[row, i + im * 2] = 1.0            # +CD[i]
+        C[row, i + im * 3] = 1.0            # +D[i]
+        
+        cl[row] = load[i]
+        cu[row] = max_real_number
+    
+    # Группа 3: rDmin[0:23] - ограничение минимального резерва
+    for i in range(im):
+        row = i + im * 2
+        
+        C[row, i + im] = 1.0 / efficiency   # +CC[i] / efficiency
+        C[row, i + im * 2] = -1.0           # -CD[i]
+        C[row, 97] = 1.0                    # +Rmax
+        
+        cl[row] = -load[i]
+        cu[row] = max_real_number
+    
+    # Группа 4: rDmax[0:23] - ограничение максимального дефицита
+    for i in range(im):
+        row = i + im * 3
+        
+        C[row, i + im * 3] = -1.0  # -D[i]
+        C[row, 96] = 1.0           # +Dmax
+        
+        cl[row] = 0.0
+        cu[row] = max_real_number
+    
+    # === Границы переменных ===
+    lb = np.zeros(n)
+    ub = np.full(n, max_real_number)
+    
+    # Ограничения на параметры СНЭЭ
+    for i in range(im):
+        ub[i] = capacity                    # dL[i] <= capacity
+        ub[i + im] = nin * efficiency       # CC[i] <= nin * efficiency
+        ub[i + im * 2] = nout               # CD[i] <= nout
+    
+    # === Начальное приближение ===
+    x0 = lb + 1.0
+    
+    # === Решение задачи квадратичной оптимизации ===
+    def objective(x):
+        return 0.5 * x @ A @ x + b @ x
+    
+    def objective_grad(x):
+        return A @ x + b
+    
+    def objective_hess(x):
+        return A
+    
+    cl_processed = np.where(cl <= -1e100, -np.inf, cl)
+    cu_processed = np.where(cu >= 1e100, np.inf, cu)
+    
+    linear_constraint = LinearConstraint(C, cl_processed, cu_processed)
+    bounds = Bounds(lb, ub)
+    
+    result = minimize(
+        objective,
+        x0,
+        method='trust-constr',
+        jac=objective_grad,
+        hess=objective_hess,
+        constraints=[linear_constraint],
+        bounds=bounds,
+        options={'maxiter': 1000, 'verbose': 0}
+    )
+    
+    if not result.success:
+        print(f"Предупреждение: оптимизация завершилась с кодом {result.status}: {result.message}")
+    
+    x = result.x
+    
+    # === Извлечение результатов ===
+    dL = x[0:im]
+    CC = x[im:im*2]
+    CD = x[im*2:im*3]
+    D = x[im*3:im*4]
+    Dmax = x[96]
+    Rmax = x[97]
+    
+    # Расчет нагрузки СНЭЭ на шинах (с учетом КПД)
+    eens_load = CD - CC / efficiency
+    
+    # Проверка баланса
+    balance = np.sum(CC - CD)
+    if abs(balance) > 0.001:
+        print(f"Предупреждение: баланс заряд-разряд не сходится: {balance:.6f}")
+    
+    return {
+        'eens_energy_available': dL.tolist(),
+        'eens_load': eens_load.tolist(),
+        'deficit': round(Dmax, 2),
+        'reserve': round(Rmax, 2)
+    }
 

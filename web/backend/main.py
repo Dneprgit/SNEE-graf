@@ -15,7 +15,8 @@ from io import BytesIO
 
 from energy_storage_calculator import (
     EnergyStorageCalculator, calculate_optimal_parameters,
-    EnergyStorageCalculator_qp, calculate_optimal_parameters_qp
+    EnergyStorageCalculator_qp, calculate_optimal_parameters_qp,
+    calculate_dispatch_schedule_qp
 )
 from data_manager import DataManager
 
@@ -346,25 +347,97 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest):
         raise HTTPException(status_code=500, detail=f"Ошибка при расчете: {str(e)}")
 
 
+class CalculationRequestQP(BaseModel):
+    """Запрос на расчет графика СНЭЭ методом QP с заданными параметрами"""
+    load_profile: List[float] = Field(..., min_items=24, max_items=24, 
+                                      description="Суточный профиль баланса мощности (24 часа)")
+    nin: float = Field(..., ge=0, description="Номинальная активная входная мощность, МВт")
+    nout: float = Field(..., ge=0, description="Номинальная активная выходная мощность, МВт")
+    capacity: float = Field(..., ge=0, description="Энергия, фактически отдаваемая в рабочем диапазоне, МВтч")
+    efficiency: float = Field(..., gt=0, le=1, description="КПД цикла (0-1)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "load_profile": [
+                    27, 38, 84, 137.54, 21.33, -115.19, -166.18, -185.59, -130.30, -48.17,
+                    37.55, 152, 103, 175, 99, 49, -47, 7, -130, -176, -117, -222, -205, -166
+                ],
+                "nin": 95,
+                "nout": 140,
+                "capacity": 360,
+                "efficiency": 0.95
+            }
+        }
+
+
+@app.post("/api/v1/calculate-dispatch-qp")
+async def calculate_dispatch_with_params_qp(request: CalculationRequestQP):
+    """
+    Расчет диспетчерского графика СНЭЭ методом QP с заданными параметрами
+    
+    Портировано из VBA функции GetEESSOptimalLoad.
+    Решает задачу квадратичной оптимизации для нахождения оптимального
+    графика работы СНЭЭ при заданных параметрах системы.
+    """
+    try:
+        result = calculate_dispatch_schedule_qp(
+            load_profile=request.load_profile,
+            nin=request.nin,
+            nout=request.nout,
+            capacity=request.capacity,
+            efficiency=request.efficiency
+        )
+        
+        # Расчет результирующего баланса
+        resulting_balance = [
+            request.load_profile[i] + result['eens_load'][i] 
+            for i in range(24)
+        ]
+        
+        # Расчет SOC из уровня накопленной энергии
+        soc = result['eens_energy_available']
+        
+        return {
+            "eens_schedule": result['eens_load'],
+            "resulting_balance": resulting_balance,
+            "soc": soc,
+            "deficit": result['deficit'],
+            "reserve": result['reserve'],
+            "message": "График успешно рассчитан методом QP"
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при расчете графика: {str(e)}")
+
+
 @app.post("/api/v1/calculate-optimal-parameters-qp")
 async def calculate_optimal_params_qp(request: OptimalParametersRequest):
     """
-    Расчет оптимальных параметров мощности инвертора и емкости батареи (QP вариант)
+    Расчет оптимальных параметров СНЭЭ методом квадратичной оптимизации (QP)
     
-    Реализует алгоритм VariatePowerAndVolume2 из VBA кода.
-    Находит минимальные значения мощности и емкости, при которых
-    дефицит энергии и мощности минимизируются.
+    Портировано из VBA функции GetEESSOptimizedParameters.
+    Решает задачу квадратичной оптимизации для нахождения оптимальных:
+    - Номинальной активной входной мощности (Nin)
+    - Номинальной активной выходной мощности (Nout)
+    - Энергии, фактически отдаваемой в рабочем диапазоне (Capacity)
     """
     try:
-        optimal_power, optimal_capacity = calculate_optimal_parameters_qp(
+        result = calculate_optimal_parameters_qp(
             request.load_profile,
             request.efficiency
         )
         
         return {
-            "optimal_power_mw": optimal_power,
-            "optimal_capacity_mwh": optimal_capacity,
-            "message": "Оптимальные параметры успешно рассчитаны (QP)"
+            "nin": result['nin'],
+            "nout": result['nout'],
+            "capacity": result['capacity'],
+            "deficit": result['deficit'],
+            "eens_energy_available": result['eens_energy_available'],
+            "eens_load": result['eens_load'],
+            "message": "Оптимальные параметры успешно рассчитаны методом QP"
         }
         
     except ValueError as e:
