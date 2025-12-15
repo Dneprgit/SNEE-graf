@@ -305,10 +305,14 @@ def calculate_soc(eess_schedule: np.ndarray, rated_capacity: float) -> List[floa
 @app.post("/api/v1/calculate-qp", response_model=CalculationResponse)
 async def calculate_dispatch_schedule_qp(request: CalculationRequest):
     """
-    Расчет диспетчерского графика работы СНЭЭ (QP вариант)
+    Расчет диспетчерского графика работы СНЭЭ методом квадратичной оптимизации (QP вариант)
     
     Принимает профиль баланса мощности и параметры СНЭЭ,
-    возвращает оптимальный график работы и статистику
+    возвращает оптимальный график работы и статистику.
+    
+    ВАЖНО: Для QP варианта полярность баланса:
+    - Положительное значение = дефицит (потребность в покрытии)
+    - Отрицательное значение = избыток энергии
     """
     try:
         # Создание калькулятора
@@ -318,20 +322,31 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest):
             efficiency=request.efficiency
         )
         
-        # Расчет графика
-        eess_schedule = calculator.calculate_dispatch_schedule_qp(request.load_profile)
+        # Расчет графика через QP оптимизацию
+        qp_result = calculator.calculate_dispatch_schedule_qp(request.load_profile)
         
-        # Расчет результирующего баланса
+        # Извлекаем результаты
+        eess_schedule = qp_result['eess_load']
+        soc_energy = qp_result['soc_energy']
+        deficit_mw = qp_result['deficit']
+        reserve_mw = qp_result['reserve']
+        
+        # Расчет результирующего баланса (для QP: вычитаем, так как разряд покрывает дефицит)
         resulting_balance = [
-            request.load_profile[i] + eess_schedule[i] 
+            request.load_profile[i] - eess_schedule[i] 
             for i in range(24)
         ]
         
-        # Расчет SOC (состояния заряда)
-        soc = calculate_soc(eess_schedule, request.rated_capacity_mwh)
+        # SOC берем напрямую из QP оптимизации (это dblEENSEnergyAvailable)
+        soc = soc_energy.tolist()
         
-        # Получение сводной информации
-        summary = calculator.get_summary_qp(request.load_profile, eess_schedule)
+        # Получение сводной информации с учетом deficit и reserve
+        summary = calculator.get_summary_qp(
+            request.load_profile, 
+            eess_schedule,
+            deficit_mw=deficit_mw,
+            reserve_mw=reserve_mw
+        )
         
         return CalculationResponse(
             eess_schedule=eess_schedule.tolist(),

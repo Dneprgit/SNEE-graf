@@ -436,6 +436,15 @@ const DataInputSection_qp = ({
                 <FileText className="w-6 h-6 mr-2 text-primary-600" />
                 Редактирование значений баланса мощности
               </h3>
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4">
+                <p className="text-sm text-gray-700">
+                  <strong>Полярность для алгоритма QP:</strong>
+                  <br />
+                  • <span className="text-red-600 font-semibold">Положительное значение</span> = потребность в покрытии потребления (дефицит)
+                  <br />
+                  • <span className="text-green-600 font-semibold">Отрицательное значение</span> = избыток энергии
+                </p>
+              </div>
               <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-12 xl:grid-cols-12 2xl:grid-cols-24 gap-1">
                 {loadProfile.map((value, index) => (
                   <EditableValueInput
