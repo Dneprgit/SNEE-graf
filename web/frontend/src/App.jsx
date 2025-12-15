@@ -90,6 +90,12 @@ function App() {
       return;
     }
 
+    // Проверяем валидность КПД
+    if (!parameters.efficiency || parameters.efficiency <= 0 || parameters.efficiency > 1) {
+      setError('КПД должен быть в диапазоне от 0 до 1 (например, 0.95)');
+      return;
+    }
+
     setIsCalculating(true);
     setError(null);
 
@@ -110,6 +116,12 @@ function App() {
   const handleCalculate_qp = async () => {
     if (!loadProfile_qp || loadProfile_qp.length !== 24) {
       setError_qp('Необходимо загрузить корректный профиль баланса (24 значения)');
+      return;
+    }
+
+    // Проверяем валидность КПД
+    if (!parameters_qp.efficiency || parameters_qp.efficiency <= 0 || parameters_qp.efficiency > 1) {
+      setError_qp('КПД должен быть в диапазоне от 0 до 1 (например, 0.95)');
       return;
     }
 

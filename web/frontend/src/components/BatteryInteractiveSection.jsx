@@ -72,6 +72,11 @@ const BatteryInteractiveSection = ({ loadProfile, parameters, setParameters, max
     const calculateOptimal = async () => {
       if (!loadProfile || loadProfile.length !== 24) return;
       
+      // Проверяем валидность КПД перед отправкой запроса
+      if (!parameters.efficiency || parameters.efficiency <= 0 || parameters.efficiency > 1) {
+        return;
+      }
+      
       setIsLoadingOptimal(true);
       try {
         const result = await apiService.calculateOptimalParameters({

@@ -15,6 +15,12 @@ const DataInputSection = ({
   const [uploadStatus, setUploadStatus] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null); // { name, data }
   const [lastExcelData, setLastExcelData] = useState(null);
+  const [efficiencyInput, setEfficiencyInput] = useState(String(parameters.efficiency || ''));
+
+  // Синхронизация локального состояния efficiency с внешним параметром
+  useEffect(() => {
+    setEfficiencyInput(String(parameters.efficiency || ''));
+  }, [parameters.efficiency]);
 
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -68,6 +74,21 @@ const DataInputSection = ({
       
       return updated;
     });
+  };
+
+  // Обработчики для поля КПД с локальным состоянием
+  const handleEfficiencyChange = (e) => {
+    setEfficiencyInput(e.target.value);
+  };
+
+  const handleEfficiencyBlur = () => {
+    const numValue = parseFloat(efficiencyInput);
+    if (!isNaN(numValue) && numValue > 0 && numValue <= 1) {
+      setParameters(prev => ({ ...prev, efficiency: numValue }));
+    } else {
+      // Возвращаем предыдущее корректное значение
+      setEfficiencyInput(String(parameters.efficiency));
+    }
   };
 
   // Автоматический расчет времени работы при загрузке данных
@@ -373,8 +394,9 @@ const DataInputSection = ({
                 </label>
                 <input
                   type="number"
-                  value={parameters.efficiency}
-                  onChange={(e) => handleParameterChange('efficiency', e.target.value)}
+                  value={efficiencyInput}
+                  onChange={handleEfficiencyChange}
+                  onBlur={handleEfficiencyBlur}
                   className="input-field"
                   min="0"
                   max="1"

@@ -79,6 +79,11 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
     const calculateOptimal = async () => {
       if (!loadProfile || loadProfile.length !== 24) return;
       
+      // Проверяем валидность КПД перед отправкой запроса
+      if (!parameters.efficiency || parameters.efficiency <= 0 || parameters.efficiency > 1) {
+        return;
+      }
+      
       setIsLoadingOptimal(true);
       try {
         const result = await apiService.calculateOptimalParameters_qp({
@@ -200,7 +205,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       viewport={{ once: true }}
       className="mb-8"
     >
-      <div className="card max-w-7xl mx-auto">
+      <div className="card mx-auto">
         <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
           <Battery className="w-6 h-6 mr-2 text-primary-600" />
           Интерактивный выбор параметров СНЭЭ (QP)

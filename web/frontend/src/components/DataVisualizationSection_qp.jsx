@@ -179,7 +179,7 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
           Интерактивный просмотр и редактирование профиля баланса мощности
         </p>
         {/* Контейнер для статистики и графика */}
-        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 mb-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 mb-8 mx-auto">
         {/* Статистика */}
         <div className="grid grid-cols-2 gap-4">
           {[
