@@ -266,10 +266,22 @@ docker-compose up -d snee-backend-old snee-frontend-old
 ```bash
 cd /opt/snee-graf
 docker-compose stop snee-backend-spes snee-frontend-spes
+docker-compose stop snee-backend-spes
+docker-compose stop snee-frontend-spes
 docker-compose rm -f snee-backend-spes snee-frontend-spes
+docker-compose rm -f snee-backend-spes 
+docker-compose rm -f snee-frontend-spes
+
 docker rmi end2040/snee_web_spes-backend:latest end2040/snee_web_spes-frontend:latest
+docker rmi end2040/snee_web_spes-backend:latest
+docker rmi end2040/snee_web_spes-frontend:latest
 docker-compose pull snee-backend-spes snee-frontend-spes
+docker-compose pull snee-backend-spes
+docker-compose pull snee-frontend-spes
+
 docker-compose up -d snee-backend-spes snee-frontend-spes
+docker-compose up -d snee-backend-spes
+docker-compose up -d snee-frontend-spes
 ```
 
 ### Обновление обоих проектов сразу:
