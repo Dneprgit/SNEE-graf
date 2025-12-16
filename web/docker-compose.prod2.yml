@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  backend:  # Важно! Имя сервиса должно быть 'backend'
+  snee-backend:
     image: end2040/snee_web_spes-backend:latest
     container_name: snee-backend
     restart: always
@@ -19,7 +19,7 @@ services:
       retries: 3
       start_period: 40s
 
-  frontend:
+  snee-frontend:
     image: end2040/snee_web_spes-frontend:latest
     container_name: snee-frontend
     restart: always
@@ -28,7 +28,7 @@ services:
     networks:
       - snee-network
     depends_on:
-      - backend
+      - snee-backend
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
@@ -39,3 +39,4 @@ services:
 networks:
   snee-network:
     driver: bridge
+
