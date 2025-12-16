@@ -352,17 +352,17 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
 
           
           {/* Контейнер для двух SVG батарей */}
-          <div className="flex flex-col lg:flex-row gap-4 items-center justify-center">
+          <div className="w-full flex flex-col lg:flex-row gap-6 items-stretch">
             
             {/* SVG батарея изменения параметров выходной мощности и энергии */}
-            <div className="flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center">
               <svg
                 ref={svgRef}
                 viewBox={`0 0 ${viewWidth} ${viewHeight}`}
                 className="border-2 border-blue-300 rounded-xl bg-white shadow-lg"
                 style={{ 
                   width: '100%', 
-                  maxWidth: '500px',
+                  maxWidth: '100%',
                   height: 'auto',
                   cursor: (isDraggingHeight || isDraggingWidth) ? 'grabbing' : 'default',
                   userSelect: 'none'
@@ -613,13 +613,13 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
             </div>
 
             {/* SVG батарея изменения параметров входной мощности и энергии */}
-            <div className="flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center">
               <svg
                 viewBox={`0 0 ${viewWidth} ${viewHeight}`}
                 className="border-2 border-red-300 rounded-xl bg-white shadow-lg"
                 style={{ 
                   width: '100%', 
-                  maxWidth: '500px',
+                  maxWidth: '100%',
                   height: 'auto',
                   cursor: isDraggingHeightIn ? 'grabbing' : 'default',
                   userSelect: 'none'
