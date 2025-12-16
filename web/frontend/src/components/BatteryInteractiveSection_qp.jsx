@@ -10,9 +10,12 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   const maxDurationHours = loadProfile.filter(v => v < 0).length; // Количество часов в отрицательной зоне
   const minDeficit = Math.abs(Math.min(...loadProfile)) / parameters.dblEfficiency_pq; // Максимальный дефицит с учетом КПД
   
-  // Состояние для размеров батареи
+  // Состояние для размеров батареи (выходная)
   const [batteryPower, setBatteryPower] = useState(parameters.dblNOut_pq);
   const [batteryCapacity, setBatteryCapacity] = useState(parameters.dblCapacity_pq);
+  
+  // Состояние для входной батареи
+  const [batteryPowerIn, setBatteryPowerIn] = useState(parameters.dblNIn_pq);
   
   // Локальное состояние для оптимальных параметров (расширенный набор)
   const [optimalParams, setOptimalParamsLocal] = useState({
@@ -26,13 +29,18 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   });
   const [isLoadingOptimal, setIsLoadingOptimal] = useState(false);
   
-  // Состояние для drag & resize
+  // Состояние для drag & resize выходной батареи
   const [isDraggingHeight, setIsDraggingHeight] = useState(false);
   const [isDraggingWidth, setIsDraggingWidth] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartPower, setDragStartPower] = useState(0);
   const [dragStartCapacity, setDragStartCapacity] = useState(0);
+  
+  // Состояние для drag & resize входной батареи
+  const [isDraggingHeightIn, setIsDraggingHeightIn] = useState(false);
+  const [dragStartYIn, setDragStartYIn] = useState(0);
+  const [dragStartPowerIn, setDragStartPowerIn] = useState(0);
   
   const svgRef = useRef(null);
   
@@ -45,10 +53,16 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   const scaleX = (viewWidth - padding * 2) / maxDurationHours; // пиксели на час
   const scaleY = (viewHeight - padding * 2) / maxPower; // пиксели на МВт
   
-  // Размеры батареи в масштабированных координатах
+  // Размеры выходной батареи в масштабированных координатах
   const batteryDuration = batteryCapacity / batteryPower;
   const batteryWidth = batteryDuration * scaleX;
   const batteryHeight = batteryPower * scaleY;
+  
+  // Расчеты для входной батареи
+  const batteryChargeEnergy = batteryCapacity / parameters.dblEfficiency_pq; // Энергия на заряд
+  const batteryChargeDuration = batteryChargeEnergy / batteryPowerIn; // Время заряда
+  const batteryWidthIn = batteryChargeDuration * scaleX;
+  const batteryHeightIn = batteryPowerIn * scaleY;
   
   // Максимальные размеры
   const maxWidth = maxDurationHours * scaleX;
@@ -73,6 +87,24 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
     setBatteryPower(parameters.dblNOut_pq);
     setBatteryCapacity(parameters.dblCapacity_pq);
   }, [parameters.dblNOut_pq, parameters.dblCapacity_pq]);
+
+  // Синхронизация входной мощности при изменении параметров извне
+  useEffect(() => {
+    setBatteryPowerIn(parameters.dblNIn_pq);
+  }, [parameters.dblNIn_pq]);
+
+  // Обновление параметров при изменении входной мощности
+  useEffect(() => {
+    if (batteryPowerIn !== parameters.dblNIn_pq) {
+      const timer = setTimeout(() => {
+        setParameters(prev => ({
+          ...prev,
+          dblNIn_pq: batteryPowerIn,
+        }));
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [batteryPowerIn, parameters.dblNIn_pq, setParameters]);
 
   // Расчет оптимальных параметров при изменении профиля нагрузки или КПД
   useEffect(() => {
@@ -133,7 +165,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
     calculateOptimal();
   }, [loadProfile, parameters.dblEfficiency_pq]);
   
-  // Обработчики для drag высоты
+  // Обработчики для drag выходной батареи
   const handleMouseMove = (e) => {
     if (isDraggingHeight) {
       const deltaY = dragStartY - e.clientY;
@@ -162,15 +194,27 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       
       setBatteryCapacity(newCapacity);
     }
+    
+    // Обработка перетаскивания входной батареи
+    if (isDraggingHeightIn) {
+      const deltaY = dragStartYIn - e.clientY;
+      const deltaPower = (deltaY / scaleY);
+      let newPowerIn = dragStartPowerIn + deltaPower;
+      newPowerIn = Math.round(newPowerIn / 10) * 10; // Округление до 10 МВт
+      newPowerIn = Math.max(10, Math.min(maxPower, newPowerIn));
+      
+      setBatteryPowerIn(newPowerIn);
+    }
   };
   
   const handleMouseUp = () => {
     setIsDraggingHeight(false);
     setIsDraggingWidth(false);
+    setIsDraggingHeightIn(false);
   };
   
   useEffect(() => {
-    if (isDraggingHeight || isDraggingWidth) {
+    if (isDraggingHeight || isDraggingWidth || isDraggingHeightIn) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       return () => {
@@ -178,7 +222,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDraggingHeight, isDraggingWidth, dragStartY, dragStartX, dragStartPower, dragStartCapacity, scaleY, scaleX, maxPower, maxDurationHours, batteryDuration, batteryCapacity, batteryPower]);
+  }, [isDraggingHeight, isDraggingWidth, isDraggingHeightIn, dragStartY, dragStartX, dragStartPower, dragStartCapacity, dragStartYIn, dragStartPowerIn, scaleY, scaleX, maxPower, maxDurationHours, batteryDuration, batteryCapacity, batteryPower]);
   
   // Функция установки оптимальных параметров
   const resetToRecommended = () => {
@@ -188,9 +232,10 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       const roundedPowerOut = Math.round(optimalParams.power_out);
       const roundedCapacity = Math.round(optimalParams.capacity);
       
-      // Обновляем локальные состояния для интерактивного компонента (используем выходную мощность)
+      // Обновляем локальные состояния для интерактивного компонента
       setBatteryPower(roundedPowerOut);
       setBatteryCapacity(roundedCapacity);
+      setBatteryPowerIn(roundedPowerIn);
       
       // Обновляем глобальные параметры (для DataInputSection)
       setParameters(prev => ({
@@ -207,6 +252,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       
       setBatteryPower(recommendedPower);
       setBatteryCapacity(recommendedCapacity);
+      setBatteryPowerIn(recommendedPower);
       
       // Обновляем глобальные параметры
       setParameters(prev => ({
@@ -243,11 +289,17 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
                 <div>
                   <strong className="block mb-1">Как использовать:</strong>
                   <ul className="list-disc list-inside space-y-0.5 text-xs">
-                    <li>Тяните <span className="font-bold text-green-700">зеленый маркер</span> вверх/вниз для изменения мощности инвертора</li>
-                    <li>Тяните <span className="font-bold text-blue-700">синий маркер</span> влево/вправо для изменения емкости батареи</li>
-                    <li><span className="font-bold text-green-700">Зеленая</span> и <span className="font-bold text-blue-700">синяя</span> пунктирные линии показывают оптимальные параметры мощности и длительности</li>
-                    <li><span className="font-bold text-red-700">Красная</span> пунктирная линия показывает минимально необходимую мощность для покрытия максимального дефицита</li>
-                  
+                    <li><span className="font-bold text-blue-600">Левая батарея (синяя)</span> - управление выходной мощностью и емкостью:</li>
+                    <ul className="list-circle list-inside ml-4 space-y-0.5">
+                      <li>Тяните <span className="font-bold text-green-700">зеленый маркер</span> вверх/вниз для изменения выходной мощности</li>
+                      <li>Тяните <span className="font-bold text-blue-700">синий маркер</span> влево/вправо для изменения емкости батареи</li>
+                    </ul>
+                    <li><span className="font-bold text-red-600">Правая батарея (красная)</span> - управление входной мощностью:</li>
+                    <ul className="list-circle list-inside ml-4 space-y-0.5">
+                      <li>Тяните <span className="font-bold text-red-700">красный маркер</span> вверх/вниз для изменения входной мощности</li>
+                      <li>Ширина батареи изменяется автоматически при изменении емкости выходной батареи</li>
+                    </ul>
+                    <li><span className="font-bold text-green-700">Зеленый</span> и <span className="font-bold text-red-700">красный</span> пунктиры показывают оптимальные выходную и входную мощности</li>
                   </ul>
                 </div>
               </div>
@@ -299,12 +351,15 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
             </div>
 
           
-          {/* SVG батарея */}
-          <div className="flex items-center justify-center">
+          {/* Контейнер для двух SVG батарей */}
+          <div className="flex flex-col lg:flex-row gap-4 items-center justify-center">
+            
+            {/* SVG батарея изменения параметров выходной мощности и энергии */}
+            <div className="flex items-center justify-center">
               <svg
                 ref={svgRef}
                 viewBox={`0 0 ${viewWidth} ${viewHeight}`}
-                className="border-2 border-gray-300 rounded-xl bg-white shadow-lg"
+                className="border-2 border-blue-300 rounded-xl bg-white shadow-lg"
                 style={{ 
                   width: '100%', 
                   maxWidth: '500px',
@@ -555,6 +610,207 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
                   Мощность (МВт)
                 </text>
               </svg>
+            </div>
+
+            {/* SVG батарея изменения параметров входной мощности и энергии */}
+            <div className="flex items-center justify-center">
+              <svg
+                viewBox={`0 0 ${viewWidth} ${viewHeight}`}
+                className="border-2 border-red-300 rounded-xl bg-white shadow-lg"
+                style={{ 
+                  width: '100%', 
+                  maxWidth: '500px',
+                  height: 'auto',
+                  cursor: isDraggingHeightIn ? 'grabbing' : 'default',
+                  userSelect: 'none'
+                }}
+              >
+                {/* Фон с сеткой */}
+                <defs>
+                  <pattern id="grid-in" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f0f0f0" strokeWidth="0.5"/>
+                  </pattern>
+                  <linearGradient id="batteryGradient-in" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+                    <stop offset="50%" stopColor="#dc2626" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#b91c1c" stopOpacity="0.3" />
+                  </linearGradient>
+                  <filter id="shadow-in">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
+                  </filter>
+                </defs>
+                
+                <rect width={viewWidth} height={viewHeight} fill="url(#grid-in)" />
+                
+                {/* Максимальная область (пунктир) */}
+                <rect
+                  x={padding}
+                  y={viewHeight - padding - maxHeight}
+                  width={maxWidth}
+                  height={maxHeight}
+                  fill="none"
+                  stroke="#94a3b8"
+                  strokeWidth="2"
+                  strokeDasharray="8,4"
+                  opacity="0.6"
+                />
+                
+                {/* Оптимальная входная мощность (красный пунктир) */}
+                {optimalParams.power_in && (
+                  <>
+                    <line
+                      x1={padding}
+                      y1={viewHeight - padding - optimalParams.power_in * scaleY}
+                      x2={padding + maxWidth}
+                      y2={viewHeight - padding - optimalParams.power_in * scaleY}
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      strokeDasharray="6,3"
+                      opacity="0.7"
+                    />
+                    <text
+                      x={padding + maxWidth + 5}
+                      y={viewHeight - padding - optimalParams.power_in * scaleY}
+                      fill="#ef4444"
+                      fontSize="10"
+                      fontWeight="bold"
+                    >
+                      {optimalParams.power_in.toFixed(0)} МВт
+                    </text>
+                  </>
+                )}
+                
+                {/* Подписи максимумов */}
+                <text
+                  x={padding + maxWidth + 5}
+                  y={viewHeight - padding - maxHeight}
+                  fill="#64748b"
+                  fontSize="11"
+                  fontWeight="bold"
+                >
+                  {maxPower.toFixed(0)} МВт
+                </text>
+                <text
+                  x={padding + maxWidth}
+                  y={viewHeight - padding + 20}
+                  fill="#64748b"
+                  fontSize="11"
+                  fontWeight="bold"
+                  textAnchor="end"
+                >
+                  {maxDurationHours.toFixed(1)} ч
+                </text>
+                
+                {/* Батарея входная */}
+                <g>
+                  {/* Тело батареи */}
+                  <rect
+                    x={padding}
+                    y={viewHeight - padding - batteryHeightIn}
+                    width={batteryWidthIn}
+                    height={batteryHeightIn}
+                    fill="url(#batteryGradient-in)"
+                    stroke="#991b1b"
+                    strokeWidth="3"
+                    rx="6"
+                    filter="url(#shadow-in)"
+                  />
+                  
+                  {/* Иконка батареи */}
+                  <g transform={`translate(${padding + batteryWidthIn / 2 - 15}, ${viewHeight - padding - batteryHeightIn / 2 - 20})`}>
+                    <rect x="5" y="0" width="20" height="30" rx="2" fill="white" opacity="0.95" stroke="#991b1b" strokeWidth="1.5"/>
+                    <rect x="10" y="-4" width="10" height="4" rx="1" fill="white" opacity="0.95" stroke="#991b1b" strokeWidth="1.5"/>
+                    <rect x="8" y="18" width="14" height="8" fill="#ef4444" opacity="0.9" rx="1"/>
+                  </g>
+                  
+                  {/* Энергия на заряд в центре батареи */}
+                  <text
+                    x={padding + batteryWidthIn / 2}
+                    y={viewHeight - padding - batteryHeightIn / 2 + 25}
+                    textAnchor="middle"
+                    fill="#991b1b"
+                    fontSize="16"
+                    fontWeight="bold"
+                    stroke="white"
+                    strokeWidth="0.5"
+                  >
+                    {batteryChargeEnergy.toFixed(0)} МВтч
+                  </text>
+                  
+                  {/* Значения на батарее */}
+                  <text
+                    x={padding + batteryWidthIn / 2}
+                    y={viewHeight - padding - batteryHeightIn - 10}
+                    textAnchor="middle"
+                    fill="#991b1b"
+                    fontSize="13"
+                    fontWeight="bold"
+                  >
+                    {batteryPowerIn.toFixed(0)} МВт
+                  </text>
+                  
+                  <text
+                    x={padding + batteryWidthIn / 2}
+                    y={viewHeight - padding + 20}
+                    textAnchor="middle"
+                    fill="#991b1b"
+                    fontSize="13"
+                    fontWeight="bold"
+                  >
+                    {batteryChargeDuration.toFixed(1)} ч
+                  </text>
+                  
+                  {/* Маркер изменения высоты (красный, справа) - только вертикальное изменение */}
+                  <g
+                    transform={`translate(${padding + batteryWidthIn + 20}, ${viewHeight - padding - batteryHeightIn / 2})`}
+                    onMouseDown={(e) => {
+                      setIsDraggingHeightIn(true);
+                      setDragStartYIn(e.clientY);
+                      setDragStartPowerIn(batteryPowerIn);
+                    }}
+                    style={{ cursor: 'ns-resize' }}
+                    opacity={isDraggingHeightIn ? 1 : 0.85}
+                  >
+                    <circle cx="0" cy="0" r="16" fill="#ef4444" stroke="#991b1b" strokeWidth="2.5" filter="url(#shadow-in)"/>
+                    <line x1="0" y1="-8" x2="0" y2="8" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+                    <polygon points="-5,-8 0,-12 5,-8" fill="white"/>
+                    <polygon points="-5,8 0,12 5,8" fill="white"/>
+                  </g>
+                </g>
+                
+                {/* Оси */}
+                <line x1={padding} y1={viewHeight - padding} x2={padding + maxWidth + 10} y2={viewHeight - padding} 
+                      stroke="#475569" strokeWidth="2" markerEnd="url(#arrowX-in)"/>
+                <line x1={padding} y1={viewHeight - padding} x2={padding} y2={viewHeight - padding - maxHeight - 10} 
+                      stroke="#475569" strokeWidth="2" markerEnd="url(#arrowY-in)"/>
+                
+                <defs>
+                  <marker id="arrowX-in" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                    <polygon points="0,0 10,5 0,10" fill="#475569"/>
+                  </marker>
+                  <marker id="arrowY-in" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                    <polygon points="0,0 10,5 0,10" fill="#475569"/>
+                  </marker>
+                </defs>
+                
+                {/* Подписи осей */}
+                <text x={padding + maxWidth / 2} y={viewHeight - 10} textAnchor="middle" fill="#475569" fontSize="12" fontWeight="bold">
+                  Время заряда (часы)
+                </text>
+                <text 
+                  x={15} 
+                  y={viewHeight - padding - maxHeight / 2} 
+                  textAnchor="middle" 
+                  fill="#475569" 
+                  fontSize="12"
+                  fontWeight="bold"
+                  transform={`rotate(-90, 15, ${viewHeight - padding - maxHeight / 2})`}
+                >
+                  Входная мощность (МВт)
+                </text>
+              </svg>
+            </div>
+            
           </div>
 
           {/* Оценочные параметры */}
