@@ -322,7 +322,7 @@ class EnergyStorageCalculator_qp:
     
     HOURS = 24
     
-    def __init__(self, rated_input_power_mw: float, rated_output_power_mw: float, rated_capacity_mwh: float, efficiency: float):
+    def __init__(self, rated_power_mw: float, rated_capacity_mwh: float, efficiency: float):
         """
         Инициализация калькулятора СНЭЭ
         
@@ -331,198 +331,296 @@ class EnergyStorageCalculator_qp:
             rated_capacity_mwh: Емкость батареи в МВтч
             efficiency: КПД цикла (0-1)
         """
-        if rated_input_power_mw < 0 or rated_output_power_mw < 0 or rated_capacity_mwh < 0:
-            raise ValueError("Мощность и емкость должны быть неотрицательными")
-        if efficiency < 0.5 or efficiency > 1:
-            raise ValueError("КПД должен быть в диапазоне [0.5, 1]")
+        if rated_power_mw <= 0 or rated_capacity_mwh <= 0:
+            raise ValueError("Мощность и емкость должны быть положительными")
+        if efficiency <= 0 or efficiency > 1:
+            raise ValueError("КПД должен быть в диапазоне (0, 1]")
             
-        self.rated_input_power = rated_input_power_mw
-        self.rated_output_power = rated_output_power_mw
-        #self.rated_power = rated_power_mw
+        self.rated_power = rated_power_mw
         self.rated_capacity = rated_capacity_mwh
         self.efficiency = efficiency
         self.half_cycle_efficiency = np.sqrt(efficiency)  # КПД полуцикла
-
-
-    def calculate_dispatch_schedule_qp(self, load_profile: List[float]) -> dict:
-
-        """
-        Расчет диспетчерского графика СНЭЭ методом оптимизации
     
+    def _solve_qp_optimization(self, system_load: np.ndarray, dbl_n_in: float, 
+                               dbl_n_out: float, dbl_capacity: float) -> np.ndarray:
+        """
+        Решение задачи квадратичной оптимизации методом BLEICQPSolve (аналог alglib)
+        
+        Минимизирует: F(x) = 0.5 * x' * A * x + b' * x
+        При ограничениях: lb <= x <= ub и cl <= C' * x <= cu
+        
+        Args:
+            system_load: Баланс мощности по часам (24 значения)
+                        ВАЖНО: положительное = дефицит (потребность), отрицательное = избыток
+            dbl_n_in: Номинальная входная мощность (МВт)
+            dbl_n_out: Номинальная выходная мощность (МВт)
+            dbl_capacity: Емкость батареи (МВтч)
+        
+        Returns:
+            Вектор решения x (98 значений):
+            x[0..23] = dL[] - энергия в батарее
+            x[24..47] = CC[] - мощность заряда
+            x[48..71] = CD[] - мощность разряда
+            x[72..95] = D[] - дефицит мощности по часам
+            x[96] = Dmax - максимальный дефицит
+            x[97] = Rmax - максимальный резерв
+        """
+        try:
+            from scipy.optimize import minimize, LinearConstraint, Bounds
+        except ImportError:
+            raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
+        
+        im = 24  # количество часов
+        n = im * 4 + 2  # 98 переменных
+        k = im * 4  # 96 ограничений
+        max_real_number = 1e300
+        
+        # 1. Построение матрицы A (квадратичная часть целевой функции)
+        # Минимальное диагональное усиление нулевой матрицы
+        A = np.zeros((n, n))
+        for i in range(n):
+            A[i, i] = 0.00000001
+        
+        # 2. Вектор b (линейная часть целевой функции - веса для переменных)
+        b = np.zeros(n)
+        # Веса для dL, CC, CD = 0
+        for i in range(im * 3):
+            b[i] = 0.0
+        # Веса для D[] (дефицит по часам)
+        for i in range(im * 3, im * 4):
+            b[i] = 0.04
+        # Вес для Dmax (максимальный дефицит)
+        b[im * 4] = 1.0
+        # Вес для Rmax (резерв)
+        b[im * 4 + 1] = 0.0016
+        
+        # 3. Матрица ограничений C и векторы cl, cu
+        C = np.zeros((k, n))
+        cl = np.zeros(k)
+        cu = np.zeros(k)
+        
+        # Заполнение ограничений согласно VB коду
+        
+        # Ограничение rL (баланс энергии): dL[i] - dL[i-1] - CC[i] + CD[i] = 0
+        for i in range(im):
+            j = (i - 1) if i > 0 else (im - 1)  # предыдущий час (циклически)
+            C[i, i] = 1.0          # dL[i]
+            C[i, j] = -1.0         # dL[i-1]
+            C[i, i + im] = -1.0    # -CC[i]
+            C[i, i + im * 2] = 1.0  # CD[i]
+            cl[i] = 0.0
+            cu[i] = 0.0
+        
+        # Ограничение rD (баланс мощности): -CC[i]/η + CD[i] + D[i] >= SystemLoad[i]
+        for i in range(im):
+            C[i + im, i + im] = -1.0 / self.efficiency  # -CC[i]/η
+            C[i + im, i + im * 2] = 1.0  # CD[i]
+            C[i + im, i + im * 3] = 1.0  # D[i]
+            cl[i + im] = system_load[i]
+            cu[i + im] = max_real_number
+        
+        # Ограничение rDmin (ограничение резерва): CC[i]/η - CD[i] + Rmax >= -SystemLoad[i]
+        for i in range(im):
+            C[i + im * 2, i + im] = 1.0 / self.efficiency  # CC[i]/η
+            C[i + im * 2, i + im * 2] = -1.0  # -CD[i]
+            C[i + im * 2, im * 4 + 1] = 1.0  # Rmax
+            cl[i + im * 2] = -system_load[i]
+            cu[i + im * 2] = max_real_number
+        
+        # Ограничение rDmax (ограничение дефицита): -D[i] + Dmax >= 0
+        for i in range(im):
+            C[i + im * 3, i + im * 3] = -1.0  # -D[i]
+            C[i + im * 3, im * 4] = 1.0  # Dmax
+            cl[i + im * 3] = 0.0
+            cu[i + im * 3] = max_real_number
+        
+        # 4. Границы переменных
+        lb = np.zeros(n)
+        ub = np.full(n, max_real_number)
+        
+        # Границы для dL[] - энергия в батарее
+        for i in range(im):
+            lb[i] = 0.0
+            ub[i] = dbl_capacity
+        
+        # Границы для CC[] - мощность заряда
+        for i in range(im):
+            lb[i + im] = 0.0
+            ub[i + im] = dbl_n_in * self.efficiency
+        
+        # Границы для CD[] - мощность разряда
+        for i in range(im):
+            lb[i + im * 2] = 0.0
+            ub[i + im * 2] = dbl_n_out
+        
+        # Границы для D[] - дефицит по часам
+        for i in range(im):
+            lb[i + im * 3] = 0.0
+            ub[i + im * 3] = max_real_number
+        
+        # Границы для Dmax и Rmax
+        lb[im * 4] = 0.0
+        ub[im * 4] = max_real_number
+        lb[im * 4 + 1] = 0.0
+        ub[im * 4 + 1] = max_real_number
+        
+        # 5. Масштаб переменных (все равны 1)
+        s = np.ones(n)
+        
+        # 6. Начальное приближение: x0 = lb + s
+        x0 = lb + s
+        
+        # 7. Преобразование для scipy: заменяем бесконечности
+        cu_finite = np.where(cu >= max_real_number / 10, np.inf, cu)
+        cl_finite = np.where(cl <= -max_real_number / 10, -np.inf, cl)
+        lb_finite = np.where(lb <= -max_real_number / 10, -np.inf, lb)
+        ub_finite = np.where(ub >= max_real_number / 10, np.inf, ub)
+        
+        # 8. Определение целевой функции и её градиента
+        # F(x) = 0.5 * x' * A * x + b' * x
+        def objective(x):
+            return 0.5 * np.dot(x, np.dot(A, x)) + np.dot(b, x)
+        
+        def objective_grad(x):
+            return np.dot(A, x) + b
+        
+        # 9. Формирование ограничений для scipy
+        # LinearConstraint: cl <= C @ x <= cu
+        linear_constraint = LinearConstraint(C, cl_finite, cu_finite)
+        bounds = Bounds(lb_finite, ub_finite)
+        
+        # 10. Решение задачи оптимизации
+        result = minimize(
+            objective,
+            x0,
+            method='trust-constr',
+            jac=objective_grad,
+            constraints=[linear_constraint],
+            bounds=bounds,
+            options={'verbose': 0, 'maxiter': 2000, 'gtol': 1e-6}
+        )
+        
+        # 11. Проверка результата
+        if not result.success:
+            print(f"Warning: QP Optimization did not fully converge. Status: {result.status}")
+            print(f"Message: {result.message}")
+            # Продолжаем с лучшим найденным решением
+        
+        x = result.x
+        
+        # 12. Проверка баланса заряд-разряд
+        balance_check = np.sum(x[im:im*2] - x[im*2:im*3])
+        if abs(balance_check) >= 0.001:
+            print(f"Warning: Charge-discharge balance check: {balance_check:.6f} МВтч (should be ~0)")
+        
+        return x
+        
+    def calculate_dispatch_schedule_qp(self, load_profile: List[float]) -> dict:
+        """
+        Расчет диспетчерского графика СНЭЭ методом квадратичной оптимизации (QP)
+        
+        Реализация алгоритма GetEESSOptimalLoad из VB (Module1.bas).
+        Использует BLEICQPSolve через scipy.optimize для поиска оптимального графика.
+        
         Args:
             load_profile: Суточный профиль баланса мощности (24 часа)
-            n_in: Номинальная входная мощность (МВт), >=0
-            n_out: Номинальная выходная мощность (МВт), >=0
-            capacity: Емкость батареи (МВтч), >=0
-            efficiency: КПД цикла [0.5-1]
-    
+                         ВАЖНО для QP: положительное = дефицит (потребность),
+                                       отрицательное = избыток энергии
+        
         Returns:
             Словарь с результатами:
             - eess_load: График нагрузки СНЭЭ (24 часа)
                         + разряд (выдача в сеть), - заряд (потребление из сети)
             - soc_energy: График заряда батареи (24 часа) в МВтч
-            - deficit: Максимальный остаточный дефицит мощности (МВт)
-            - reserve: Максимальный остаточный резерв мощности (МВт)
+            - deficit: Дефицит мощности (МВт)
+            - reserve: Резерв мощности (МВт)
         """
-        try:
-            from scipy.optimize import linprog
-        except ImportError:
-            raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
+        if len(load_profile) != self.HOURS:
+            raise ValueError(f"Профиль должен содержать {self.HOURS} значений")
         
-        if len(load_profile) != 24:
-            raise ValueError("Профиль должен содержать " + 24 + " значения")
-        if self.rated_input_power < 0:
-            raise ValueError("Номинальная входная мощность должна быть неотрицательной")
-        if self.rated_output_power < 0:
-            raise ValueError("Номинальная выходная мощность должна быть неотрицательной")
-        if self.rated_capacity < 0:
-            raise ValueError("Номинальная емкость должна быть неотрицательной")
-        if self.efficiency < 0.5 or self.efficiency > 1:
-            raise ValueError("КПД должен быть в диапазоне [0.5, 1]")
-        
-        im = len(load_profile)  # количество точек
-        n = im * 4 + 2  # 98 переменных: L[24] + CC[24] + CD[24] + D[24] + Dmax + Rmax
-        k_eq = im  # 24 ограничения типа равенство: rL[24]
-        k_ub = im * 3  # 72 ограничения типа неравенство: rD[24] + rDmax[24] + rRmax[24]
-        
-        # Преобразование load_profile в массив
+        # Преобразуем load_profile в numpy массив
         system_load = np.array(load_profile, dtype=float)
         
-        # 1. Настройки весовых коэффициентов (из VB12)
-        dmax_weight = 1.0  # максимальный дефицит мощности
-        nmax_weight = dmax_weight / (im + 1)  # мощность (25 = 24 часа + 1)
-        rmax_weight = nmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
-        d_weight = dmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
-        r_weight = rmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
-        
-        # 2. Вектор c (веса минимизируемой функции для переменных)
-        c = np.zeros(n)
-        for i in range(im * 3, im * 4):
-            c[i] = d_weight
-        c[im * 4] = dmax_weight  # дефицит мощности
-        c[im * 4 + 1] = rmax_weight  # резерв мощности
-        
-        # 3. Матрицы ограничений A_ub, A_eq, векторы ограничений b_ub, b_eq, cl, cu
-        A_eq = np.zeros((k_eq, n))
-        A_ub = np.zeros((k_ub, n))
-        b_eq = np.zeros(k_eq)
-        b_ub = np.zeros(k_ub)
-        
-        # 3.1. Ограничение rL (баланс энергии): L[i] - L[i-1] - CC[i] + CD[i] = 0
-        for i in range(im):
-            j = (i - 1) if i > 0 else (im - 1)
-            A_eq[i, i] = 1.0          # L[i]
-            A_eq[i, j] = -1.0         # L[i-1]
-            A_eq[i, i + im] = -1.0    # -CC[i]
-            A_eq[i, i + im * 2] = 1.0  # CD[i]
-        
-        # 3.2. Ограничение rD (дефицит мощности): CC[i]/η - CD[i] - D[i] <= -Load[i]
-        for i in range(im):
-            A_ub[i, i + im] = 1.0 / self.efficiency  # CC[i]/η
-            A_ub[i, i + im * 2] = -1.0  # -CD[i]
-            A_ub[i, i + im * 3] = -1.0  # -D[i]
-            b_ub[i] = -system_load[i]
-        
-        # 3.3. Ограничение rRmax (максимальный резерв мощности): - CC[i]/η + CD[i] + Rmax <= Load[i]
-        for i in range(im):
-            A_ub[i + im, i + im] = -1.0 / self.efficiency  # -CC[i]/η
-            A_ub[i + im, i + im * 2] = 1.0  # CD[i]
-            A_ub[i + im, im * 4 + 1] = 1.0  # Rmax
-            b_ub[i + im] = -system_load[i]
-
-        # 3.4. Ограничение rDmax (максимальный дефицит): D[i] - Dmax <= 0
-        for i in range(im):
-            A_ub[i + im * 2, i + im * 3] = 1.0  # D[i]
-            A_ub[i + im * 2, im * 4] = -1.0  # -Dmax
-        
-        # 4. Границы переменных
-        lb = np.zeros(n)
-        ub = np.full(n, np.inf) # Границы для L[], CC[], CD[], Dmax, Rmax
-        
-        # 4.1. Границы для L[] - уровень заряда
-        for i in range(im):
-            ub[i] = self.rated_capacity
-
-        # 4.2. Границы для CС[] - выходная мощность
-        for i in range(im):
-            ub[i + im] = self.rated_output_power
-
-        # 4.3. Границы для CD[] - входная мощность
-        for i in range(im):
-            ub[i + im * 2] = self.rated_input_power * self.efficiency
-
-        # 4.4. Границы для D[] - дефицит по часам
-        for i in range(im):
-            ub[i + im * 3] = max(0.0, system_load[i])
-
-        # 4.5. Формирование ограничений для scipy (список кортежей для каждой переменной)
-        bounds = [(lb[i], ub[i]) for i in range(n)]
-        
-        # 5. Начальное приближение не формируем
-
-        # 6. Решение задачи оптимизации
-        # На время отладки указать: options={'disp': True}
-        solver_name = "SciPy.Optimize.LinProg.HiGHS. "
-        result = linprog(
-            c=c,
-            A_ub=A_ub,
-            b_ub=b_ub,
-            A_eq=A_eq,
-            b_eq=b_eq,
-            bounds=bounds,
-            method='highs',
-            options={'disp': True}
+        # Вызов QP оптимизатора
+        x = self._solve_qp_optimization(
+            system_load=system_load,
+            dbl_n_in=self.rated_power,
+            dbl_n_out=self.rated_power,
+            dbl_capacity=self.rated_capacity
         )
         
-        # 7. Проверка результата: 0 - нормальное завершение, 1 - не сошелся, 2 - ограничения несовместны, 3 - задача неограничена, 4 - ошибка в алгоритме HiGHS
-        if result.status > 0:
-            error_messages = {
-                1: "Алгоритм оптимизации не сошелся (достигнут лимит времени или итераций)",
-                2: "Ограничения задачи несовместны",
-                3: "Задача оптимизации неограничена",
-                4: "Внутренняя ошибка алгоритма"
-            }
-            error_msg = solver_name + error_messages.get(result.status, f"Неизвестная ошибка оптимизации (статус: {result.status})")
-            full_error = f"{error_msg}\n\nДетали: {result.message}"
-            print(f"Warning: {full_error}")
-            raise ValueError(full_error)
+        im = 24
         
-        if result.x is None:
-            raise ValueError(solver_name + "Оптимизация не вернула решение. Проверьте входные данные.")
+        # Извлечение результатов из вектора решения x
+        # x[0..23] = dL[] - энергия в батарее
+        dbl_eens_energy_available = x[0:im]
         
-        x = result.x
-
-        # 8. Проверка баланса заряд-разряд
-        balance_check = sum(x[i + im] - x[i + im * 2] for i in range(im))
-        if abs(balance_check) >= 0.001:
-            warning_msg = f"Предупреждение: баланс заряд-разряд нарушен на {balance_check:.3f} МВтч"
-            print(warning_msg)
-            # Не выбрасываем ошибку, только предупреждаем
-        
-        # 9. Извлечение результатов
-        # x[1..24] = L[] - уровень запаса энергии в батарее
-        eens_energy_available = x[1:im]
-
-        # x[25..48] = CC[] - мощность заряда, приведенная к выходу
-        # x[49..72] = CD[] - мощность разряда
-        # dblEENSLoad[i] = CD[i] - CC[i]/η, η - КПД
-        eens_load = np.zeros(im)
+        # x[24..47] = CC[] - мощность заряда
+        # x[48..71] = CD[] - мощность разряда
+        # dblEENSLoad[i] = CD[i] - CC[i]/η (формула из VB, строка 218)
+        dbl_eens_load = np.zeros(im)
         for i in range(im):
-            eens_load[i] = x[i + im * 2] - x[i + im] / self.efficiency
+            dbl_eens_load[i] = x[i + im * 2] - x[i + im] / self.efficiency
         
-        # x[97] = Dmax - максимальный дефицит
-        system_with_enss_max_deficite = x[im * 4 + 1]
+        # x[96] = Dmax - максимальный дефицит
+        dbl_system_with_enss_load_deficite = x[im * 4]
         
-        # x[98] = Rmax - максимальный резерв
-        system_with_enss_max_reserve = x[im * 4 + 2]
-            
+        # x[97] = Rmax - максимальный резерв
+        dbl_system_with_enss_load_reserve = x[im * 4 + 1]
+        
         return {
-            'eess_load': eens_load,
-            'soc_energy': eens_energy_available,
-            'deficit': system_with_enss_max_deficite,
-            'reserve': system_with_enss_max_reserve
+            'eess_load': dbl_eens_load,
+            'soc_energy': dbl_eens_energy_available,
+            'deficit': dbl_system_with_enss_load_deficite,
+            'reserve': dbl_system_with_enss_load_reserve
         }
-   
+    
+    def _get_level_bounded_gp(self, lb: np.ndarray, ub: np.ndarray, 
+                          dir_factor: int, area: float) -> float:
+        """
+        Water-filling алгоритм для определения уровня заряда/разряда (QP вариант)
+        
+        Args:
+            lb: Нижние границы интервалов
+            ub: Верхние границы интервалов
+            dir_factor: Направление (1 или -1)
+            area: Требуемая площадь (энергия)
+        
+        Returns:
+            Оптимальный уровень
+        """
+        n = len(lb)
+        direction = 1 if dir_factor >= 0 else -1
+        
+        # Создание списка событий (вход/выход из интервала)
+        events = []
+        for i in range(n):
+            events.append((lb[i] * direction, direction))
+            events.append((ub[i] * direction, -direction))
+        
+        # Сортировка по координате, при равенстве - по убыванию фактора
+        events.sort(key=lambda x: (x[0], -x[1]))
+        
+        level = events[0][0]
+        s = 0.0
+        cnt = 0
+        
+        for i, (coord, factor) in enumerate(events):
+            if level < coord:
+                break
+                
+            s += coord * factor
+            cnt += factor
+            
+            if cnt > 0:
+                level = (s + area) / cnt
+            elif i < len(events) - 1:
+                level = events[i + 1][0]
+            else:
+                level = coord
+                
+        return level * direction
+    
     def get_summary_qp(self, load_profile: List[float], 
                    eess_schedule: np.ndarray,
                    deficit_mw: float = None,
@@ -602,7 +700,7 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     
     Args:
         load_profile: Суточный профиль баланса мощности (24 часа)
-        efficiency: КПД цикла [0.5-1]
+        efficiency: КПД цикла (0-1)
     
     Returns:
         dict с ключами:
@@ -617,23 +715,23 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
         raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
     
     if len(load_profile) != 24:
-        raise ValueError("Профиль должен содержать " + 24 + " значения")
-    if efficiency < 0.5 or efficiency > 1:
-        raise ValueError("КПД должен быть в диапазоне [0.5, 1]")
+        raise ValueError("Профиль должен содержать 24 значения")
+    if efficiency <= 0 or efficiency > 1:
+        raise ValueError("КПД должен быть в диапазоне (0, 1]")
     
-    im = len(load_profile)  # количество точек
+    im = 24  # количество часов
     n = im * 4 + 4  # 100 переменных: L[24] + CC[24] + CD[24] + D[24] + Dmax + Nin + Nout + C
     k_eq = im  # 24 ограничения типа равенство: rL[24]
     k_ub = im * 5  # 120 ограничений типа неравенство: rD[24] + rC[24] + rNi[24] + rNo[24] + rDmax[24]
     
     # Преобразование load_profile в массив
-    system_load = np.array(load_profile, dtype=float)
+    dbl_system_load = np.array(load_profile, dtype=float)
     
     # 1. Настройки весовых коэффициентов (из VB12)
     dmax_weight = 1.0  # максимальный дефицит мощности
-    nmax_weight = dmax_weight * 0.5 / (im + 1)  # мощность (25 = 24 часа + 1)
-    capacity_weight = nmax_weight / (im + 1)  # емкость (25 = 24 часа + 1)
-    d_weight = nmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
+    nmax_weight = dmax_weight * 0.5 / 25  # мощность (25 = 24 часа + 1)
+    capacity_weight = nmax_weight / 25  # емкость (25 = 24 часа + 1)
+    d_weight = nmax_weight / 25  # дефицит (25 = 24 часа + 1)
     
     # 2. Вектор c (веса минимизируемой функции для переменных)
     c = np.zeros(n)
@@ -650,7 +748,7 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     b_eq = np.zeros(k_eq)
     b_ub = np.zeros(k_ub)
     
-    # 3.1. Ограничение rL (баланс энергии): L[i] - L[i-1] - CC[i] + CD[i] = 0
+    # 3.1. Ограничение rL (баланс энергии): L[i] - dL[i-1] - CC[i] + CD[i] = 0
     for i in range(im):
         j = (i - 1) if i > 0 else (im - 1)
         A_eq[i, i] = 1.0          # L[i]
@@ -663,7 +761,7 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
         A_ub[i, i + im] = 1.0 / efficiency  # CC[i]/η
         A_ub[i, i + im * 2] = -1.0  # -CD[i]
         A_ub[i, i + im * 3] = -1.0  # -D[i]
-        b_ub[i] = -system_load[i]
+        b_ub[i] = -dbl_system_load[i]
     
     # 3.3. Ограничение rC (емкость): L[i] - C <= 0
     for i in range(im):
@@ -687,11 +785,11 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     
     # 4. Границы переменных
     lb = np.zeros(n)
-    ub = np.full(n, np.inf) # Границы для L[], CC[], CD[], Dmax, Nin, Nout, C
+    ub = np.full(n, np.inf) # Границы для dL[], CC[], CD[], Dmax, Nin, Nout, C
     
     # 4.1. Границы для D[] - дефицит по часам
     for i in range(im):
-        ub[i + im * 3] = max(0.0, system_load[i])
+        ub[i + im * 3] = max(0.0, dbl_system_load[i])
 
     # 4.2. Формирование ограничений для scipy (список кортежей для каждой переменной)
     bounds = [(lb[i], ub[i]) for i in range(n)]
@@ -700,7 +798,6 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
 
     # 6. Решение задачи оптимизации
     # На время отладки указать: options={'disp': True}
-    solver_name = "SciPy.Optimize.LinProg.HiGHS. "
     result = linprog(
         c=c,
         A_ub=A_ub,
@@ -715,18 +812,18 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     # 7. Проверка результата: 0 - нормальное завершение, 1 - не сошелся, 2 - ограничения несовместны, 3 - задача неограничена, 4 - ошибка в алгоритме HiGHS
     if result.status > 0:
         error_messages = {
-            1: "Алгоритм оптимизации не сошелся (достигнут лимит времени или итераций)",
-            2: "Ограничения задачи несовместны",
-            3: "Задача оптимизации неограничена",
-            4: "Внутренняя ошибка алгоритма"
+            1: "Алгоритм оптимизации не сошелся (достигнут лимит итераций)",
+            2: "Ограничения задачи несовместны. Возможно, профиль нагрузки требует слишком большие параметры СНЭЭ",
+            3: "Задача оптимизации неограничена (отсутствуют ограничения сверху)",
+            4: "Внутренняя ошибка алгоритма HiGHS"
         }
-        error_msg = solver_name + error_messages.get(result.status, f"Неизвестная ошибка оптимизации (статус: {result.status})")
+        error_msg = error_messages.get(result.status, f"Неизвестная ошибка оптимизации (статус: {result.status})")
         full_error = f"{error_msg}\n\nДетали: {result.message}"
         print(f"Warning: {full_error}")
         raise ValueError(full_error)
     
     if result.x is None:
-        raise ValueError(solver_name + "Оптимизация не вернула решение. Проверьте входные данные.")
+        raise ValueError("Оптимизация не вернула решение. Проверьте входные данные.")
     
     x = result.x
 
@@ -748,6 +845,4 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
         "optimal_power_out_mw": round(n_out, 2),
         "optimal_capacity_mwh": round(capacity, 2),
         "deficit_mw": round(system_with_enss_load_deficite, 2)
-    }
-
-
+    } 

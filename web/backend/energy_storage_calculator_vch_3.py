@@ -322,7 +322,7 @@ class EnergyStorageCalculator_qp:
     
     HOURS = 24
     
-    def __init__(self, rated_input_power_mw: float, rated_output_power_mw: float, rated_capacity_mwh: float, efficiency: float):
+    def __init__(self, rated_power_mw: float, rated_capacity_mwh: float, efficiency: float):
         """
         Инициализация калькулятора СНЭЭ
         
@@ -331,198 +331,76 @@ class EnergyStorageCalculator_qp:
             rated_capacity_mwh: Емкость батареи в МВтч
             efficiency: КПД цикла (0-1)
         """
-        if rated_input_power_mw < 0 or rated_output_power_mw < 0 or rated_capacity_mwh < 0:
+        if rated_power_mw < 0 or rated_capacity_mwh < 0:
             raise ValueError("Мощность и емкость должны быть неотрицательными")
         if efficiency < 0.5 or efficiency > 1:
             raise ValueError("КПД должен быть в диапазоне [0.5, 1]")
             
-        self.rated_input_power = rated_input_power_mw
-        self.rated_output_power = rated_output_power_mw
-        #self.rated_power = rated_power_mw
+        self.rated_power = rated_power_mw
         self.rated_capacity = rated_capacity_mwh
         self.efficiency = efficiency
         self.half_cycle_efficiency = np.sqrt(efficiency)  # КПД полуцикла
-
-
-    def calculate_dispatch_schedule_qp(self, load_profile: List[float]) -> dict:
-
-        """
-        Расчет диспетчерского графика СНЭЭ методом оптимизации
     
+    def calculate_dispatch_schedule_qp(self, load_profile: List[float]) -> dict:
+        """
+        Расчет диспетчерского графика СНЭЭ методом квадратичной оптимизации (QP)
+        
+        Реализация алгоритма GetEESSOptimalLoad из VB (Module1.bas).
+        Использует BLEICQPSolve через scipy.optimize для поиска оптимального графика.
+        
         Args:
             load_profile: Суточный профиль баланса мощности (24 часа)
-            n_in: Номинальная входная мощность (МВт), >=0
-            n_out: Номинальная выходная мощность (МВт), >=0
-            capacity: Емкость батареи (МВтч), >=0
-            efficiency: КПД цикла [0.5-1]
-    
+                         ВАЖНО для QP: положительное = дефицит (потребность),
+                                       отрицательное = избыток энергии
+        
         Returns:
             Словарь с результатами:
             - eess_load: График нагрузки СНЭЭ (24 часа)
                         + разряд (выдача в сеть), - заряд (потребление из сети)
             - soc_energy: График заряда батареи (24 часа) в МВтч
-            - deficit: Максимальный остаточный дефицит мощности (МВт)
-            - reserve: Максимальный остаточный резерв мощности (МВт)
+            - deficit: Дефицит мощности (МВт)
+            - reserve: Резерв мощности (МВт)
         """
-        try:
-            from scipy.optimize import linprog
-        except ImportError:
-            raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
+        if len(load_profile) != self.HOURS:
+            raise ValueError(f"Профиль должен содержать {self.HOURS} значений")
         
-        if len(load_profile) != 24:
-            raise ValueError("Профиль должен содержать " + 24 + " значения")
-        if self.rated_input_power < 0:
-            raise ValueError("Номинальная входная мощность должна быть неотрицательной")
-        if self.rated_output_power < 0:
-            raise ValueError("Номинальная выходная мощность должна быть неотрицательной")
-        if self.rated_capacity < 0:
-            raise ValueError("Номинальная емкость должна быть неотрицательной")
-        if self.efficiency < 0.5 or self.efficiency > 1:
-            raise ValueError("КПД должен быть в диапазоне [0.5, 1]")
-        
-        im = len(load_profile)  # количество точек
-        n = im * 4 + 2  # 98 переменных: L[24] + CC[24] + CD[24] + D[24] + Dmax + Rmax
-        k_eq = im  # 24 ограничения типа равенство: rL[24]
-        k_ub = im * 3  # 72 ограничения типа неравенство: rD[24] + rDmax[24] + rRmax[24]
-        
-        # Преобразование load_profile в массив
+        # Преобразуем load_profile в numpy массив
         system_load = np.array(load_profile, dtype=float)
         
-        # 1. Настройки весовых коэффициентов (из VB12)
-        dmax_weight = 1.0  # максимальный дефицит мощности
-        nmax_weight = dmax_weight / (im + 1)  # мощность (25 = 24 часа + 1)
-        rmax_weight = nmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
-        d_weight = dmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
-        r_weight = rmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
-        
-        # 2. Вектор c (веса минимизируемой функции для переменных)
-        c = np.zeros(n)
-        for i in range(im * 3, im * 4):
-            c[i] = d_weight
-        c[im * 4] = dmax_weight  # дефицит мощности
-        c[im * 4 + 1] = rmax_weight  # резерв мощности
-        
-        # 3. Матрицы ограничений A_ub, A_eq, векторы ограничений b_ub, b_eq, cl, cu
-        A_eq = np.zeros((k_eq, n))
-        A_ub = np.zeros((k_ub, n))
-        b_eq = np.zeros(k_eq)
-        b_ub = np.zeros(k_ub)
-        
-        # 3.1. Ограничение rL (баланс энергии): L[i] - L[i-1] - CC[i] + CD[i] = 0
-        for i in range(im):
-            j = (i - 1) if i > 0 else (im - 1)
-            A_eq[i, i] = 1.0          # L[i]
-            A_eq[i, j] = -1.0         # L[i-1]
-            A_eq[i, i + im] = -1.0    # -CC[i]
-            A_eq[i, i + im * 2] = 1.0  # CD[i]
-        
-        # 3.2. Ограничение rD (дефицит мощности): CC[i]/η - CD[i] - D[i] <= -Load[i]
-        for i in range(im):
-            A_ub[i, i + im] = 1.0 / self.efficiency  # CC[i]/η
-            A_ub[i, i + im * 2] = -1.0  # -CD[i]
-            A_ub[i, i + im * 3] = -1.0  # -D[i]
-            b_ub[i] = -system_load[i]
-        
-        # 3.3. Ограничение rRmax (максимальный резерв мощности): - CC[i]/η + CD[i] + Rmax <= Load[i]
-        for i in range(im):
-            A_ub[i + im, i + im] = -1.0 / self.efficiency  # -CC[i]/η
-            A_ub[i + im, i + im * 2] = 1.0  # CD[i]
-            A_ub[i + im, im * 4 + 1] = 1.0  # Rmax
-            b_ub[i + im] = -system_load[i]
-
-        # 3.4. Ограничение rDmax (максимальный дефицит): D[i] - Dmax <= 0
-        for i in range(im):
-            A_ub[i + im * 2, i + im * 3] = 1.0  # D[i]
-            A_ub[i + im * 2, im * 4] = -1.0  # -Dmax
-        
-        # 4. Границы переменных
-        lb = np.zeros(n)
-        ub = np.full(n, np.inf) # Границы для L[], CC[], CD[], Dmax, Rmax
-        
-        # 4.1. Границы для L[] - уровень заряда
-        for i in range(im):
-            ub[i] = self.rated_capacity
-
-        # 4.2. Границы для CС[] - выходная мощность
-        for i in range(im):
-            ub[i + im] = self.rated_output_power
-
-        # 4.3. Границы для CD[] - входная мощность
-        for i in range(im):
-            ub[i + im * 2] = self.rated_input_power * self.efficiency
-
-        # 4.4. Границы для D[] - дефицит по часам
-        for i in range(im):
-            ub[i + im * 3] = max(0.0, system_load[i])
-
-        # 4.5. Формирование ограничений для scipy (список кортежей для каждой переменной)
-        bounds = [(lb[i], ub[i]) for i in range(n)]
-        
-        # 5. Начальное приближение не формируем
-
-        # 6. Решение задачи оптимизации
-        # На время отладки указать: options={'disp': True}
-        solver_name = "SciPy.Optimize.LinProg.HiGHS. "
-        result = linprog(
-            c=c,
-            A_ub=A_ub,
-            b_ub=b_ub,
-            A_eq=A_eq,
-            b_eq=b_eq,
-            bounds=bounds,
-            method='highs',
-            options={'disp': True}
+        # Вызов QP оптимизатора
+        x = self._solve_qp_optimization(
+            system_load=system_load,
+            dbl_n_in=self.rated_power,
+            dbl_n_out=self.rated_power,
+            dbl_capacity=self.rated_capacity
         )
         
-        # 7. Проверка результата: 0 - нормальное завершение, 1 - не сошелся, 2 - ограничения несовместны, 3 - задача неограничена, 4 - ошибка в алгоритме HiGHS
-        if result.status > 0:
-            error_messages = {
-                1: "Алгоритм оптимизации не сошелся (достигнут лимит времени или итераций)",
-                2: "Ограничения задачи несовместны",
-                3: "Задача оптимизации неограничена",
-                4: "Внутренняя ошибка алгоритма"
-            }
-            error_msg = solver_name + error_messages.get(result.status, f"Неизвестная ошибка оптимизации (статус: {result.status})")
-            full_error = f"{error_msg}\n\nДетали: {result.message}"
-            print(f"Warning: {full_error}")
-            raise ValueError(full_error)
+        im = 24
         
-        if result.x is None:
-            raise ValueError(solver_name + "Оптимизация не вернула решение. Проверьте входные данные.")
+        # Извлечение результатов из вектора решения x
+        # x[0..23] = dL[] - энергия в батарее
+        dbl_eens_energy_available = x[0:im]
         
-        x = result.x
-
-        # 8. Проверка баланса заряд-разряд
-        balance_check = sum(x[i + im] - x[i + im * 2] for i in range(im))
-        if abs(balance_check) >= 0.001:
-            warning_msg = f"Предупреждение: баланс заряд-разряд нарушен на {balance_check:.3f} МВтч"
-            print(warning_msg)
-            # Не выбрасываем ошибку, только предупреждаем
-        
-        # 9. Извлечение результатов
-        # x[1..24] = L[] - уровень запаса энергии в батарее
-        eens_energy_available = x[1:im]
-
-        # x[25..48] = CC[] - мощность заряда, приведенная к выходу
-        # x[49..72] = CD[] - мощность разряда
-        # dblEENSLoad[i] = CD[i] - CC[i]/η, η - КПД
-        eens_load = np.zeros(im)
+        # x[24..47] = CC[] - мощность заряда
+        # x[48..71] = CD[] - мощность разряда
+        # dblEENSLoad[i] = CD[i] - CC[i]/η (формула из VB, строка 218)
+        dbl_eens_load = np.zeros(im)
         for i in range(im):
-            eens_load[i] = x[i + im * 2] - x[i + im] / self.efficiency
+            dbl_eens_load[i] = x[i + im * 2] - x[i + im] / self.efficiency
         
-        # x[97] = Dmax - максимальный дефицит
-        system_with_enss_max_deficite = x[im * 4 + 1]
+        # x[96] = Dmax - максимальный дефицит
+        dbl_system_with_enss_load_deficite = x[im * 4]
         
-        # x[98] = Rmax - максимальный резерв
-        system_with_enss_max_reserve = x[im * 4 + 2]
-            
+        # x[97] = Rmax - максимальный резерв
+        dbl_system_with_enss_load_reserve = x[im * 4 + 1]
+        
         return {
-            'eess_load': eens_load,
-            'soc_energy': eens_energy_available,
-            'deficit': system_with_enss_max_deficite,
-            'reserve': system_with_enss_max_reserve
+            'eess_load': dbl_eens_load,
+            'soc_energy': dbl_eens_energy_available,
+            'deficit': dbl_system_with_enss_load_deficite,
+            'reserve': dbl_system_with_enss_load_reserve
         }
-   
+    
     def get_summary_qp(self, load_profile: List[float], 
                    eess_schedule: np.ndarray,
                    deficit_mw: float = None,
@@ -750,4 +628,182 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
         "deficit_mw": round(system_with_enss_load_deficite, 2)
     }
 
+def calculate_dispatch_schedule_lp(load_profile: List[float], 
+    n_in: float, n_out: float, capacity: float, efficiency: float) -> dict:
 
+    """
+    Расчет диспетчерского графика СНЭЭ методом оптимизации
+   
+    Args:
+        load_profile: Суточный профиль баланса мощности (24 часа)
+        n_in: Номинальная входная мощность (МВт), >=0
+        n_out: Номинальная выходная мощность (МВт), >=0
+        capacity: Емкость батареи (МВтч), >=0
+        efficiency: КПД цикла [0.5-1]
+   
+    Returns:
+        Словарь с результатами:
+        - eess_load: График нагрузки СНЭЭ (24 часа)
+                    + разряд (выдача в сеть), - заряд (потребление из сети)
+        - soc_energy: График заряда батареи (24 часа) в МВтч
+        - deficit: Максимальный остаточный дефицит мощности (МВт)
+        - reserve: Максимальный остаточный резерв мощности (МВт)
+    """
+    try:
+        from scipy.optimize import linprog
+    except ImportError:
+        raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
+    
+    if len(load_profile) != 24:
+        raise ValueError("Профиль должен содержать " + 24 + " значения")
+    if n_in < 0:
+        raise ValueError("Номинальная входная мощность должна быть неотрицательной")
+    if n_out < 0:
+        raise ValueError("Номинальная выходная мощность должна быть неотрицательной")
+    if capacity < 0:
+        raise ValueError("Номинальная емкость должна быть неотрицательной")
+    if efficiency < 0.5 or efficiency > 1:
+        raise ValueError("КПД должен быть в диапазоне [0.5, 1]")
+    
+    im = len(load_profile)  # количество точек
+    n = im * 4 + 2  # 98 переменных: L[24] + CC[24] + CD[24] + D[24] + Dmax + Rmax
+    k_eq = im  # 24 ограничения типа равенство: rL[24]
+    k_ub = im * 3  # 72 ограничения типа неравенство: rD[24] + rDmax[24] + rRmax[24]
+    
+    # Преобразование load_profile в массив
+    system_load = np.array(load_profile, dtype=float)
+    
+    # 1. Настройки весовых коэффициентов (из VB12)
+    dmax_weight = 1.0  # максимальный дефицит мощности
+    nmax_weight = dmax_weight / (im + 1)  # мощность (25 = 24 часа + 1)
+    rmax_weight = nmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
+    d_weight = dmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
+    r_weight = rmax_weight / (im + 1)  # дефицит (25 = 24 часа + 1)
+    
+    # 2. Вектор c (веса минимизируемой функции для переменных)
+    c = np.zeros(n)
+    for i in range(im * 3 + 1, im * 4):
+        c[i] = d_weight
+    c[im * 4 + 1] = dmax_weight  # дефицит мощности
+    c[im * 4 + 2] = rmax_weight  # резерв мощности
+    
+    # 3. Матрицы ограничений A_ub, A_eq, векторы ограничений b_ub, b_eq, cl, cu
+    A_eq = np.zeros((k_eq, n))
+    A_ub = np.zeros((k_ub, n))
+    b_eq = np.zeros(k_eq)
+    b_ub = np.zeros(k_ub)
+    
+    # 3.1. Ограничение rL (баланс энергии): L[i] - L[i-1] - CC[i] + CD[i] = 0
+    for i in range(im):
+        j = (i - 1) if i > 0 else (im - 1)
+        A_eq[i, i] = 1.0          # L[i]
+        A_eq[i, j] = -1.0         # L[i-1]
+        A_eq[i, i + im] = -1.0    # -CC[i]
+        A_eq[i, i + im * 2] = 1.0  # CD[i]
+    
+    # 3.2. Ограничение rD (дефицит мощности): CC[i]/η - CD[i] - D[i] <= -Load[i]
+    for i in range(im):
+        A_ub[i, i + im] = 1.0 / efficiency  # CC[i]/η
+        A_ub[i, i + im * 2] = -1.0  # -CD[i]
+        A_ub[i, i + im * 3] = -1.0  # -D[i]
+        b_ub[i] = -system_load[i]
+    
+    # 3.3. Ограничение rRmax (максимальный резерв мощности): - CC[i]/η + CD[i] + Rmax <= Load[i]
+    for i in range(im):
+        A_ub[i + im, i + im] = -1.0 / efficiency  # -CC[i]/η
+        A_ub[i + im, i + im * 2] = 1.0  # CD[i]
+        A_ub[i + im, im * 4 + 1] = 1.0  # Rmax
+        b_ub[i + im] = -system_load[i]
+
+    # 3.4. Ограничение rDmax (максимальный дефицит): D[i] - Dmax <= 0
+    for i in range(im):
+        A_ub[i + im * 2, i + im * 3] = 1.0  # D[i]
+        A_ub[i + im * 2, im * 4] = -1.0  # -Dmax
+    
+    # 4. Границы переменных
+    lb = np.zeros(n)
+    ub = np.full(n, np.inf) # Границы для L[], CC[], CD[], Dmax, Rmax
+    
+    # 4.1. Границы для L[] - уровень заряда
+    for i in range(im):
+        ub[i] = capacity
+
+    # 4.2. Границы для CС[] - выходная мощность
+    for i in range(im):
+        ub[i + im] = n_out
+
+    # 4.3. Границы для CD[] - входная мощность
+    for i in range(im):
+        ub[i + im * 2] = n_in * efficiency
+
+    # 4.4. Границы для D[] - дефицит по часам
+    for i in range(im):
+        ub[i + im * 3] = max(0.0, system_load[i])
+
+    # 4.5. Формирование ограничений для scipy (список кортежей для каждой переменной)
+    bounds = [(lb[i], ub[i]) for i in range(n)]
+    
+    # 5. Начальное приближение не формируем
+
+    # 6. Решение задачи оптимизации
+    # На время отладки указать: options={'disp': True}
+    solver_name = "SciPy.Optimize.LinProg.HiGHS. "
+    result = linprog(
+        c=c,
+        A_ub=A_ub,
+        b_ub=b_ub,
+        A_eq=A_eq,
+        b_eq=b_eq,
+        bounds=bounds,
+        method='highs',
+        options={'disp': True}
+    )
+    
+    # 7. Проверка результата: 0 - нормальное завершение, 1 - не сошелся, 2 - ограничения несовместны, 3 - задача неограничена, 4 - ошибка в алгоритме HiGHS
+    if result.status > 0:
+        error_messages = {
+            1: "Алгоритм оптимизации не сошелся (достигнут лимит времени или итераций)",
+            2: "Ограничения задачи несовместны",
+            3: "Задача оптимизации неограничена",
+            4: "Внутренняя ошибка алгоритма"
+        }
+        error_msg = solver_name + error_messages.get(result.status, f"Неизвестная ошибка оптимизации (статус: {result.status})")
+        full_error = f"{error_msg}\n\nДетали: {result.message}"
+        print(f"Warning: {full_error}")
+        raise ValueError(full_error)
+    
+    if result.x is None:
+        raise ValueError(solver_name + "Оптимизация не вернула решение. Проверьте входные данные.")
+    
+    x = result.x
+
+    # 8. Проверка баланса заряд-разряд
+    balance_check = sum(x[i + im] - x[i + im * 2] for i in range(im))
+    if abs(balance_check) >= 0.001:
+        warning_msg = f"Предупреждение: баланс заряд-разряд нарушен на {balance_check:.3f} МВтч"
+        print(warning_msg)
+        # Не выбрасываем ошибку, только предупреждаем
+    
+    # 9. Извлечение результатов
+    # x[1..24] = L[] - уровень запаса энергии в батарее
+    eens_energy_available = x[1:im]
+
+    # x[25..48] = CC[] - мощность заряда, приведенная к выходу
+    # x[49..72] = CD[] - мощность разряда
+    # dblEENSLoad[i] = CD[i] - CC[i]/η, η - КПД
+    eens_load = np.zeros(im)
+    for i in range(im):
+        eens_load[i] = x[i + im * 2] - x[i + im] / efficiency
+    
+    # x[97] = Dmax - максимальный дефицит
+    system_with_enss_max_deficite = x[im * 4 + 1]
+    
+    # x[98] = Rmax - максимальный резерв
+    system_with_enss_max_reserve = x[im * 4 + 2]
+        
+    return {
+        'eess_load': eens_load,
+        'soc_energy': eens_energy_available,
+        'deficit': system_with_enss_load_deficite,
+        'reserve': system_with_enss_load_reserve
+    }
