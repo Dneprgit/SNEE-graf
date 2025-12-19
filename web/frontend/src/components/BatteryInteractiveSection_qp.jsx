@@ -28,6 +28,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
     charge_time: null           // вычисляемый
   });
   const [isLoadingOptimal, setIsLoadingOptimal] = useState(false);
+  const [optimalError, setOptimalError] = useState(null);
   
   // Состояние для drag & resize выходной батареи
   const [isDraggingHeight, setIsDraggingHeight] = useState(false);
@@ -142,8 +143,14 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
         if (setOptimalParams) {
           setOptimalParams(newOptimalParams);
         }
+        setOptimalError(null); // Сбрасываем ошибку при успешной оптимизации
       } catch (error) {
         console.error('Ошибка при расчете оптимальных параметров:', error);
+        
+        // Извлекаем детальное сообщение об ошибке
+        const errorMessage = error.response?.data?.detail || error.message || 'Неизвестная ошибка оптимизации';
+        setOptimalError(errorMessage);
+        
         const emptyParams = {
           power_in: null,
           power_out: null,
@@ -847,8 +854,14 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
                   </div>
                 </>
               ) : (
-                <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-300 text-center">
-                  <div className="text-sm text-gray-600">Оптимальные параметры недоступны</div>
+                <div className="bg-red-50 rounded-lg p-4 border-2 border-red-300">
+                  <div className="text-sm font-semibold text-red-700 mb-2">Оптимальные параметры недоступны</div>
+                  {optimalError && (
+                    <div className="text-xs text-red-600 bg-white rounded p-2 border border-red-200">
+                      <div className="font-medium mb-1">Причина:</div>
+                      <div className="whitespace-pre-wrap">{optimalError}</div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

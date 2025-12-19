@@ -72,7 +72,7 @@ F(x) = 0.5 * x' * A * x + b' * x
 
 ### Python:
 ```python
-from energy_storage_calculator import calculate_optimal_parameters_qp
+from energy_storage_calculator_ import calculate_optimal_parameters_qp
 
 load_profile = [1320, 1515, ..., 963]  # 24 значения
 efficiency = 0.95

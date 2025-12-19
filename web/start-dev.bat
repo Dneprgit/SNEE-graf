@@ -8,7 +8,7 @@ echo.
 
 REM Запуск backend в новом окне
 echo Starting Backend (FastAPI)...
-start "SNEE Backend" cmd /k "cd backend && if exist venv\Scripts\activate (venv\Scripts\activate) && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8002"
+start "SNEE Backend" cmd /k "cd backend && if exist venv\Scripts\activate.bat (venv\Scripts\activate.bat) && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8002"
 
 REM Небольшая задержка
 timeout /t 3 /nobreak >nul

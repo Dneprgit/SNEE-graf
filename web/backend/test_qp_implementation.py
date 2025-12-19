@@ -2,7 +2,7 @@
 Тестовый скрипт для проверки корректности реализации QP алгоритма
 """
 import numpy as np
-from energy_storage_calculator import EnergyStorageCalculator_qp
+from energy_storage_calculator_ import EnergyStorageCalculator_qp
 
 def test_qp_optimization():
     """Тест QP оптимизации с реальными данными"""

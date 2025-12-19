@@ -3,7 +3,7 @@
 Сравнение результатов Python ALGLIB с результатами из VB кода
 """
 
-from energy_storage_calculator import calculate_optimal_parameters_qp
+from energy_storage_calculator_ import calculate_optimal_parameters_qp
 
 # Тестовые данные - профиль баланса мощности из примера
 load_profile = [

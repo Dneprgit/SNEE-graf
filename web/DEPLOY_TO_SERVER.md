@@ -266,6 +266,7 @@ docker-compose up -d snee-backend-old snee-frontend-old
 ```bash
 cd /opt/snee-graf
 docker-compose stop snee-backend-spes snee-frontend-spes
+
 docker-compose stop snee-backend-spes
 docker-compose stop snee-frontend-spes
 docker-compose rm -f snee-backend-spes snee-frontend-spes
@@ -486,6 +487,12 @@ docker-compose up -d
 # 1. Остановить контейнеры
 docker stop snee-backend
 docker stop snee-frontend
+
+docker stop end2040/snee_web_spes-backend
+
+docker stop end2040/snee_web_spes-frontend
+
+
 
 # 2. Удалить контейнеры
 docker rm snee-backend

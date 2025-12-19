@@ -166,7 +166,7 @@ pip install scipy numpy
 ## Пример использования
 
 ```python
-from energy_storage_calculator import EnergyStorageCalculator_qp
+from energy_storage_calculator_ import EnergyStorageCalculator_qp
 
 # Создание калькулятора
 calculator = EnergyStorageCalculator_qp(

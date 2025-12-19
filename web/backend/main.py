@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from io import BytesIO
 
-from energy_storage_calculator import (
+from energy_storage_calculator_ import (
     EnergyStorageCalculator, calculate_optimal_parameters,
     EnergyStorageCalculator_qp, calculate_optimal_parameters_qp
 )
