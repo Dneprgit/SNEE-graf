@@ -397,7 +397,7 @@ class EnergyStorageCalculator_qp:
         
         # 2. Вектор c (веса минимизируемой функции для переменных)
         c = np.zeros(n)
-        for i in range(im * 3, im * 4):
+        for i in range(im * 3, im * 4):  # D[0..23] - все 24 элемента
             c[i] = d_weight
         c[im * 4] = dmax_weight  # дефицит мощности
         c[im * 4 + 1] = rmax_weight  # резерв мощности
@@ -428,7 +428,7 @@ class EnergyStorageCalculator_qp:
             A_ub[i + im, i + im] = -1.0 / self.efficiency  # -CC[i]/η
             A_ub[i + im, i + im * 2] = 1.0  # CD[i]
             A_ub[i + im, im * 4 + 1] = 1.0  # Rmax
-            b_ub[i + im] = -system_load[i]
+            b_ub[i + im] = system_load[i]   #eeee
 
         # 3.4. Ограничение rDmax (максимальный дефицит): D[i] - Dmax <= 0
         for i in range(im):
@@ -443,13 +443,13 @@ class EnergyStorageCalculator_qp:
         for i in range(im):
             ub[i] = self.rated_capacity
 
-        # 4.2. Границы для CС[] - выходная мощность
+        # 4.2. Границы для CС[] - входная мощность заряда
         for i in range(im):
-            ub[i + im] = self.rated_output_power
+            ub[i + im] = self.rated_input_power
 
-        # 4.3. Границы для CD[] - входная мощность
+        # 4.3. Границы для CD[] - выходная мощность разряда
         for i in range(im):
-            ub[i + im * 2] = self.rated_input_power * self.efficiency
+            ub[i + im * 2] = self.rated_output_power * self.efficiency
 
         # 4.4. Границы для D[] - дефицит по часам
         for i in range(im):
@@ -511,10 +511,10 @@ class EnergyStorageCalculator_qp:
             eens_load[i] = x[i + im * 2] - x[i + im] / self.efficiency
         
         # x[97] = Dmax - максимальный дефицит
-        system_with_enss_max_deficite = x[im * 4 + 1]
+        system_with_enss_max_deficite = x[im * 4] # eeee
         
         # x[98] = Rmax - максимальный резерв
-        system_with_enss_max_reserve = x[im * 4 + 2]
+        system_with_enss_max_reserve = x[im * 4 + 1] # eeee
             
         return {
             'eess_load': eens_load,
@@ -617,7 +617,7 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
         raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
     
     if len(load_profile) != 24:
-        raise ValueError("Профиль должен содержать " + 24 + " значения")
+        raise ValueError("Профиль должен содержать {24}  значения")
     if efficiency < 0.5 or efficiency > 1:
         raise ValueError("КПД должен быть в диапазоне [0.5, 1]")
     
@@ -637,7 +637,7 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     
     # 2. Вектор c (веса минимизируемой функции для переменных)
     c = np.zeros(n)
-    for i in range(im * 3, im * 4):
+    for i in range(im * 3, im * 4):  # D[0..23] - все 24 элемента
         c[i] = d_weight
     c[im * 4] = dmax_weight  # дефицит мощности
     c[im * 4 + 1] = nmax_weight  # входная мощность
