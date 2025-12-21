@@ -132,7 +132,8 @@ function App() {
     try {
       const result = await apiService.calculateSchedule_qp({
         load_profile: loadProfile_qp,
-        rated_power_mw: parameters_qp.dblNOut_pq,
+        rated_input_power_mw: parameters_qp.dblNIn_pq,
+        rated_output_power_mw: parameters_qp.dblNOut_pq,
         rated_capacity_mwh: parameters_qp.dblCapacity_pq,
         efficiency: parameters_qp.dblEfficiency_pq,
       });

@@ -302,8 +302,33 @@ def calculate_soc(eess_schedule: np.ndarray, rated_capacity: float) -> List[floa
 
 # =============== QP Варианты ===============
 
+class CalculationRequest_qp(BaseModel):
+    """Запрос на расчет графика СНЭЭ (QP вариант)"""
+    load_profile: List[float] = Field(..., min_items=24, max_items=24, 
+                                      description="Суточный профиль баланса мощности (24 часа)")
+    rated_input_power_mw: float = Field(..., ge=0, description="Входная мощность инвертора в МВт (заряд)")
+    rated_output_power_mw: float = Field(..., ge=0, description="Выходная мощность инвертора в МВт (разряд)")
+    rated_capacity_mwh: float = Field(..., ge=0, description="Емкость батареи в МВтч")
+    efficiency: float = Field(..., gt=0, le=1, description="КПД цикла (0-1)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "load_profile": [
+                    27, 38, 84, 137.5, 21.3, -115.2, -166.2, -185.6, -130.3, -48.21,
+                    37.5, 152, 103, 175, 99, 49, -47, 7, -130, -176,
+                    -117, -222, -205, -166
+                ],
+                "rated_input_power_mw": 115,
+                "rated_output_power_mw": 145,
+                "rated_capacity_mwh": 535,
+                "efficiency": 0.95
+            }
+        }
+
+
 @app.post("/api/v1/calculate-qp", response_model=CalculationResponse)
-async def calculate_dispatch_schedule_qp(request: CalculationRequest):
+async def calculate_dispatch_schedule_qp(request: CalculationRequest_qp):
     """
     Расчет диспетчерского графика работы СНЭЭ методом квадратичной оптимизации (QP вариант)
     
@@ -317,8 +342,8 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest):
     try:
         # Создание калькулятора
         calculator = EnergyStorageCalculator_qp(
-            rated_input_power_mw=request.rated_power_mw,
-            rated_output_power_mw=request.rated_power_mw,
+            rated_input_power_mw=request.rated_input_power_mw,
+            rated_output_power_mw=request.rated_output_power_mw,
             rated_capacity_mwh=request.rated_capacity_mwh,
             efficiency=request.efficiency
         )
