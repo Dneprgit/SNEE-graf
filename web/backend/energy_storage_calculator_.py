@@ -370,7 +370,7 @@ class EnergyStorageCalculator_qp:
             raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
         
         if len(load_profile) != 24:
-            raise ValueError("Профиль должен содержать " + 24 + " значения")
+            raise ValueError("Профиль должен содержать 24 значения")
         if self.rated_input_power < 0:
             raise ValueError("Номинальная входная мощность должна быть неотрицательной")
         if self.rated_output_power < 0:
@@ -409,12 +409,19 @@ class EnergyStorageCalculator_qp:
         b_ub = np.zeros(k_ub)
         
         # 3.1. Ограничение rL (баланс энергии): L[i] - L[i-1] - CC[i] + CD[i] = 0
+        # Для первого часа: L[0] = CC[0] - CD[0] (начальный заряд = 0)
         for i in range(im):
-            j = (i - 1) if i > 0 else (im - 1)
-            A_eq[i, i] = 1.0          # L[i]
-            A_eq[i, j] = -1.0         # L[i-1]
-            A_eq[i, i + im] = -1.0    # -CC[i]
-            A_eq[i, i + im * 2] = 1.0  # CD[i]
+            if i == 0:
+                # Первый час: начинаем с нулевого заряда
+                A_eq[i, i] = 1.0          # L[0]
+                A_eq[i, i + im] = -1.0    # -CC[0]
+                A_eq[i, i + im * 2] = 1.0  # CD[0]
+            else:
+                # Остальные часы: связь с предыдущим часом
+                A_eq[i, i] = 1.0          # L[i]
+                A_eq[i, i - 1] = -1.0     # L[i-1]
+                A_eq[i, i + im] = -1.0    # -CC[i]
+                A_eq[i, i + im * 2] = 1.0  # CD[i]
         
         # 3.2. Ограничение rD (дефицит мощности): CC[i]/η - CD[i] - D[i] <= -Load[i]
         for i in range(im):
@@ -423,12 +430,13 @@ class EnergyStorageCalculator_qp:
             A_ub[i, i + im * 3] = -1.0  # -D[i]
             b_ub[i] = -system_load[i]
         
-        # 3.3. Ограничение rRmax (максимальный резерв мощности): - CC[i]/η + CD[i] + Rmax <= Load[i]
+        # 3.3. Ограничение rRmax (максимальный резерв мощности):
+        # Остаточный избыток S = -Load + CD - CC/η <= Rmax  => -CC/η + CD - Rmax <= Load
         for i in range(im):
             A_ub[i + im, i + im] = -1.0 / self.efficiency  # -CC[i]/η
             A_ub[i + im, i + im * 2] = 1.0  # CD[i]
-            A_ub[i + im, im * 4 + 1] = 1.0  # Rmax
-            b_ub[i + im] = system_load[i]   #eeee
+            A_ub[i + im, im * 4 + 1] = -1.0  # -Rmax
+            b_ub[i + im] = system_load[i]
 
         # 3.4. Ограничение rDmax (максимальный дефицит): D[i] - Dmax <= 0
         for i in range(im):
@@ -452,8 +460,9 @@ class EnergyStorageCalculator_qp:
             ub[i + im * 2] = self.rated_output_power * self.efficiency
 
         # 4.4. Границы для D[] - дефицит по часам
+        # D[i] >= 0 всегда; верхняя граница не ограничиваем, чтобы не ломать выполнимость
         for i in range(im):
-            ub[i + im * 3] = max(0.0, system_load[i])
+            ub[i + im * 3] = np.inf
 
         # 4.5. Формирование ограничений для scipy (список кортежей для каждой переменной)
         bounds = [(lb[i], ub[i]) for i in range(n)]
@@ -617,7 +626,7 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
         raise ImportError("Библиотека scipy не установлена. Выполните: pip install scipy")
     
     if len(load_profile) != 24:
-        raise ValueError("Профиль должен содержать {24}  значения")
+        raise ValueError("Профиль должен содержать 24 значения")
     if efficiency < 0.5 or efficiency > 1:
         raise ValueError("КПД должен быть в диапазоне [0.5, 1]")
     
@@ -651,12 +660,19 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     b_ub = np.zeros(k_ub)
     
     # 3.1. Ограничение rL (баланс энергии): L[i] - L[i-1] - CC[i] + CD[i] = 0
+    # Для первого часа: L[0] = CC[0] - CD[0] (начальный заряд = 0)
     for i in range(im):
-        j = (i - 1) if i > 0 else (im - 1)
-        A_eq[i, i] = 1.0          # L[i]
-        A_eq[i, j] = -1.0         # L[i-1]
-        A_eq[i, i + im] = -1.0    # -CC[i]
-        A_eq[i, i + im * 2] = 1.0  # CD[i]
+        if i == 0:
+            # Первый час: начинаем с нулевого заряда
+            A_eq[i, i] = 1.0          # L[0]
+            A_eq[i, i + im] = -1.0    # -CC[0]
+            A_eq[i, i + im * 2] = 1.0  # CD[0]
+        else:
+            # Остальные часы: связь с предыдущим часом
+            A_eq[i, i] = 1.0          # L[i]
+            A_eq[i, i - 1] = -1.0     # L[i-1]
+            A_eq[i, i + im] = -1.0    # -CC[i]
+            A_eq[i, i + im * 2] = 1.0  # CD[i]
     
     # 3.2. Ограничение rD (баланс мощности): CC[i]/η - CD[i] - D[i] <= -Load[i]
     for i in range(im):
@@ -690,8 +706,9 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     ub = np.full(n, np.inf) # Границы для L[], CC[], CD[], Dmax, Nin, Nout, C
     
     # 4.1. Границы для D[] - дефицит по часам
+    # D[i] >= 0 всегда; верхняя граница не ограничиваем, чтобы не ломать выполнимость
     for i in range(im):
-        ub[i + im * 3] = max(0.0, system_load[i])
+        ub[i + im * 3] = np.inf
 
     # 4.2. Формирование ограничений для scipy (список кортежей для каждой переменной)
     bounds = [(lb[i], ub[i]) for i in range(n)]
