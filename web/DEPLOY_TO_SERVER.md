@@ -8,6 +8,19 @@
 
 ## 📦 Docker образы
 
+### Для создания Docker образов и запуска контейнеров используем на сервере скрипт:
+
+install-server-new.sh 
+
+в директории root.
+
+Если скрипт не подходит делаем установку Docker в ручную, алгоритм описан ниже.
+
+Для проверки работы контейнеров запускаем скрипт:
+
+check-health-new.sh
+
+
 ### Старый проект (dneprovskii.ru):
 - ✅ `end2040/snee-backend:latest`
 - ✅ `end2040/snee-frontend:latest`
@@ -162,13 +175,28 @@ docker-compose logs -f
 
 ## 🌐 Настройка Nginx
 
+### сначала установите на сервере Nginx, и папка /etc/nginx/sites-available появится сама.
+Команды:
+
+sudo apt update
+
+sudo apt install -y nginx
+
+Проверка:
+
+nginx -v
+
+ls /etc/nginx/sites-available
+
 ### 1. Создайте конфигурацию Nginx
 
 ```bash
 sudo nano /etc/nginx/sites-available/snee-graf
 ```
 
-Вставьте содержимое из файла `nginx-server.conf` (см. в проекте)
+Вставьте содержимое из файла `nginx-server.conf` (см. в проекте): для вставки, нажать правую кнопку мыши или нажать shift+insert, далее ^X, далее y, далее Enter.
+
+
 
 ### 2. Активируйте конфигурацию
 
@@ -196,6 +224,37 @@ A     www.so-spes.ru      → [IP сервера]
 
 ### 4. Получите SSL сертификаты
 
+Получи SSL сертификаты so-spes.ru www.so-spes.ru
+
+метод certbot, на этом сервере, доступ посмотри во вложении@nginx-server.conf , веб-сервер nginx, сохранить посмотри в @nginx-server.conf 
+
+Сертификаты могу получить только на самом сервере (нужны запись в /etc/letsencrypt и доступ к сети/портам). Ниже команды, которые нужно выполнить на сервере с этим nginx (у вас уже есть ACME webroot в конфиге):
+1) Подготовить webroot и проверить nginx:
+sudo mkdir -p /var/www/certbot
+sudo nginx -t && sudo systemctl reload nginx
+2) Выпустить сертификаты для so-spes.ru и www.so-spes.ru:
+sudo certbot certonly --webroot -w /var/www/certbot -d so-spes.ru -d www.so-spes.ru --agree-tos -m you@example.com --no-eff-email
+3) Проверить наличие файлов:
+sudo ls /etc/letsencrypt/live/so-spes.ru/
+4) Перезагрузить nginx:
+sudo systemctl reload nginx
+Если выпуск не пройдет — обычно причина в DNS (A/AAAA должны указывать на сервер) или закрытом порте 80.
+
+
+
+
+
+
+
+
+
+
+### Установить Certbot:
+
+sudo apt install certbot python3-certbot-nginx
+
+
+### Получите SSL сертификаты
 ```bash
 # Для dneprovskii.ru (если ещё не получен)
 sudo certbot --nginx -d dneprovskii.ru -d www.dneprovskii.ru

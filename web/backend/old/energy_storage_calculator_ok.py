@@ -409,11 +409,11 @@ class EnergyStorageCalculator_qp:
         b_ub = np.zeros(k_ub)
         
         # 3.1. Ограничение rL (баланс энергии): L[i] - L[i-1] - CC[i] + CD[i] = 0
+        # Для первого часа: L[0] = CC[0] - CD[0] (начальный заряд = 0)
         for i in range(im):
             if i == 0:
-                # Первый час: связь с последним часом
+                # Первый час: начинаем с нулевого заряда
                 A_eq[i, i] = 1.0          # L[0]
-                A_eq[i, i + im - 1] = -1.0     # L[im-1]
                 A_eq[i, i + im] = -1.0    # -CC[0]
                 A_eq[i, i + im * 2] = 1.0  # CD[0]
             else:
@@ -451,13 +451,13 @@ class EnergyStorageCalculator_qp:
         for i in range(im):
             ub[i] = self.rated_capacity
 
-        # 4.2. Границы для CС[] - входная мощность заряда, если избыток
+        # 4.2. Границы для CС[] - входная мощность заряда
         for i in range(im):
-            ub[i + im] = self.rated_input_power if system_load[i] < 0 else 0
+            ub[i + im] = self.rated_input_power
 
-        # 4.3. Границы для CD[] - выходная мощность разряда, если дефицит
+        # 4.3. Границы для CD[] - выходная мощность разряда
         for i in range(im):
-            ub[i + im * 2] = (self.rated_output_power if system_load[i] > 0 else 0) * self.efficiency
+            ub[i + im * 2] = self.rated_output_power * self.efficiency
 
         # 4.4. Границы для D[] - дефицит по часам
         # D[i] >= 0 всегда; верхняя граница не ограничиваем, чтобы не ломать выполнимость
@@ -660,11 +660,11 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     b_ub = np.zeros(k_ub)
     
     # 3.1. Ограничение rL (баланс энергии): L[i] - L[i-1] - CC[i] + CD[i] = 0
+    # Для первого часа: L[0] = CC[0] - CD[0] (начальный заряд = 0)
     for i in range(im):
         if i == 0:
-            # Первый час: связь с последним часом
+            # Первый час: начинаем с нулевого заряда
             A_eq[i, i] = 1.0          # L[0]
-            A_eq[i, i + im - 1] = -1.0     # L[im-1]
             A_eq[i, i + im] = -1.0    # -CC[0]
             A_eq[i, i + im * 2] = 1.0  # CD[0]
         else:
@@ -689,12 +689,12 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     # 3.4. Ограничение rNi (входная мощность): CC[i]/η - Nin <= 0
     for i in range(im):
         A_ub[i + im * 2, i + im] = 1.0 / efficiency  # CC[i]/η
-        A_ub[i + im * 2, im * 4 + 1] = -1.0 if system_load[i] < 0 else 0  # -Nin
+        A_ub[i + im * 2, im * 4 + 1] = -1.0  # -Nin
     
     # 3.5. Ограничение rNo (выходная мощность): CD[i] - Nout <= 0
     for i in range(im):
         A_ub[i + im * 3, i + im * 2] = 1.0  # CD[i]
-        A_ub[i + im * 3, im * 4 + 2] = -1.0 if system_load[i] > 0 else 0 # -Nout
+        A_ub[i + im * 3, im * 4 + 2] = -1.0  # -Nout
     
     # 3.6. Ограничение rDmax (максимальный дефицит): D[i] - Dmax <= 0
     for i in range(im):
