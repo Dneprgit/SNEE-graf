@@ -14,7 +14,7 @@ import { apiService } from './services/api';
 
 function App() {
   // Выбор алгоритма: 'wf' (water-filling) или 'qp' (quadratic programming)
-  const [algorithm, setAlgorithm] = useState('wf');
+  const [algorithm, setAlgorithm] = useState('qp');
   
   // Состояния для варианта Water-Filling
   const [loadProfile, setLoadProfile] = useState(null);

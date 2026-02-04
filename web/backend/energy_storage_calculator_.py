@@ -455,11 +455,11 @@ class EnergyStorageCalculator_qp:
 
         # 4.2. Границы для CС[] - входная мощность заряда, если избыток
         for i in range(im):
-            ub[i + im] = self.rated_input_power if system_load[i] < 0 else 0
+            ub[i + im] = (self.rated_input_power if system_load[i] < 0 else 0) * self.efficiency
 
         # 4.3. Границы для CD[] - выходная мощность разряда, если дефицит
         for i in range(im):
-            ub[i + im * 2] = (self.rated_output_power if system_load[i] > 0 else 0) * self.efficiency
+            ub[i + im * 2] = self.rated_output_power if system_load[i] > 0 else 0
 
         # 4.4. Границы для D[] - дефицит по часам
         # D[i] >= 0 всегда; верхняя граница не ограничиваем, чтобы не ломать выполнимость
