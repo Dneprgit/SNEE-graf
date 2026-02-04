@@ -327,7 +327,9 @@ class EnergyStorageCalculator_qp:
         Инициализация калькулятора СНЭЭ
         
         Args:
-            rated_power_mw: Мощность инвертора в МВт
+            rated_input_power: Мощность входная в МВт
+            rated_output_power_mw: Мощность выходная в МВт
+
             rated_capacity_mwh: Емкость батареи в МВтч
             efficiency: КПД цикла (0-1)
         """
