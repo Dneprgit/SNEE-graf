@@ -37,6 +37,9 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartPower, setDragStartPower] = useState(0);
   const [dragStartCapacity, setDragStartCapacity] = useState(0);
+  const batteryPowerRef = useRef(parameters.dblNOut_pq);
+  const batteryCapacityRef = useRef(parameters.dblCapacity_pq);
+  const batteryPowerInRef = useRef(parameters.dblNIn_pq);
   
   // Состояние для drag & resize входной батареи
   const [isDraggingHeightIn, setIsDraggingHeightIn] = useState(false);
@@ -69,43 +72,19 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   const maxWidth = maxDurationHours * scaleX;
   const maxHeight = maxPower * scaleY;
   
-  // Обновление параметров при изменении
-  useEffect(() => {
-    if (batteryPower !== parameters.dblNOut_pq || batteryCapacity !== parameters.dblCapacity_pq) {
-      const timer = setTimeout(() => {
-        setParameters(prev => ({
-          ...prev,
-          dblNOut_pq: batteryPower,
-          dblCapacity_pq: batteryCapacity,
-        }));
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [batteryPower, batteryCapacity, parameters.dblNOut_pq, parameters.dblCapacity_pq, setParameters]);
-  
   // Синхронизация размеров батареи при изменении параметров извне
   useEffect(() => {
     setBatteryPower(parameters.dblNOut_pq);
     setBatteryCapacity(parameters.dblCapacity_pq);
+    batteryPowerRef.current = parameters.dblNOut_pq;
+    batteryCapacityRef.current = parameters.dblCapacity_pq;
   }, [parameters.dblNOut_pq, parameters.dblCapacity_pq]);
 
   // Синхронизация входной мощности при изменении параметров извне
   useEffect(() => {
     setBatteryPowerIn(parameters.dblNIn_pq);
+    batteryPowerInRef.current = parameters.dblNIn_pq;
   }, [parameters.dblNIn_pq]);
-
-  // Обновление параметров при изменении входной мощности
-  useEffect(() => {
-    if (batteryPowerIn !== parameters.dblNIn_pq) {
-      const timer = setTimeout(() => {
-        setParameters(prev => ({
-          ...prev,
-          dblNIn_pq: batteryPowerIn,
-        }));
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [batteryPowerIn, parameters.dblNIn_pq, setParameters]);
 
   // Расчет оптимальных параметров при изменении профиля нагрузки или КПД
   useEffect(() => {
@@ -182,11 +161,13 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       newPower = Math.max(10, Math.min(maxPower, newPower));
       
       setBatteryPower(newPower);
+      batteryPowerRef.current = newPower;
       
       // Пересчет емкости с сохранением начальной длительности
       const initialDuration = dragStartCapacity / dragStartPower;
       let newCapacity = newPower * initialDuration;
       setBatteryCapacity(newCapacity);
+      batteryCapacityRef.current = newCapacity;
     }
     
     if (isDraggingWidth) {
@@ -200,6 +181,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       newCapacity = Math.max(100, newCapacity);
       
       setBatteryCapacity(newCapacity);
+      batteryCapacityRef.current = newCapacity;
     }
     
     // Обработка перетаскивания входной батареи
@@ -211,13 +193,32 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
       newPowerIn = Math.max(10, Math.min(maxPower, newPowerIn));
       
       setBatteryPowerIn(newPowerIn);
+      batteryPowerInRef.current = newPowerIn;
     }
   };
   
   const handleMouseUp = () => {
+    const wasDragging = isDraggingHeight || isDraggingWidth || isDraggingHeightIn;
     setIsDraggingHeight(false);
     setIsDraggingWidth(false);
     setIsDraggingHeightIn(false);
+    
+    if (wasDragging) {
+      const finalizedPowerOut = batteryPowerRef.current;
+      const finalizedCapacity = batteryCapacityRef.current;
+      const finalizedPowerIn = batteryPowerInRef.current;
+      const runtimeHours = finalizedPowerOut > 0
+        ? Math.round((finalizedCapacity / finalizedPowerOut) * 10) / 10
+        : 0;
+      
+      setParameters(prev => ({
+        ...prev,
+        dblNOut_pq: finalizedPowerOut,
+        dblCapacity_pq: finalizedCapacity,
+        dblNIn_pq: finalizedPowerIn,
+        runtime_hours: runtimeHours,
+      }));
+    }
   };
   
   useEffect(() => {

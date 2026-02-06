@@ -114,8 +114,9 @@ function App() {
     }
   };
 
-  const handleCalculate_qp = async () => {
-    if (!loadProfile_qp || loadProfile_qp.length !== 24) {
+  const handleCalculate_qp = async (overrideLoadProfile) => {
+    const profile = Array.isArray(overrideLoadProfile) ? overrideLoadProfile : loadProfile_qp;
+    if (!profile || profile.length !== 24) {
       setError_qp('Необходимо загрузить корректный профиль баланса (24 значения)');
       return;
     }
@@ -131,7 +132,7 @@ function App() {
 
     try {
       const result = await apiService.calculateSchedule_qp({
-        load_profile: loadProfile_qp,
+        load_profile: profile,
         rated_input_power_mw: parameters_qp.dblNIn_pq,
         rated_output_power_mw: parameters_qp.dblNOut_pq,
         rated_capacity_mwh: parameters_qp.dblCapacity_pq,
@@ -194,6 +195,7 @@ function App() {
             parameters={parameters_qp}
             setParameters={setParameters_qp}
             setError={setError_qp}
+            onCalculateSchedule={handleCalculate_qp}
           />
 
           {loadProfile_qp && (
@@ -201,6 +203,7 @@ function App() {
               loadProfile={loadProfile_qp}
               setLoadProfile={setLoadProfile_qp}
               onCalculate={handleCalculate_qp}
+              onCalculateSchedule={handleCalculate_qp}
               isCalculating={isCalculating_qp}
               error={error_qp}
             />

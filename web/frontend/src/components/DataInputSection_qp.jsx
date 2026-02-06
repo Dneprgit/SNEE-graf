@@ -11,6 +11,7 @@ const DataInputSection_qp = ({
   parameters,
   setParameters,
   setError,
+  onCalculateSchedule,
 }) => {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null); // { name, data }
@@ -456,6 +457,9 @@ const DataInputSection_qp = ({
                       const updated = [...loadProfile];
                       updated[idx] = newValue;
                       setLoadProfile(updated);
+                      if (onCalculateSchedule) {
+                        onCalculateSchedule(updated);
+                      }
                     }}
                     onBulkPaste={(startIndex, values) => {
                       const updated = [...loadProfile];
@@ -467,6 +471,9 @@ const DataInputSection_qp = ({
                         }
                       });
                       setLoadProfile(updated);
+                      if (onCalculateSchedule) {
+                        onCalculateSchedule(updated);
+                      }
                     }}
                   />
                 ))}

@@ -45,12 +45,14 @@ const DraggableDot = ({ cx, cy, index, onDrag, isDragging, isActive }) => {
   );
 };
 
-const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate, isCalculating, error }) => {
+const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate, onCalculateSchedule, isCalculating, error }) => {
   const chartRef = useRef(null);
   const [draggingIndex, setDraggingIndex] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [originalProfile, setOriginalProfile] = useState(null);
   const [yAxisDomain, setYAxisDomain] = useState([0, 0]);
+  const [dragProfile, setDragProfile] = useState(null);
+  const dragProfileRef = useRef(null);
 
   // Сохраняем оригинальный профиль при первой загрузке
   useEffect(() => {
@@ -59,16 +61,18 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
     }
   }, [loadProfile, originalProfile]);
 
+  const displayProfile = draggingIndex !== null && dragProfile ? dragProfile : loadProfile;
+
   // Вычисляем диапазон YAxis
   useEffect(() => {
-    if (loadProfile) {
-      const min = Math.min(...loadProfile);
-      const max = Math.max(...loadProfile);
+    if (displayProfile) {
+      const min = Math.min(...displayProfile);
+      const max = Math.max(...displayProfile);
       const padding = (max - min) * 0.1 || 100;
       setYAxisDomain([Math.floor(min - padding), Math.ceil(max + padding)]);
     }
-  }, [loadProfile]);
-  const chartData = loadProfile.map((value, index) => ({
+  }, [displayProfile]);
+  const chartData = displayProfile.map((value, index) => ({
     hour: index + 1,
     balance: parseFloat(value.toFixed(2)),
   }));
@@ -77,6 +81,9 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
   const handleDragPoint = (index, action, event) => {
     if (action === 'start') {
       setDraggingIndex(index);
+      const initialProfile = [...loadProfile];
+      dragProfileRef.current = initialProfile;
+      setDragProfile(initialProfile);
       
       const handlePointerMove = (e) => {
         if (chartRef.current) {
@@ -101,16 +108,29 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
             const clampedY = Math.max(0, Math.min(1, normalizedY));
             const newValue = yMax - (clampedY * yRange);
             
-            // Обновляем массив loadProfile
-            const newLoadProfile = [...loadProfile];
-            newLoadProfile[index] = Math.round(newValue * 10) / 10; // Округляем до 1 знака
-            setLoadProfile(newLoadProfile);
+            // Обновляем локальный профиль для отображения во время перетаскивания
+            setDragProfile((prev) => {
+              const baseProfile = prev ? [...prev] : [...loadProfile];
+              baseProfile[index] = Math.round(newValue * 10) / 10; // Округляем до 1 знака
+              dragProfileRef.current = baseProfile;
+              return baseProfile;
+            });
           }
         }
       };
       
       const handlePointerUp = () => {
         setDraggingIndex(null);
+        const finalizedProfile = dragProfileRef.current || loadProfile;
+        if (finalizedProfile) {
+          const finalizedCopy = [...finalizedProfile];
+          setLoadProfile(finalizedCopy);
+          setDragProfile(null);
+          dragProfileRef.current = null;
+          if (onCalculateSchedule) {
+            onCalculateSchedule(finalizedCopy);
+          }
+        }
         document.removeEventListener('pointermove', handlePointerMove);
         document.removeEventListener('pointerup', handlePointerUp);
         document.removeEventListener('touchmove', handlePointerMove);
@@ -148,7 +168,11 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
   // Отмена изменений
   const handleReset = () => {
     if (originalProfile) {
-      setLoadProfile([...originalProfile]);
+      const resetProfile = [...originalProfile];
+      setLoadProfile(resetProfile);
+      if (onCalculateSchedule) {
+        onCalculateSchedule(resetProfile);
+      }
     }
   };
 
@@ -157,13 +181,13 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
     JSON.stringify(loadProfile) !== JSON.stringify(originalProfile);
 
   const stats = {
-    max: Math.max(...loadProfile),
-    min: Math.min(...loadProfile),
-    avg: loadProfile.reduce((a, b) => a + b, 0) / loadProfile.length,
-    surplus: loadProfile.filter(v => v > 0).reduce((a, b) => a + b, 0),
-    deficit: Math.abs(loadProfile.filter(v => v < 0).reduce((a, b) => a + b, 0)),
-    surplusTime: loadProfile.filter(v => v > 0).length,
-    deficitTime: loadProfile.filter(v => v < 0).length,
+    max: Math.max(...displayProfile),
+    min: Math.min(...displayProfile),
+    avg: displayProfile.reduce((a, b) => a + b, 0) / displayProfile.length,
+    surplus: displayProfile.filter(v => v > 0).reduce((a, b) => a + b, 0),
+    deficit: Math.abs(displayProfile.filter(v => v < 0).reduce((a, b) => a + b, 0)),
+    surplusTime: displayProfile.filter(v => v > 0).length,
+    deficitTime: displayProfile.filter(v => v < 0).length,
   };
 
   return (
@@ -247,7 +271,7 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
               animate={{ opacity: 1 }}
               className="absolute top-4 right-4 px-3 py-1 bg-blue-500 text-white text-sm rounded-full shadow-lg z-10"
             >
-              Час {draggingIndex + 1}: {loadProfile[draggingIndex].toFixed(1)} МВт
+              Час {draggingIndex + 1}: {displayProfile[draggingIndex].toFixed(1)} МВт
             </motion.div>
           )}
           
