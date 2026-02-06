@@ -327,13 +327,13 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParam
               {/* dblNIn - Номинальная входная мощность (красный) */}
               <div className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-1">Входная мощность</div>
-                <div className="text-3xl font-bold text-red-700">{optimalParams.power_in?.toFixed(1)} МВт</div>
+                <div className="text-3xl font-bold text-red-700">{optimalParams.power_in?.toFixed(2)} МВт</div>
               </div>
 
               {/* Энергия на заряд (светло-красный) */}
               <div className="bg-gradient-to-br from-rose-50 to-rose-100 border-2 border-rose-200 rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-1">Энергия на заряд</div>
-                <div className="text-3xl font-bold text-rose-700">{optimalParams.charge_energy?.toFixed(1)} МВтч</div>
+                <div className="text-3xl font-bold text-rose-700">{optimalParams.charge_energy?.toFixed(2)} МВтч</div>
               </div>
               
               {/* Фактическое время заряда (фиолетовый) */}
@@ -345,13 +345,13 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParam
               {/* dblNOut - Номинальная выходная мощность (зеленый) */}
               <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-1">Выходная мощность</div>
-                <div className="text-3xl font-bold text-green-700">{optimalParams.power_out?.toFixed(1)} МВт</div>
+                <div className="text-3xl font-bold text-green-700">{optimalParams.power_out?.toFixed(2)} МВт</div>
               </div>
               
               {/* dblCapacity - Емкость (светло-зеленый) */}
               <div className="bg-gradient-to-br from-lime-50 to-lime-100 border-2 border-lime-200 rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-1">Емкость батареи</div>
-                <div className="text-3xl font-bold text-lime-700">{optimalParams.capacity?.toFixed(1)} МВтч</div>
+                <div className="text-3xl font-bold text-lime-700">{optimalParams.capacity?.toFixed(2)} МВтч</div>
               </div>
               
                {/* Фактическое время разряда (фиолетовый) */}
@@ -363,7 +363,7 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParam
              {/* Дефицит мощности */}
              <div className="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200 rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-1">Дефицит мощности</div>
-                <div className="text-3xl font-bold text-orange-700">{optimalParams.deficit?.toFixed(1)} МВт</div>
+                <div className="text-3xl font-bold text-orange-700">{optimalParams.deficit?.toFixed(2)} МВт</div>
               </div>
               
             </div>

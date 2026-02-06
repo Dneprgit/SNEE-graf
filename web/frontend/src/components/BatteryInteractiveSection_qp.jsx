@@ -233,11 +233,13 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   
   // Функция установки оптимальных параметров
   const resetToRecommended = () => {
+    const roundToHundredths = (value) => Math.round(value * 100) / 100;
     if (optimalParams.power_out && optimalParams.capacity) {
       // Используем оптимальные значения входной и выходной мощности
-      const roundedPowerIn = Math.round(optimalParams.power_in);
-      const roundedPowerOut = Math.round(optimalParams.power_out);
-      const roundedCapacity = Math.round(optimalParams.capacity);
+      const roundedPowerIn = roundToHundredths(optimalParams.power_in);
+      const roundedPowerOut = roundToHundredths(optimalParams.power_out);
+      const roundedCapacity = roundToHundredths(optimalParams.capacity);
+      const roundedRuntime = roundToHundredths(roundedCapacity / roundedPowerOut);
       
       // Обновляем локальные состояния для интерактивного компонента
       setBatteryPower(roundedPowerOut);
@@ -250,12 +252,13 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
         dblNIn_pq: roundedPowerIn,
         dblNOut_pq: roundedPowerOut,
         dblCapacity_pq: roundedCapacity,
-        runtime_hours: Math.round((roundedCapacity / roundedPowerOut) * 10) / 10
+        runtime_hours: roundedRuntime
       }));
     } else {
       // Если оптимальные параметры не рассчитаны, используем приблизительные
-      const recommendedPower = Math.round(maxPower * 0.6 / 10) * 10;
-      const recommendedCapacity = Math.round(recommendedPower * 4 / 100) * 100;
+      const recommendedPower = roundToHundredths(Math.round(maxPower * 0.6 / 10) * 10);
+      const recommendedCapacity = roundToHundredths(Math.round(recommendedPower * 4 / 100) * 100);
+      const recommendedRuntime = roundToHundredths(recommendedCapacity / recommendedPower);
       
       setBatteryPower(recommendedPower);
       setBatteryCapacity(recommendedCapacity);
@@ -267,7 +270,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
         dblNIn_pq: recommendedPower,
         dblNOut_pq: recommendedPower,
         dblCapacity_pq: recommendedCapacity,
-        runtime_hours: Math.round((recommendedCapacity / recommendedPower) * 10) / 10
+        runtime_hours: recommendedRuntime
       }));
     }
   };
@@ -323,22 +326,22 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
             </div>
               <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border-2 border-red-300">
                 <div className="text-xs text-gray-600 mb-0.5">Номинальная активная входная мощность (dblNIn)</div>
-                <div className="text-2xl font-bold text-red-700">{parameters.dblNIn_pq.toFixed(0)} МВт</div>
+                <div className="text-2xl font-bold text-red-700">{parameters.dblNIn_pq.toFixed(2)} МВт</div>
               </div>
 
               <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
                 <div className="text-xs text-gray-600 mb-0.5">Номинальная активная выходная мощность (dblNOut)</div>
-                <div className="text-2xl font-bold text-green-700">{batteryPower.toFixed(0)} МВт</div>
+                <div className="text-2xl font-bold text-green-700">{batteryPower.toFixed(2)} МВт</div>
               </div>
               
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
                 <div className="text-xs text-gray-600 mb-0.5">Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity)</div>
-                <div className="text-2xl font-bold text-blue-700">{batteryCapacity.toFixed(0)} МВтч</div>
+                <div className="text-2xl font-bold text-blue-700">{batteryCapacity.toFixed(2)} МВтч</div>
               </div>
 
               <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
                 <div className="text-xs text-gray-600 mb-0.5">Энергоэффективность (КПД) (dblEfficiency)</div>
-                <div className="text-2xl font-bold text-purple-700">{(parameters.dblEfficiency_pq * 100).toFixed(0)}%</div>
+                <div className="text-2xl font-bold text-purple-700">{(parameters.dblEfficiency_pq * 100).toFixed(2)}%</div>
               </div>
 
               <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border-2 border-amber-300">
@@ -350,7 +353,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
               onClick={resetToRecommended}
               disabled={isLoadingOptimal}
               className={`w-full btn-secondary text-sm flex items-center justify-center ${isLoadingOptimal ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title={optimalParams.power_out && optimalParams.capacity ? `Установить: Вход ${optimalParams.power_in.toFixed(0)} МВт, Выход ${optimalParams.power_out.toFixed(0)} МВт, Емкость ${optimalParams.capacity.toFixed(0)} МВтч` : 'Установить оптимальные параметры'}
+              title={optimalParams.power_out && optimalParams.capacity ? `Установить: Вход ${optimalParams.power_in.toFixed(2)} МВт, Выход ${optimalParams.power_out.toFixed(2)} МВт, Емкость ${optimalParams.capacity.toFixed(2)} МВтч` : 'Установить оптимальные параметры'}
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               {isLoadingOptimal ? 'Расчет...' : 'Установить оценочные параметры'}
@@ -835,22 +838,22 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
                 <>
                   <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border-2 border-red-300">
                     <div className="text-xs text-gray-600 mb-0.5">Входная мощность</div>
-                    <div className="text-2xl font-bold text-red-700">{optimalParams.power_in.toFixed(0)} МВт</div>
+                  <div className="text-2xl font-bold text-red-700">{optimalParams.power_in.toFixed(2)} МВт</div>
                   </div>
                   
                   <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
                     <div className="text-xs text-gray-600 mb-0.5">Выходная мощность</div>
-                    <div className="text-2xl font-bold text-green-700">{optimalParams.power_out.toFixed(0)} МВт</div>
+                  <div className="text-2xl font-bold text-green-700">{optimalParams.power_out.toFixed(2)} МВт</div>
                   </div>
                   
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
                     <div className="text-xs text-gray-600 mb-0.5">Емкость батареи</div>
-                    <div className="text-2xl font-bold text-blue-700">{optimalParams.capacity.toFixed(0)} МВтч</div>
+                  <div className="text-2xl font-bold text-blue-700">{optimalParams.capacity.toFixed(2)} МВтч</div>
                   </div>
                   
                   <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border-2 border-amber-300">
                     <div className="text-xs text-gray-600 mb-0.5">Время работы</div>
-                    <div className="text-2xl font-bold text-amber-700">{(optimalParams.capacity / optimalParams.power_out).toFixed(1)} ч</div>
+                  <div className="text-2xl font-bold text-amber-700">{(optimalParams.capacity / optimalParams.power_out).toFixed(2)} ч</div>
                   </div>
                 </>
               ) : (
