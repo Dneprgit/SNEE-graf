@@ -53,6 +53,12 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
   const [yAxisDomain, setYAxisDomain] = useState([0, 0]);
   const [dragProfile, setDragProfile] = useState(null);
   const dragProfileRef = useRef(null);
+  const dragStartProfileRef = useRef(null);
+  const [smoothDragEnabled, setSmoothDragEnabled] = useState(false);
+  const [shiftOffset, setShiftOffset] = useState(0);
+  const [shiftRange, setShiftRange] = useState(0);
+  const baseProfileRef = useRef(null);
+  const isApplyingShiftRef = useRef(false);
 
   // Сохраняем оригинальный профиль при первой загрузке
   useEffect(() => {
@@ -62,6 +68,36 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
   }, [loadProfile, originalProfile]);
 
   const displayProfile = draggingIndex !== null && dragProfile ? dragProfile : loadProfile;
+
+  useEffect(() => {
+    if (!loadProfile) return;
+    const maxPositive = Math.max(0, ...loadProfile);
+    const minNegative = Math.min(0, ...loadProfile);
+    const range = Math.abs(maxPositive) + Math.abs(minNegative);
+    setShiftRange(range);
+    
+    if (isApplyingShiftRef.current) {
+      isApplyingShiftRef.current = false;
+      return;
+    }
+    
+    baseProfileRef.current = [...loadProfile];
+    setShiftOffset(0);
+  }, [loadProfile]);
+
+  const handleShiftChange = (value) => {
+    const numericValue = Number(value);
+    setShiftOffset(numericValue);
+    if (!baseProfileRef.current) return;
+    const shiftedProfile = baseProfileRef.current.map((v) => (
+      Math.round((v + numericValue) * 10) / 10
+    ));
+    isApplyingShiftRef.current = true;
+    setLoadProfile(shiftedProfile);
+    if (onCalculateSchedule) {
+      onCalculateSchedule(shiftedProfile);
+    }
+  };
 
   // Вычисляем диапазон YAxis
   useEffect(() => {
@@ -83,6 +119,7 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
       setDraggingIndex(index);
       const initialProfile = [...loadProfile];
       dragProfileRef.current = initialProfile;
+      dragStartProfileRef.current = initialProfile;
       setDragProfile(initialProfile);
       
       const handlePointerMove = (e) => {
@@ -111,7 +148,31 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
             // Обновляем локальный профиль для отображения во время перетаскивания
             setDragProfile((prev) => {
               const baseProfile = prev ? [...prev] : [...loadProfile];
-              baseProfile[index] = Math.round(newValue * 10) / 10; // Округляем до 1 знака
+              const startProfile = dragStartProfileRef.current || baseProfile;
+              const roundedValue = Math.round(newValue * 10) / 10;
+              baseProfile[index] = roundedValue;
+              
+              if (smoothDragEnabled) {
+                const delta = roundedValue - startProfile[index];
+                const maxDistance = 5;
+                const decay = 0.4;
+                
+                for (let distance = 1; distance <= maxDistance; distance += 1) {
+                  const weight = Math.pow(decay, distance);
+                  const offset = Math.round(delta * weight * 10) / 10;
+                  
+                  const leftIndex = index - distance;
+                  if (leftIndex >= 0) {
+                    baseProfile[leftIndex] = Math.round((startProfile[leftIndex] + offset) * 10) / 10;
+                  }
+                  
+                  const rightIndex = index + distance;
+                  if (rightIndex < baseProfile.length) {
+                    baseProfile[rightIndex] = Math.round((startProfile[rightIndex] + offset) * 10) / 10;
+                  }
+                }
+              }
+              
               dragProfileRef.current = baseProfile;
               return baseProfile;
             });
@@ -127,6 +188,7 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
           setLoadProfile(finalizedCopy);
           setDragProfile(null);
           dragProfileRef.current = null;
+          dragStartProfileRef.current = null;
           if (onCalculateSchedule) {
             onCalculateSchedule(finalizedCopy);
           }
@@ -241,7 +303,7 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
           className="card relative"
           ref={chartRef}
         >
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 mb-4">
             <div>
               <h3 className="text-xl font-bold text-gray-800">
                 Суточный профиль баланса мощности
@@ -251,17 +313,28 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
                 Перетаскивайте точки для редактирования данных
               </p>
             </div>
-            {hasChanges && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                onClick={handleReset}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors duration-200 shadow-md"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Отменить изменения
-              </motion.button>
-            )}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={smoothDragEnabled}
+                  onChange={(e) => setSmoothDragEnabled(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Плавное перетаскивание соседних точек
+              </label>
+              {hasChanges && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  onClick={handleReset}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors duration-200 shadow-md"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Отменить изменения
+                </motion.button>
+              )}
+            </div>
           </div>
           
           {/* Индикатор перетаскивания */}
@@ -275,58 +348,88 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
             </motion.div>
           )}
           
-          <ResponsiveContainer width="100%" height={400}>
-            <AreaChart 
-              data={chartData}
-              margin={{ top: 10, right: 30, left: 20, bottom: 20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-              <XAxis 
-                dataKey="hour" 
-                label={{ value: 'Час', position: 'insideBottom', offset: -5 }}
-                stroke="#666"
-              />
-              <YAxis 
-                domain={yAxisDomain}
-                label={{ value: 'Мощность, МВт', angle: -90, position: 'insideLeft' }}
-                stroke="#666"
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: '1px solid #ccc',
-                  borderRadius: '8px',
-                }}
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    return (
-                      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                        <p className="text-gray-600 text-sm">Час: {payload[0].payload.hour}</p>
-                        <p className="text-blue-600 font-semibold">
-                          Мощность: {payload[0].value.toFixed(1)} МВт
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Legend />
-              <ReferenceLine y={0} stroke="#000" strokeWidth={2} />
-              <Area
-                type="monotone"
-                dataKey="balance"
-                name="Баланс мощности"
-                stroke="#0ea5e9"
-                fill="#0ea5e9"
-                fillOpacity={0.3}
-                strokeWidth={2}
-                dot={renderCustomDot}
-                activeDot={false}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+            <div className="flex-1">
+              <ResponsiveContainer width="100%" height={400}>
+                <AreaChart 
+                  data={chartData}
+                  margin={{ top: 10, right: 30, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis 
+                    dataKey="hour" 
+                    label={{ value: 'Час', position: 'insideBottom', offset: -5 }}
+                    stroke="#666"
+                  />
+                  <YAxis 
+                    domain={yAxisDomain}
+                    label={{ value: 'Мощность, МВт', angle: -90, position: 'insideLeft' }}
+                    stroke="#666"
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #ccc',
+                      borderRadius: '8px',
+                    }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                            <p className="text-gray-600 text-sm">Час: {payload[0].payload.hour}</p>
+                            <p className="text-blue-600 font-semibold">
+                              Мощность: {payload[0].value.toFixed(1)} МВт
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Legend />
+                  <ReferenceLine y={0} stroke="#000" strokeWidth={2} />
+                  <Area
+                    type="monotone"
+                    dataKey="balance"
+                    name="Баланс мощности"
+                    stroke="#0ea5e9"
+                    fill="#0ea5e9"
+                    fillOpacity={0.3}
+                    strokeWidth={2}
+                    dot={renderCustomDot}
+                    activeDot={false}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <input
+                  type="range"
+                  min={-shiftRange}
+                  max={shiftRange}
+                  step="0.1"
+                  value={shiftOffset}
+                  onChange={(e) => handleShiftChange(e.target.value)}
+                  className="h-64"
+                  style={{ WebkitAppearance: 'slider-vertical' }}
+                />
+                <label className="text-xs text-gray-500 flex flex-col items-center gap-1">
+                  Смещение, МВт
+                  <input
+                    type="number"
+                    min={-shiftRange}
+                    max={shiftRange}
+                    step="0.1"
+                    value={shiftOffset}
+                    onChange={(e) => handleShiftChange(e.target.value)}
+                    className="input-field text-xs w-24 text-center py-1"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
         </motion.div>
         </div>
 
