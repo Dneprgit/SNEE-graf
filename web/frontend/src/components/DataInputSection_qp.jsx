@@ -195,12 +195,16 @@ const DataInputSection_qp = ({
         cells.forEach(cell => {
           const trimmed = cell.trim();
           if (trimmed !== '') {
-            const num = parseFloat(trimmed);
+            const normalized = trimmed
+              .replace(/\s+/g, '')       // убираем обычные пробелы
+              .replace(/\u00A0/g, '')    // убираем неразрывные пробелы
+              .replace(',', '.');        // десятичная запятая -> точка
+          
+            const num = parseFloat(normalized);
             if (!isNaN(num)) {
               values.push(num);
             }
-          }
-        });
+          }        });
       });
       
       // Если есть данные для вставки

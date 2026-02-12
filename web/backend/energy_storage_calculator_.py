@@ -763,10 +763,10 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     capacity = x[im * 4 + 3]
     
     return {
-        "optimal_power_in_mw": round(n_in, 2),
-        "optimal_power_out_mw": round(n_out, 2),
-        "optimal_capacity_mwh": round(capacity, 2),
-        "deficit_mw": round(system_with_enss_load_deficite, 2)
+        "optimal_power_in_mw": float(n_in),
+        "optimal_power_out_mw": float(n_out),
+        "optimal_capacity_mwh": float(capacity),
+        "deficit_mw": float(system_with_enss_load_deficite)
     }
 
 
