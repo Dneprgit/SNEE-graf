@@ -10,7 +10,7 @@ const Hero = ({ algorithm, setAlgorithm }) => {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-purple-900 text-white">
+    <section className="relative overflow-hidden bg-gradient-to-br from-primary-300 via-primary-800 to-purple-900 text-white">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
@@ -39,32 +39,34 @@ const Hero = ({ algorithm, setAlgorithm }) => {
         />
       </div>
 
-      <div className="relative section-container py-24">
+      <div className="relative section-container py-6 md:py-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="text-center"
         >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="inline-block mb-6"
-          >
-            <div className="bg-white/10 backdrop-blur-lg rounded-full p-6 inline-block">
-              <Battery className="w-16 h-16" />
-            </div>
-          </motion.div>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 mb-6">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="inline-block"
+            >
+              <div className="bg-white/10 backdrop-blur-lg rounded-full p-6 inline-block">
+                <Battery className="w-16 h-16" />
+              </div>
+            </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6"
-          >
-            СНЭЭ Graf
-          </motion.h1>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight"
+            >
+              СНЭЭ Graf
+            </motion.h1>
+          </div>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -82,7 +84,7 @@ const Hero = ({ algorithm, setAlgorithm }) => {
             className="text-lg text-blue-200 mb-8 max-w-3xl mx-auto"
           >
             Система накопления электрической энергии с расчетом оптимального графика работы
-            по алгоритму {algorithm === 'wf' ? 'water-filling' : 'квадратичной оптимизации'} и интерактивной визуализацией данных
+            по алгоритму {algorithm === 'wf' ? 'water-filling' : 'линейной оптимизации'} и интерактивной визуализацией данных
           </motion.p>
 
           {/* Algorithm Selector */}
@@ -92,7 +94,7 @@ const Hero = ({ algorithm, setAlgorithm }) => {
             transition={{ duration: 0.8, delay: 0.55 }}
             className="mb-12 max-w-md mx-auto"
           >
-            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4">
+            {/*<div className="bg-white/10 backdrop-blur-lg rounded-xl p-4">
               <p className="text-sm text-blue-100 mb-3 font-medium">Выберите алгоритм расчета:</p>
               <div className="flex gap-3">
                 <button
@@ -113,10 +115,10 @@ const Hero = ({ algorithm, setAlgorithm }) => {
                       : 'bg-white/20 text-white hover:bg-white/30'
                   }`}
                 >
-                  Квадратичная оптимизация
+                  Линейная оптимизация
                 </button>
               </div>
-            </div>
+            </div>*/}
           </motion.div>
 
           {/* Features */}
@@ -132,7 +134,7 @@ const Hero = ({ algorithm, setAlgorithm }) => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
-                className="bg-white/10 backdrop-blur-lg rounded-xl p-4 hover:bg-white/20 transition-all duration-300"
+                className="bg-white/10 backdrop-blur-lg rounded-xl p-4 transition-all duration-300"
               >
                 <feature.icon className="w-8 h-8 mx-auto mb-2" />
                 <p className="text-sm font-medium">{feature.text}</p>
@@ -140,7 +142,7 @@ const Hero = ({ algorithm, setAlgorithm }) => {
             ))}
           </motion.div>
 
-          {/* Scroll indicator */}
+          {/* Scroll indicator 
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -156,7 +158,7 @@ const Hero = ({ algorithm, setAlgorithm }) => {
                 <div className="w-1 h-2 bg-white rounded-full mx-auto"></div>
               </div>
             </motion.div>
-          </motion.div>
+          </motion.div>*/}
         </motion.div>
       </div>
     </section>
