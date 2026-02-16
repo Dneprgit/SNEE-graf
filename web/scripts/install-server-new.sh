@@ -71,8 +71,6 @@ echo ""
 
 echo -e "${YELLOW}[5/8]${NC} Создание docker-compose.yml..."
 cat > docker-compose.yml <<EOF
-version: '3.8'
-
 services:
   snee-backend-spes:
     image: end2040/snee_web_spes-backend:latest

@@ -12,7 +12,9 @@
 
 install-server-new.sh 
 
-в директории root.
+Для этого запускаем ./install-server-new.sh  в директории root.
+Рабочий вариант:
+bash /root/install-server-new.sh
 
 Если скрипт не подходит делаем установку Docker в ручную, алгоритм описан ниже.
 
