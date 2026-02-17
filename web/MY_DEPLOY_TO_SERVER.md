@@ -29,4 +29,18 @@ docker images
 # 9# Создаем контейнеры:
 docker compose up -d
 
-# 10# 
+# 10# Удалить образ
+docker image rm end2040/snee_web_spes-backend:1.2
+docker image rm end2040/snee_web_spes-frontend:1.2
+
+# 11# Просмотреть список образов в докер можно командой
+docker image ls -a
+
+# 12# Чтобы узнать количество доступного дискового пространства на облачном сервере, подключись по SSH и выполните команду 
+df -h /
+
+# 13# Удалить все остановленные контейнеры (если нужно):
+docker container prune
+
+# 14# Подключиться к облачному серверу вы можете по SSH по инструкции: rак подключиться через SSH 
+https://reg.cloud/support/cloud/oblachnyye-servery/rabota-s-serverom/podklyucheniye-k-oblachnomu-serveru?utm_source=reg.ru&utm_medium=organic&utm_content=%2F&utm_campaign=reg.cloud#2

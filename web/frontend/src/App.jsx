@@ -33,7 +33,7 @@ function App() {
     dblNIn_pq: 115,
     dblNOut_pq: 145,
     dblCapacity_pq: 535,
-    dblEfficiency_pq: 0.95,
+    dblEfficiency_pq: 0.84,
   });
   const [calculationResult_qp, setCalculationResult_qp] = useState(null);
   const [isCalculating_qp, setIsCalculating_qp] = useState(false);
@@ -123,7 +123,7 @@ function App() {
 
     // Проверяем валидность КПД
     if (!parameters_qp.dblEfficiency_pq || parameters_qp.dblEfficiency_pq <= 0 || parameters_qp.dblEfficiency_pq > 1) {
-      setError_qp('КПД должен быть в диапазоне от 0 до 1 (например, 0.95)');
+      setError_qp('КПД должен быть в диапазоне от 0 до 1 (например, 0.84)');
       return;
     }
 

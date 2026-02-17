@@ -16,6 +16,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   
   // Состояние для входной батареи
   const [batteryPowerIn, setBatteryPowerIn] = useState(parameters.dblNIn_pq);
+  const [efficiencyInput, setEfficiencyInput] = useState(String(parameters.dblEfficiency_pq || ''));
   
   // Локальное состояние для оптимальных параметров (расширенный набор)
   const [optimalParams, setOptimalParamsLocal] = useState({
@@ -53,18 +54,74 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   const viewHeight = 400;
   const padding = 60;
   
+  // Синхронизация локального состояния efficiency с внешним параметром
+  useEffect(() => {
+    setEfficiencyInput(String(parameters.dblEfficiency_pq || ''));
+  }, [parameters.dblEfficiency_pq]);
+
+  const handleParameterChange = (field, value) => {
+    const numValue = parseFloat(value) || 0;
+
+    if (field === 'dblNIn_pq') {
+      setBatteryPowerIn(numValue);
+      batteryPowerInRef.current = numValue;
+    }
+
+    if (field === 'dblNOut_pq') {
+      setBatteryPower(numValue);
+      batteryPowerRef.current = numValue;
+    }
+
+    if (field === 'dblCapacity_pq') {
+      setBatteryCapacity(numValue);
+      batteryCapacityRef.current = numValue;
+    }
+
+    setParameters(prev => {
+      const updated = { ...prev, [field]: numValue };
+
+      // Пересчет при изменении выходной мощности
+      if (field === 'dblNOut_pq' && numValue > 0) {
+        updated.runtime_hours = Math.round((updated.dblCapacity_pq / numValue) * 10) / 10;
+      } else if (field === 'dblNOut_pq') {
+        updated.runtime_hours = 0;
+      }
+
+      // Пересчет при изменении емкости батареи
+      if (field === 'dblCapacity_pq' && updated.dblNOut_pq > 0) {
+        updated.runtime_hours = Math.round((numValue / updated.dblNOut_pq) * 10) / 10;
+      }
+
+      return updated;
+    });
+  };
+
+  const handleEfficiencyChange = (e) => {
+    setEfficiencyInput(e.target.value);
+  };
+
+  const handleEfficiencyBlur = () => {
+    const numValue = parseFloat(efficiencyInput);
+    if (!isNaN(numValue) && numValue > 0 && numValue <= 1) {
+      setParameters(prev => ({ ...prev, dblEfficiency_pq: numValue }));
+    } else {
+      // Возвращаем предыдущее корректное значение
+      setEfficiencyInput(String(parameters.dblEfficiency_pq));
+    }
+  };
+
   // Масштабирование для отображения
   const scaleX = (viewWidth - padding * 2) / maxDurationHours; // пиксели на час
   const scaleY = (viewHeight - padding * 2) / maxPower; // пиксели на МВт
   
   // Размеры выходной батареи в масштабированных координатах
-  const batteryDuration = batteryCapacity / batteryPower;
+  const batteryDuration = batteryPower > 0 ? batteryCapacity / batteryPower : 0;
   const batteryWidth = batteryDuration * scaleX;
   const batteryHeight = batteryPower * scaleY;
   
   // Расчеты для входной батареи
-  const batteryChargeEnergy = batteryCapacity / parameters.dblEfficiency_pq; // Энергия на заряд
-  const batteryChargeDuration = batteryChargeEnergy / batteryPowerIn; // Время заряда
+  const batteryChargeEnergy = parameters.dblEfficiency_pq > 0 ? batteryCapacity / parameters.dblEfficiency_pq : 0; // Энергия на заряд
+  const batteryChargeDuration = batteryPowerIn > 0 ? batteryChargeEnergy / batteryPowerIn : 0; // Время заряда
   const batteryWidthIn = batteryChargeDuration * scaleX;
   const batteryHeightIn = batteryPowerIn * scaleY;
   
@@ -323,42 +380,76 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
             <div className="grid grid-cols-1 gap-4 max-w-[250px]">
             <div className="flex items-center text-lg font-semibold text-gray-800">
               <Info className="w-6 h-6 mr-2 text-primary-600" />
-              Текущие параметры
+              Параметры СНЭЭ, используемые в расчете диспетчерского графика 
             </div>
+              <button
+                onClick={resetToRecommended}
+                disabled={isLoadingOptimal}
+                className={`w-full btn-secondary text-sm flex items-center justify-center ${isLoadingOptimal ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={optimalParams.power_out && optimalParams.capacity ? `Установить: Вход ${optimalParams.power_in.toFixed(2)} МВт, Выход ${optimalParams.power_out.toFixed(2)} МВт, Емкость ${optimalParams.capacity.toFixed(2)} МВтч` : 'Установить оптимальные параметры'}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                {isLoadingOptimal ? 'Расчет...' : 'Установить оценочные параметры'}
+              </button>
+
               <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border-2 border-red-300">
-                <div className="text-xs text-gray-600 mb-0.5">Номинальная активная входная мощность (dblNIn)</div>
-                <div className="text-2xl font-bold text-red-700">{parameters.dblNIn_pq.toFixed(2)} МВт</div>
+                <div className="text-xs text-gray-600 mb-1">Номинальная активная входная мощность (dblNIn), МВт</div>
+                <input
+                  type="number"
+                  value={parameters.dblNIn_pq}
+                  onChange={(e) => handleParameterChange('dblNIn_pq', e.target.value)}
+                  className="input-field"
+                  min="0"
+                  step="10"
+                />
               </div>
 
               <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
-                <div className="text-xs text-gray-600 mb-0.5">Номинальная активная выходная мощность (dblNOut)</div>
-                <div className="text-2xl font-bold text-green-700">{batteryPower.toFixed(2)} МВт</div>
+                <div className="text-xs text-gray-600 mb-1">Номинальная активная выходная мощность (dblNOut), МВт</div>
+                <input
+                  type="number"
+                  value={parameters.dblNOut_pq}
+                  onChange={(e) => handleParameterChange('dblNOut_pq', e.target.value)}
+                  className="input-field"
+                  min="0"
+                  step="10"
+                />
               </div>
               
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
-                <div className="text-xs text-gray-600 mb-0.5">Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity)</div>
-                <div className="text-2xl font-bold text-blue-700">{batteryCapacity.toFixed(2)} МВтч</div>
+                <div className="text-xs text-gray-600 mb-1">Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity), МВтч</div>
+                <input
+                  type="number"
+                  value={parameters.dblCapacity_pq}
+                  onChange={(e) => handleParameterChange('dblCapacity_pq', e.target.value)}
+                  className="input-field"
+                  min="0"
+                  step="100"
+                />
               </div>
 
               <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
-                <div className="text-xs text-gray-600 mb-0.5">Энергоэффективность (КПД) (dblEfficiency)</div>
-                <div className="text-2xl font-bold text-purple-700">{(parameters.dblEfficiency_pq * 100).toFixed(2)}%</div>
+                <div className="text-xs text-gray-600 mb-1">Энергоэффективность (КПД) (dblEfficiency)</div>
+                <input
+                  type="number"
+                  value={efficiencyInput}
+                  onChange={handleEfficiencyChange}
+                  onBlur={handleEfficiencyBlur}
+                  className="input-field"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Значение от 0 до 1 (например, 0.84)
+                </p>
               </div>
 
               <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border-2 border-amber-300">
                     <div className="text-xs text-gray-600 mb-0.5">Время работы на номинальной мощности</div>
                     <div className="text-2xl font-bold text-amber-700">{(batteryCapacity / batteryPower).toFixed(1)} ч</div>
               </div>
-              
-              <button
-              onClick={resetToRecommended}
-              disabled={isLoadingOptimal}
-              className={`w-full btn-secondary text-sm flex items-center justify-center ${isLoadingOptimal ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title={optimalParams.power_out && optimalParams.capacity ? `Установить: Вход ${optimalParams.power_in.toFixed(2)} МВт, Выход ${optimalParams.power_out.toFixed(2)} МВт, Емкость ${optimalParams.capacity.toFixed(2)} МВтч` : 'Установить оптимальные параметры'}
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              {isLoadingOptimal ? 'Расчет...' : 'Установить оценочные параметры'}
-              </button>
+           
             </div>
 
           

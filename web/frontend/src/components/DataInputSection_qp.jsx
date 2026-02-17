@@ -246,9 +246,9 @@ const DataInputSection_qp = ({
       >
         <h2 className="section-title text-center">Исходные данные (QP)</h2>
         <p className="section-subtitle text-center">
-          Загрузите баланс мощности и настройте параметры СНЭЭ
+          Загрузите баланс мощности и настройте параметры СНЭЭ (КПД)
         </p>
-        <div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6 max-w-full mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-full mx-auto">
           {/* Загрузка данных */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -294,27 +294,36 @@ const DataInputSection_qp = ({
                 </>
               )}
             </div>
+          </motion.div>
 
+          {/* Кнопки и статус */}
+          <motion.div
+            initial={{ opacity: 0, x: 0 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            viewport={{ once: true }}
+            className="card"
+          >
             {uploadStatus && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm"
+                className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm mb-4"
               >
                 {uploadStatus}
               </motion.div>
             )}
 
-            <div className="flex gap-3 mt-4">
+            <div className="flex flex-col gap-3">
               <button
                 onClick={loadDefaultProfile}
-                className="flex-1 btn-secondary text-sm"
+                className="btn-secondary text-sm"
               >
                 {uploadedFile ? 'Восстановить данные из Excel' : 'Профиль по умолчанию'}
               </button>
               <button
                 onClick={downloadTemplate}
-                className="flex-1 btn-secondary text-sm flex items-center justify-center"
+                className="btn-secondary text-sm flex items-center justify-center"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Шаблон
@@ -340,15 +349,15 @@ const DataInputSection_qp = ({
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
             viewport={{ once: true }}
-            className="card"
+            className="card lg:col-span-1"
           >
             <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
               <Calculator className="w-6 h-6 mr-2 text-primary-600" />
               Параметры СНЭЭ
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-1 gap-4">
+              {/*<div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Номинальная активная входная мощность (dblNIn), МВт
                 </label>
@@ -405,7 +414,7 @@ const DataInputSection_qp = ({
                 <p className="text-xs text-gray-500 mt-1">
                   Автоматически рассчитывается как Емкость / Мощность
                 </p>
-              </div>
+              </div>*/}
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -422,7 +431,7 @@ const DataInputSection_qp = ({
                   step="0.01"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Значение от 0 до 1 (например, 0.95 = 95%)
+                  Значение от 0 до 1 (например: 0.84)
                 </p>
               </div>
             </div>
@@ -435,7 +444,7 @@ const DataInputSection_qp = ({
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
               viewport={{ once: true }}
-              className="card md:col-span-2 xl:col-span-2"
+              className="card md:col-span-2 lg:col-span-3"
             >
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center" gap-2>
                 <FileText className="w-6 h-6 mr-2 text-primary-600" />

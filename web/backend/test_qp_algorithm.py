@@ -13,7 +13,7 @@ load_profile = [
 ]
 
 # КПД системы
-efficiency = 0.95
+efficiency = 0.84
 
 print("=" * 80)
 print("Тестирование алгоритма квадратичной оптимизации (QP)")

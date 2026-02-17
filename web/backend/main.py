@@ -322,7 +322,7 @@ class CalculationRequest_qp(BaseModel):
                 "rated_input_power_mw": 115,
                 "rated_output_power_mw": 145,
                 "rated_capacity_mwh": 535,
-                "efficiency": 0.95
+                "efficiency": 0.84
             }
         }
 
