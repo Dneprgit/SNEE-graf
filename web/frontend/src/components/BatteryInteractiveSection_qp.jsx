@@ -1,9 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Battery, Info, RotateCcw, Zap } from 'lucide-react';
+import { Battery, Info, RotateCcw, Zap, Calculator, AlertCircle } from 'lucide-react';
 import { apiService } from '../services/api';
 
-const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, maxAbsValue, setOptimalParams }) => {
+const EMPTY_OPTIMAL_PARAMS = {
+  power_in: null,
+  power_out: null,
+  capacity: null,
+  deficit: null,
+  discharge_time: null,
+  charge_energy: null,
+  charge_time: null
+};
+
+const BatteryInteractiveSection_qp = ({
+  loadProfile,
+  parameters,
+  setParameters,
+  maxAbsValue,
+  setOptimalParams,
+  initialOptimalParams,
+  onCalculateSchedule,
+  isCalculatingSchedule,
+  scheduleError
+}) => {
   // Расчет максимальных значений
   const maxPower = maxAbsValue || Math.max(...loadProfile.map(v => Math.abs(v))); // Максимум мощности баланса по модулю
   const totalSurplus = loadProfile.filter(v => v > 0).reduce((a, b) => a + b, 0); // Избыток энергии
@@ -19,17 +39,10 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   const [efficiencyInput, setEfficiencyInput] = useState(String(parameters.dblEfficiency_pq || ''));
   
   // Локальное состояние для оптимальных параметров (расширенный набор)
-  const [optimalParams, setOptimalParamsLocal] = useState({
-    power_in: null,
-    power_out: null,
-    capacity: null,
-    deficit: null,
-    discharge_time: null,      // вычисляемый
-    charge_energy: null,        // вычисляемый
-    charge_time: null           // вычисляемый
-  });
+  const [optimalParams, setOptimalParamsLocal] = useState(initialOptimalParams || EMPTY_OPTIMAL_PARAMS);
   const [isLoadingOptimal, setIsLoadingOptimal] = useState(false);
   const [optimalError, setOptimalError] = useState(null);
+  const skipNextOptimalFetchRef = useRef(Boolean(initialOptimalParams));
   
   // Состояние для drag & resize выходной батареи
   const [isDraggingHeight, setIsDraggingHeight] = useState(false);
@@ -58,6 +71,14 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   useEffect(() => {
     setEfficiencyInput(String(parameters.dblEfficiency_pq || ''));
   }, [parameters.dblEfficiency_pq]);
+
+  useEffect(() => {
+    if (!initialOptimalParams) return;
+    setOptimalParamsLocal(initialOptimalParams);
+    if (setOptimalParams) {
+      setOptimalParams(initialOptimalParams);
+    }
+  }, [initialOptimalParams, setOptimalParams]);
 
   const handleParameterChange = (field, value) => {
     const numValue = parseFloat(value) || 0;
@@ -147,6 +168,11 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   useEffect(() => {
     const calculateOptimal = async () => {
       if (!loadProfile || loadProfile.length !== 24) return;
+
+      if (skipNextOptimalFetchRef.current) {
+        skipNextOptimalFetchRef.current = false;
+        return;
+      }
       
       // Проверяем валидность КПД перед отправкой запроса
       if (!parameters.dblEfficiency_pq || parameters.dblEfficiency_pq <= 0 || parameters.dblEfficiency_pq > 1) {
@@ -187,15 +213,7 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
         const errorMessage = error.response?.data?.detail || error.message || 'Неизвестная ошибка оптимизации';
         setOptimalError(errorMessage);
         
-        const emptyParams = {
-          power_in: null,
-          power_out: null,
-          capacity: null,
-          deficit: null,
-          discharge_time: null,
-          charge_energy: null,
-          charge_time: null
-        };
+        const emptyParams = { ...EMPTY_OPTIMAL_PARAMS };
         setOptimalParamsLocal(emptyParams);
         if (setOptimalParams) {
           setOptimalParams(emptyParams);
@@ -334,14 +352,19 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
   };
   
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.3 }}
-      viewport={{ once: true }}
-      className="mb-8"
-    >
-      <div className="card mx-auto">
+    <section id="battery-interactive-qp" className="section-container bg-gradient-to-br from-indigo-50 to-blue-50">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        viewport={{ once: true }}
+        className="mb-8"
+      >
+        <h2 className="section-title text-center">Результаты расчета оценочных параметров</h2>
+        <p className="section-subtitle text-center">
+          Расчет оптимальных параметров при изменении профиля нагрузки или КПД
+        </p>
+        <div className="card mx-auto">
         <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
           <Battery className="w-6 h-6 mr-2 text-primary-600" />
           Интерактивный выбор параметров СНЭЭ (QP)
@@ -972,7 +995,46 @@ const BatteryInteractiveSection_qp = ({ loadProfile, parameters, setParameters, 
 
         </div>
       </div>
-    </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.5 }}
+        viewport={{ once: true }}
+        className="text-center mt-8"
+      >
+        <button
+          onClick={onCalculateSchedule}
+          disabled={!loadProfile || isCalculatingSchedule}
+          className={`btn-primary text-lg px-12 py-4 ${
+            !loadProfile || isCalculatingSchedule ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
+          {isCalculatingSchedule ? (
+            <>
+              <span className="inline-block animate-spin mr-2">⚙️</span>
+              Расчет...
+            </>
+          ) : (
+            <>
+              <Calculator className="inline-block w-6 h-6 mr-2" />
+              Рассчитать график (QP)
+            </>
+          )}
+        </button>
+
+        {scheduleError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 max-w-2xl mx-auto flex items-start"
+          >
+            <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+            <span>{scheduleError}</span>
+          </motion.div>
+        )}
+      </motion.div>
+      </motion.div>
+    </section>
   );
 };
 

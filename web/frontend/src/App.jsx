@@ -7,6 +7,7 @@ import ChartsSection from './components/ChartsSection';
 import SchematicSection from './components/SchematicSection';
 import DataInputSection_qp from './components/DataInputSection_qp';
 import DataVisualizationSection_qp from './components/DataVisualizationSection_qp';
+import BatteryInteractiveSection_qp from './components/BatteryInteractiveSection_qp';
 import ChartsSection_qp from './components/ChartsSection_qp';
 import SchematicSection_qp from './components/SchematicSection_qp';
 import Footer from './components/Footer';
@@ -36,8 +37,12 @@ function App() {
     dblEfficiency_pq: 0.84,
   });
   const [calculationResult_qp, setCalculationResult_qp] = useState(null);
+  const [showBatterySection_qp, setShowBatterySection_qp] = useState(false);
+  const [optimalParams_qp, setOptimalParams_qp] = useState(null);
   const [isCalculating_qp, setIsCalculating_qp] = useState(false);
+  const [isCalculatingOptimal_qp, setIsCalculatingOptimal_qp] = useState(false);
   const [error_qp, setError_qp] = useState(null);
+  const [optimalError_qp, setOptimalError_qp] = useState(null);
 
   // Загрузка профиля по умолчанию при запуске
   useEffect(() => {
@@ -147,6 +152,55 @@ function App() {
     }
   };
 
+  const handleCalculateOptimal_qp = async () => {
+    if (!loadProfile_qp || loadProfile_qp.length !== 24) {
+      setOptimalError_qp('Необходимо загрузить корректный профиль баланса (24 значения)');
+      return;
+    }
+
+    if (!parameters_qp.dblEfficiency_pq || parameters_qp.dblEfficiency_pq <= 0 || parameters_qp.dblEfficiency_pq > 1) {
+      setOptimalError_qp('КПД должен быть в диапазоне от 0 до 1 (например, 0.84)');
+      return;
+    }
+
+    setCalculationResult_qp(null);
+    setShowBatterySection_qp(true);
+    setIsCalculatingOptimal_qp(true);
+    setOptimalError_qp(null);
+
+    try {
+      const result = await apiService.calculateOptimalParameters_qp({
+        load_profile: loadProfile_qp,
+        efficiency: parameters_qp.dblEfficiency_pq,
+      });
+
+      const discharge_time = result.optimal_capacity_mwh / result.optimal_power_out_mw;
+      const charge_energy = result.optimal_capacity_mwh / parameters_qp.dblEfficiency_pq;
+      const charge_time = charge_energy / result.optimal_power_in_mw;
+
+      setOptimalParams_qp({
+        power_in: result.optimal_power_in_mw,
+        power_out: result.optimal_power_out_mw,
+        capacity: result.optimal_capacity_mwh,
+        deficit: result.deficit_mw,
+        discharge_time,
+        charge_energy,
+        charge_time,
+      });
+    } catch (err) {
+      console.error('Optimal calculation error:', err);
+      setOptimalError_qp(err.response?.data?.detail || 'Ошибка при расчете оценочных параметров');
+    } finally {
+      setIsCalculatingOptimal_qp(false);
+    }
+  };
+
+  const handleQpProfileChange = (overrideLoadProfile) => {
+    if (calculationResult_qp) {
+      handleCalculate_qp(overrideLoadProfile);
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <Hero algorithm={algorithm} setAlgorithm={setAlgorithm} />
@@ -195,17 +249,31 @@ function App() {
             parameters={parameters_qp}
             setParameters={setParameters_qp}
             setError={setError_qp}
-            onCalculateSchedule={handleCalculate_qp}
+            onCalculateSchedule={handleQpProfileChange}
           />
 
           {loadProfile_qp && (
             <DataVisualizationSection_qp
               loadProfile={loadProfile_qp}
               setLoadProfile={setLoadProfile_qp}
-              onCalculate={handleCalculate_qp}
+              onCalculate={handleCalculateOptimal_qp}
+              onCalculateSchedule={handleQpProfileChange}
+              isCalculating={isCalculatingOptimal_qp}
+              error={optimalError_qp}
+            />
+          )}
+
+          {showBatterySection_qp && loadProfile_qp && (
+            <BatteryInteractiveSection_qp
+              loadProfile={loadProfile_qp}
+              parameters={parameters_qp}
+              setParameters={setParameters_qp}
+              maxAbsValue={Math.max(...loadProfile_qp.map(v => Math.abs(v)))}
+              setOptimalParams={setOptimalParams_qp}
+              initialOptimalParams={optimalParams_qp}
               onCalculateSchedule={handleCalculate_qp}
-              isCalculating={isCalculating_qp}
-              error={error_qp}
+              isCalculatingSchedule={isCalculating_qp}
+              scheduleError={error_qp}
             />
           )}
 
@@ -215,7 +283,6 @@ function App() {
                 loadProfile={loadProfile_qp}
                 calculationResult={calculationResult_qp}
                 parameters={parameters_qp}
-                setParameters={setParameters_qp}
               />
               
               <SchematicSection_qp

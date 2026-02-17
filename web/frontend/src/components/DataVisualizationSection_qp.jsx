@@ -456,7 +456,7 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
             ) : (
               <>
                 <Calculator className="inline-block w-6 h-6 mr-2" />
-                Рассчитать график (QP)
+                Рассчитать оценочные параметры
               </>
             )}
           </button>

@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ComposedChart,
-  Line,
   Bar,
   XAxis,
   YAxis,
@@ -14,23 +12,11 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { BarChart3, Activity, Battery, Download, Zap } from 'lucide-react';
+import { BarChart3, Activity, Battery, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import BatteryInteractiveSection_qp from './BatteryInteractiveSection_qp';
 
-const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParameters }) => {
+const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
   const { eess_schedule, resulting_balance, soc, summary } = calculationResult;
-  
-  // Состояние для оптимальных параметров QP
-  const [optimalParams, setOptimalParams] = useState({
-    power_in: null,
-    power_out: null,
-    capacity: null,
-    deficit: null,
-    discharge_time: null,
-    charge_energy: null,
-    charge_time: null
-  });
 
   // Подготовка данных для основного графика
   const mainChartData = loadProfile.map((value, index) => ({
@@ -123,15 +109,6 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParam
         <p className="section-subtitle text-center">
           Диспетчерский график работы СНЭЭ и анализ эффективности
         </p>
-
-        {/* Интерактивный выбор параметров */}
-        <BatteryInteractiveSection_qp
-          loadProfile={loadProfile}
-          parameters={parameters}
-          setParameters={setParameters}
-          maxAbsValue={maxAbsValue}
-          setOptimalParams={setOptimalParams}
-        />
 
         {/* Контейнер для сводной информации и графика */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(auto,300px)_1fr] gap-6 mb-8">
@@ -306,90 +283,7 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, setParam
           </motion.div>
         </div>
 
-        {/* Контейнер для Оптимальных параметров (QP) и графика SOC */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(auto,300px)_1fr] gap-6 mb-8">
-        
-        {/* Оптимальные параметры (QP) */}
-        {optimalParams && optimalParams.power_in && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            viewport={{ once: true }}
-            className="card"
-          >
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-              <Zap className="w-6 h-6 mr-2 text-primary-600" />
-              Текущие параметры
-            </h3>
-            
-            <div className="grid grid-cols-1 gap-4">
-            <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border-2 border-red-300">
-                <div className="text-xs text-gray-600 mb-0.5">Номинальная активная входная мощность (dblNIn)</div>
-                <div className="text-2xl font-bold text-red-700">{parameters.dblNIn_pq.toFixed(2)} МВт</div>
-              </div>
-
-              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
-                <div className="text-xs text-gray-600 mb-0.5">Номинальная активная выходная мощность (dblNOut)</div>
-                <div className="text-2xl font-bold text-green-700">{parameters.dblNOut_pq.toFixed(2)} МВт</div>
-              </div>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
-                <div className="text-xs text-gray-600 mb-0.5">Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity)</div>
-                <div className="text-2xl font-bold text-blue-700">{parameters.dblCapacity_pq.toFixed(2)} МВтч</div>
-              </div>
-
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
-                <div className="text-xs text-gray-600 mb-0.5">Энергоэффективность (КПД) (dblEfficiency)</div>
-                <div className="text-2xl font-bold text-purple-700">{(parameters.dblEfficiency_pq * 100).toFixed(2)}%</div>
-              </div>
-               
-              {/* dblNIn - Номинальная входная мощность (красный) 
-              <div className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Входная мощность</div>
-                <div className="text-3xl font-bold text-red-700">{optimalParams.power_in?.toFixed(2)} МВт</div>
-              </div>
-              */}
-              {/* Энергия на заряд (светло-красный) 
-              <div className="bg-gradient-to-br from-rose-50 to-rose-100 border-2 border-rose-200 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Энергия на заряд</div>
-                <div className="text-3xl font-bold text-rose-700">{optimalParams.charge_energy?.toFixed(2)} МВтч</div>
-              </div>
-              */}
-              {/* Фактическое время заряда (фиолетовый) 
-              <div className="bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Время заряда</div>
-                <div className="text-3xl font-bold text-violet-700">{optimalParams.charge_time?.toFixed(2)} ч</div>
-              </div>
-              */}
-              {/* dblNOut - Номинальная выходная мощность (зеленый) 
-              <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Выходная мощность</div>
-                <div className="text-3xl font-bold text-green-700">{optimalParams.power_out?.toFixed(2)} МВт</div>
-              </div>
-              */}
-              {/* dblCapacity - Емкость (светло-зеленый) 
-              <div className="bg-gradient-to-br from-lime-50 to-lime-100 border-2 border-lime-200 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Емкость батареи</div>
-                <div className="text-3xl font-bold text-lime-700">{optimalParams.capacity?.toFixed(2)} МВтч</div>
-              </div>
-              */}
-               {/* Фактическое время разряда (фиолетовый) 
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Время разряда</div>
-                <div className="text-3xl font-bold text-purple-700">{optimalParams.discharge_time?.toFixed(2)} ч</div>
-              </div>
-              */}
-             {/* Дефицит мощности 
-             <div className="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Дефицит мощности</div>
-                <div className="text-3xl font-bold text-orange-700">{optimalParams.deficit?.toFixed(2)} МВт</div>
-              </div>
-              */}
-            </div>
-          </motion.div>
-        )}        
-        
+        <div className="grid grid-cols-1 gap-6 mb-8">
         {/* График SOC */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
