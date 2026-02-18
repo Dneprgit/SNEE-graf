@@ -187,6 +187,16 @@ function App() {
         charge_energy,
         charge_time,
       });
+
+      // На шаге расчета оценочных параметров сразу переносим их
+      // в рабочие параметры СНЭЭ для следующего расчета графика.
+      setParameters_qp(prev => ({
+        ...prev,
+        dblNIn_pq: result.optimal_power_in_mw,
+        dblNOut_pq: result.optimal_power_out_mw,
+        dblCapacity_pq: result.optimal_capacity_mwh,
+        runtime_hours: discharge_time,
+      }));
     } catch (err) {
       console.error('Optimal calculation error:', err);
       setOptimalError_qp(err.response?.data?.detail || 'Ошибка при расчете оценочных параметров');

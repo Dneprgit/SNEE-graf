@@ -405,15 +405,6 @@ const BatteryInteractiveSection_qp = ({
               <Info className="w-6 h-6 mr-2 text-primary-600" />
               Параметры СНЭЭ, используемые в расчете диспетчерского графика 
             </div>
-              <button
-                onClick={resetToRecommended}
-                disabled={isLoadingOptimal}
-                className={`w-full btn-secondary text-sm flex items-center justify-center ${isLoadingOptimal ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={optimalParams.power_out && optimalParams.capacity ? `Установить: Вход ${optimalParams.power_in.toFixed(2)} МВт, Выход ${optimalParams.power_out.toFixed(2)} МВт, Емкость ${optimalParams.capacity.toFixed(2)} МВтч` : 'Установить оптимальные параметры'}
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                {isLoadingOptimal ? 'Расчет...' : 'Установить оценочные параметры'}
-              </button>
 
               <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border-2 border-red-300">
                 <div className="text-xs text-gray-600 mb-1">Номинальная активная входная мощность (dblNIn), МВт</div>
@@ -470,7 +461,7 @@ const BatteryInteractiveSection_qp = ({
 
               <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border-2 border-amber-300">
                     <div className="text-xs text-gray-600 mb-0.5">Время работы на номинальной мощности</div>
-                    <div className="text-2xl font-bold text-amber-700">{(batteryCapacity / batteryPower).toFixed(1)} ч</div>
+                    <div className="text-2xl font-bold text-amber-700">{(batteryCapacity / batteryPower).toFixed(2)} ч</div>
               </div>
            
             </div>
@@ -944,6 +935,15 @@ const BatteryInteractiveSection_qp = ({
               <Info className="w-6 h-6 mr-2 text-primary-600" />
               Оценочные параметры
             </div>
+              <button
+                onClick={resetToRecommended}
+                disabled={isLoadingOptimal}
+                className={`w-full btn-secondary text-sm flex items-center justify-center ${isLoadingOptimal ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={optimalParams.power_out && optimalParams.capacity ? `Установить: Вход ${optimalParams.power_in.toFixed(2)} МВт, Выход ${optimalParams.power_out.toFixed(2)} МВт, Емкость ${optimalParams.capacity.toFixed(2)} МВтч` : 'Установить оптимальные параметры'}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                {isLoadingOptimal ? 'Расчет...' : 'Установить оценочные параметры'}
+              </button>
               
               {isLoadingOptimal ? (
                 <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-300 text-center">
@@ -1017,7 +1017,7 @@ const BatteryInteractiveSection_qp = ({
           ) : (
             <>
               <Calculator className="inline-block w-6 h-6 mr-2" />
-              Рассчитать график (QP)
+              Рассчитать диспетчерский график работы СНЭЭ
             </>
           )}
         </button>

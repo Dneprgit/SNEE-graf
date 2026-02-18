@@ -12,7 +12,7 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { BarChart3, Activity, Battery, Download } from 'lucide-react';
+import { BarChart3, Activity, Battery, Download , Zap } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
@@ -154,30 +154,29 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
                   label: 'Суммарный заряд',
                   value: `${summary.total_charge_mwh} МВтч`,
                   subValue: `max ${summary.max_charge_power_mw} МВт`,
-                  color: 'purple',
+                  color: 'orange',
                   icon: '↓',
                 },
                 {
                   label: 'Суммарный разряд',
                   value: `${summary.total_discharge_mwh} МВтч`,
                   subValue: `max ${summary.max_discharge_power_mw} МВт`,
-                  color: 'orange',
+                  color: 'green',
                   icon: '↑',
                 },
                 ...(summary.deficit_mw !== undefined ? [{
                   label: 'Дефицит мощности (Dmax)',
                   value: `${summary.deficit_mw} МВт`,
-                  subValue: 'из QP оптимизации',
-                  color: 'red',
-                  icon: '⚠️',
+                  color: Number(summary.deficit_mw) > 0.01 ? 'red' : 'green',
+                  ...(Number(summary.deficit_mw) > 0.01 ? { icon: '⚠️' } : {}),
                 }] : []),
-                ...(summary.reserve_mw !== undefined ? [{
-                  label: 'Резерв мощности (Rmax)',
-                  value: `${summary.reserve_mw} МВт`,
-                  subValue: 'из QP оптимизации',
-                  color: 'teal',
-                  icon: '✓',
-                }] : []),
+                // ...(summary.reserve_mw !== undefined ? [{
+                //   label: 'Резерв мощности (Rmax)',
+                //   value: `${summary.reserve_mw} МВт`,
+                //   subValue: 'из QP оптимизации',
+                //   color: 'teal',
+                //   icon: '✓',
+                // }] : []),
               ].map((stat, index) => (
                 <motion.div
                   key={index}
@@ -187,7 +186,7 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
                   viewport={{ once: true }}
                   className={`bg-gradient-to-br from-${stat.color}-50 to-${stat.color}-100 border-2 border-${stat.color}-200 rounded-lg p-3 flex items-center gap-3`}
                 >
-                  <div className="text-2xl flex-shrink-0">{stat.icon}</div>
+                  {stat.icon && <div className="text-2xl flex-shrink-0">{stat.icon}</div>}
                   <div className="flex-1">
                     <div className={`text-2xl font-bold text-${stat.color}-700`}>
                       {stat.value}
@@ -243,7 +242,7 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
               
               {/* Исходный баланс (полупрозрачная область) */}
               <Area
-                type="monotone"
+                type="linear"
                 dataKey="original"
                 name="Исходный баланс"
                 fill="#0ea5e9"
@@ -271,7 +270,7 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
               
               {/* Результирующий баланс */}
               <Area
-                type="monotone"
+                type="linear"
                 dataKey="resulting"
                 name="Результирующий баланс"
                 fill="rgba(255, 200, 200, 1)"
@@ -283,7 +282,47 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 mb-8">
+        {/* <div className="grid grid-cols-1 gap-6 mb-8"> */}
+
+
+        {/* Контейнер для Оптимальных параметров (QP) и графика SOC */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(auto,300px)_1fr] gap-6 mb-8">
+        
+        {/* Оптимальные параметры (QP) */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            viewport={{ once: true }}
+            className="card"
+          >
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+              <Zap className="w-6 h-6 mr-2 text-primary-600" />
+              Параметры СНЭЭ
+            </h3>
+            
+            {/* <div className="grid grid-cols-1 gap-4">
+            <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border-2 border-red-300">
+                <div className="text-xs text-gray-600 mb-0.5">Номинальная активная входная мощность (dblNIn)</div>
+              </div>
+
+              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
+                <div className="text-xs text-gray-600 mb-0.5">Номинальная активная выходная мощность (dblNOut)</div>
+              </div>
+              
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border-2 border-blue-300">
+                <div className="text-xs text-gray-600 mb-0.5">Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity)</div>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border-2 border-purple-300">
+                <div className="text-xs text-gray-600 mb-0.5">Энергоэффективность (КПД) (dblEfficiency)</div>
+              </div>
+            </div> */}
+          </motion.div>
+
+
+
+
         {/* График SOC */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

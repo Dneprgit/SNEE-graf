@@ -389,7 +389,7 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
                   <Legend />
                   <ReferenceLine y={0} stroke="#000" strokeWidth={2} />
                   <Area
-                    type="monotone"
+                    type="linear"
                     dataKey="balance"
                     name="Баланс мощности"
                     stroke="#0ea5e9"
