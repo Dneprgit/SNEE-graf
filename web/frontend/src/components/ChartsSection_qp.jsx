@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -17,6 +19,39 @@ import * as XLSX from 'xlsx';
 
 const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
   const { eess_schedule, resulting_balance, soc, summary } = calculationResult;
+
+  const [preset, setPreset] = useState('bar');
+
+  const [chartVisibility, setChartVisibility] = useState({
+    original: true,
+    eess: false,
+    resulting: true,
+  });
+
+  const [chartType, setChartType] = useState({
+    original: 'bar',
+    eess: 'bar',
+    resulting: 'bar',
+  });
+
+  const applyPreset = (presetName) => {
+    if (presetName === 'bar') {
+      setChartVisibility({ original: true, eess: false, resulting: true });
+      setChartType({ original: 'bar', eess: 'bar', resulting: 'bar' });
+    } else if (presetName === 'lineBar') {
+      setChartVisibility({ original: true, eess: true, resulting: true });
+      setChartType({ original: 'line', eess: 'bar', resulting: 'line' });
+    }
+    setPreset(presetName);
+  };
+
+  const toggleVisibility = (key) => {
+    setChartVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const setChartTypeForKey = (key, type) => {
+    setChartType((prev) => ({ ...prev, [key]: type }));
+  };
 
   // Подготовка данных для основного графика
   const mainChartData = loadProfile.map((value, index) => ({
@@ -215,9 +250,73 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
             <p className="text-sm text-gray-600 mb-4">
               Исходный баланс для QP: <span className="text-red-600 font-semibold">положительный</span> = дефицит, <span className="text-green-600 font-semibold">отрицательный</span> = избыток
             </p>
+            {/* Пресет отображения */}
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-sm font-medium text-gray-700">Пресет:</span>
+              <div className="flex rounded overflow-hidden border border-gray-300 text-sm">
+                <button
+                  type="button"
+                  onClick={() => applyPreset('bar')}
+                  className={`px-4 py-1.5 ${preset === 'bar' ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                >
+                  Bar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('lineBar')}
+                  className={`px-4 py-1.5 border-l border-gray-300 ${preset === 'lineBar' ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                >
+                  Line-Bar
+                </button>
+              </div>
+            </div>
+            {/* Переключатели видимости и типа графиков */}
+            <div className="flex flex-wrap gap-4 mb-4">
+              {[
+                { key: 'original', label: 'Исходный баланс', color: '#0ea5e9' },
+                { key: 'eess', label: 'Заряд и разряд СНЭЭ', color: '#10b981' },
+                { key: 'resulting', label: 'Результирующий баланс', color: '#ff6464' },
+              ].map(({ key, label, color }) => (
+                <div key={key} className="flex items-center gap-2 flex-wrap">
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm">
+                    <input
+                      type="checkbox"
+                      checked={chartVisibility[key]}
+                      onChange={() => toggleVisibility(key)}
+                      className="w-4 h-4 rounded border-gray-300"
+                    />
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className={chartVisibility[key] ? 'text-gray-800' : 'text-gray-400 line-through'}>
+                      {label}
+                    </span>
+                  </label>
+                  <div className="flex rounded overflow-hidden border border-gray-300 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setChartTypeForKey(key, 'bar')}
+                      disabled={!chartVisibility[key]}
+                      className={`px-2 py-0.5 ${chartType[key] === 'bar' ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      Столб
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChartTypeForKey(key, 'line')}
+                      disabled={!chartVisibility[key]}
+                      className={`px-2 py-0.5 border-l border-gray-300 ${chartType[key] === 'line' ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      Линия
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={500}>
-            <ComposedChart data={mainChartData}>
+            <ComposedChart data={mainChartData} barGap="-80%">
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis
                 dataKey="hour"
@@ -240,43 +339,90 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
               <Legend />
               <ReferenceLine y={0} stroke="#000" strokeWidth={2} />
               
-              {/* Исходный баланс (полупрозрачная область) */}
-              <Area
-                type="linear"
-                dataKey="original"
-                name="Исходный баланс"
-                fill="#0ea5e9"
-                fillOpacity={0.3}
-                stroke="#0ea5e9"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-              />
+              {/* Исходный баланс */}
+              {chartVisibility.original && (
+                chartType.original === 'bar' ? (
+                  <Bar
+                    dataKey="original"
+                    name="Исходный баланс"
+                    fill="#0ea5e9"
+                    fillOpacity={0.4}
+                  />
+                ) : (
+                  <Line
+                    type="linear"
+                    dataKey="original"
+                    name="Исходный баланс"
+                    stroke="#0ea5e9"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    connectNulls
+                  />
+                )
+              )}
               
-              {/* Заряд и разряд (столбцы) */}
-              <Bar
-                dataKey="discharge"
-                name="Разряд СНЭЭ (выдача)"
-                fill="#10b981"
-                fillOpacity={0.5}
-                stackId="eess"
-              />
-              <Bar
-                dataKey="charge"
-                name="Заряд СНЭЭ (потребление)"
-                fill="#ef4444"
-                fillOpacity={0.5}
-                stackId="eess"
-              />
+              {/* Заряд и разряд СНЭЭ */}
+              {chartVisibility.eess && (
+                chartType.eess === 'bar' ? (
+                  <>
+                    <Bar
+                      dataKey="discharge"
+                      name="Разряд СНЭЭ (выдача)"
+                      fill="#10b981"
+                      fillOpacity={0.4}
+                    />
+                    <Bar
+                      dataKey="charge"
+                      name="Заряд СНЭЭ (потребление)"
+                      fill="#ef4444"
+                      fillOpacity={0.4}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Line
+                      type="linear"
+                      dataKey="discharge"
+                      name="Разряд СНЭЭ (выдача)"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls
+                    />
+                    <Line
+                      type="linear"
+                      dataKey="charge"
+                      name="Заряд СНЭЭ (потребление)"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls
+                    />
+                  </>
+                )
+              )}
               
               {/* Результирующий баланс */}
-              <Area
-                type="linear"
-                dataKey="resulting"
-                name="Результирующий баланс"
-                fill="rgba(255, 200, 200, 1)"
-                stroke="rgba(255, 100, 100, 1)"
-                strokeWidth={3}
-              />
+              {chartVisibility.resulting && (
+                chartType.resulting === 'bar' ? (
+                  <Bar
+                    dataKey="resulting"
+                    name="Результирующий баланс"
+                    fill="rgba(255, 100, 100, 0.5)"
+                  />
+                ) : (
+                  <Line
+                    type="linear"
+                    dataKey="resulting"
+                    name="Результирующий баланс"
+                    stroke="rgba(255, 100, 100, 1)"
+                    strokeWidth={3}
+                    dot={false}
+                    connectNulls
+                  />
+                )
+              )}
             </ComposedChart>
           </ResponsiveContainer>
           </motion.div>
