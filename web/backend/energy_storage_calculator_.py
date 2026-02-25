@@ -3,7 +3,75 @@
 Портирован с VBA алгоритма water-filling
 """
 import numpy as np
-from typing import List, Tuple
+import io
+from contextlib import redirect_stdout, redirect_stderr
+from typing import Any, Dict, List, Tuple
+
+
+def _to_serializable(value: Any) -> Any:
+    """Преобразование numpy/scipy структур в JSON-совместимый формат."""
+    if isinstance(value, np.ndarray):
+        return _to_serializable(value.tolist())
+    if isinstance(value, float):
+        return value if np.isfinite(value) else None
+    if isinstance(value, (np.floating,)):
+        float_value = float(value)
+        return float_value if np.isfinite(float_value) else None
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.bool_,)):
+        return bool(value)
+    if isinstance(value, dict):
+        return {k: _to_serializable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_serializable(v) for v in value]
+    return value
+
+
+def _collect_linprog_debug(
+    result: Any,
+    solver_stdout: str,
+    solver_stderr: str,
+    c: np.ndarray,
+    A_eq: np.ndarray,
+    b_eq: np.ndarray,
+    A_ub: np.ndarray,
+    b_ub: np.ndarray,
+    bounds: List[Tuple[float, float]],
+    mode: str,
+) -> Dict[str, Any]:
+    """Сбор подробной отладочной информации по LP задаче."""
+    bounds_lb = [float(lb) for lb, _ in bounds]
+    bounds_ub = [float(ub) if np.isfinite(ub) else None for _, ub in bounds]
+
+    result_payload = {}
+    if hasattr(result, "items"):
+        result_payload = _to_serializable(dict(result.items()))
+    else:
+        result_payload = _to_serializable(result)
+
+    return {
+        "mode": mode,
+        "problem_shape": {
+            "variables_count": int(len(c)),
+            "eq_constraints": int(A_eq.shape[0]),
+            "ub_constraints": int(A_ub.shape[0]),
+        },
+        "objective_coefficients": _to_serializable(c),
+        "constraints": {
+            "A_eq_shape": [int(A_eq.shape[0]), int(A_eq.shape[1])],
+            "A_ub_shape": [int(A_ub.shape[0]), int(A_ub.shape[1])],
+            "b_eq": _to_serializable(b_eq),
+            "b_ub": _to_serializable(b_ub),
+        },
+        "bounds": {
+            "lower": bounds_lb,
+            "upper": bounds_ub,
+        },
+        "solver_result": result_payload,
+        "solver_stdout": solver_stdout,
+        "solver_stderr": solver_stderr,
+    }
 
 
 class EnergyStorageCalculator:
@@ -346,7 +414,7 @@ class EnergyStorageCalculator_qp:
         self.half_cycle_efficiency = np.sqrt(efficiency)  # КПД полуцикла
 
 
-    def calculate_dispatch_schedule_qp(self, load_profile: List[float]) -> dict:
+    def calculate_dispatch_schedule_qp(self, load_profile: List[float], debug: bool = False) -> dict:
 
         """
         Расчет диспетчерского графика СНЭЭ методом оптимизации
@@ -474,16 +542,35 @@ class EnergyStorageCalculator_qp:
         # 6. Решение задачи оптимизации
         # На время отладки указать: options={'disp': True}
         solver_name = "SciPy.Optimize.LinProg.HiGHS. "
-        result = linprog(
-            c=c,
-            A_ub=A_ub,
-            b_ub=b_ub,
-            A_eq=A_eq,
-            b_eq=b_eq,
-            bounds=bounds,
-            method='highs',
-            options={'disp': True}
-        )
+        linprog_stdout = io.StringIO()
+        linprog_stderr = io.StringIO()
+        with redirect_stdout(linprog_stdout), redirect_stderr(linprog_stderr):
+            result = linprog(
+                c=c,
+                A_ub=A_ub,
+                b_ub=b_ub,
+                A_eq=A_eq,
+                b_eq=b_eq,
+                bounds=bounds,
+                method='highs',
+                options={'disp': debug}
+            )
+        solver_stdout = linprog_stdout.getvalue()
+        solver_stderr = linprog_stderr.getvalue()
+        debug_info = None
+        if debug:
+            debug_info = _collect_linprog_debug(
+                result=result,
+                solver_stdout=solver_stdout,
+                solver_stderr=solver_stderr,
+                c=c,
+                A_eq=A_eq,
+                b_eq=b_eq,
+                A_ub=A_ub,
+                b_ub=b_ub,
+                bounds=bounds,
+                mode="calculate_dispatch_schedule_qp",
+            )
         
         # 7. Проверка результата: 0 - нормальное завершение, 1 - не сошелся, 2 - ограничения несовместны, 3 - задача неограничена, 4 - ошибка в алгоритме HiGHS
         if result.status > 0:
@@ -495,11 +582,16 @@ class EnergyStorageCalculator_qp:
             }
             error_msg = solver_name + error_messages.get(result.status, f"Неизвестная ошибка оптимизации (статус: {result.status})")
             full_error = f"{error_msg}\n\nДетали: {result.message}"
+            if debug and debug_info is not None:
+                full_error += f"\n\nОтладка linprog:\n{debug_info}"
             print(f"Warning: {full_error}")
             raise ValueError(full_error)
         
         if result.x is None:
-            raise ValueError(solver_name + "Оптимизация не вернула решение. Проверьте входные данные.")
+            no_solution_error = solver_name + "Оптимизация не вернула решение. Проверьте входные данные."
+            if debug and debug_info is not None:
+                no_solution_error += f"\n\nОтладка linprog:\n{debug_info}"
+            raise ValueError(no_solution_error)
         
         x = result.x
 
@@ -527,12 +619,15 @@ class EnergyStorageCalculator_qp:
         # x[98] = Rmax - максимальный резерв
         system_with_enss_max_reserve = x[im * 4 + 1] # eeee
             
-        return {
+        result_payload = {
             'eess_load': eens_load,
             'soc_energy': eens_energy_available,
             'deficit': system_with_enss_max_deficite,
             'reserve': system_with_enss_max_reserve
         }
+        if debug and debug_info is not None:
+            result_payload["debug_info"] = debug_info
+        return result_payload
    
     def get_summary_qp(self, load_profile: List[float], 
                    eess_schedule: np.ndarray,
@@ -603,7 +698,7 @@ class EnergyStorageCalculator_qp:
         return result
 
 
-def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float) -> dict:
+def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float, debug: bool = False) -> dict:
     """
     Расчет оптимальных параметров через квадратичную оптимизацию (scipy)
     
@@ -720,16 +815,35 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     # 6. Решение задачи оптимизации
     # На время отладки указать: options={'disp': True}
     solver_name = "SciPy.Optimize.LinProg.HiGHS. "
-    result = linprog(
-        c=c,
-        A_ub=A_ub,
-        b_ub=b_ub,
-        A_eq=A_eq,
-        b_eq=b_eq,
-        bounds=bounds,
-        method='highs',
-        options={'disp': True}
-    )
+    linprog_stdout = io.StringIO()
+    linprog_stderr = io.StringIO()
+    with redirect_stdout(linprog_stdout), redirect_stderr(linprog_stderr):
+        result = linprog(
+            c=c,
+            A_ub=A_ub,
+            b_ub=b_ub,
+            A_eq=A_eq,
+            b_eq=b_eq,
+            bounds=bounds,
+            method='highs',
+            options={'disp': debug}
+        )
+    solver_stdout = linprog_stdout.getvalue()
+    solver_stderr = linprog_stderr.getvalue()
+    debug_info = None
+    if debug:
+        debug_info = _collect_linprog_debug(
+            result=result,
+            solver_stdout=solver_stdout,
+            solver_stderr=solver_stderr,
+            c=c,
+            A_eq=A_eq,
+            b_eq=b_eq,
+            A_ub=A_ub,
+            b_ub=b_ub,
+            bounds=bounds,
+            mode="calculate_optimal_parameters_qp",
+        )
     
     # 7. Проверка результата: 0 - нормальное завершение, 1 - не сошелся, 2 - ограничения несовместны, 3 - задача неограничена, 4 - ошибка в алгоритме HiGHS
     if result.status > 0:
@@ -741,11 +855,16 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
         }
         error_msg = solver_name + error_messages.get(result.status, f"Неизвестная ошибка оптимизации (статус: {result.status})")
         full_error = f"{error_msg}\n\nДетали: {result.message}"
+        if debug and debug_info is not None:
+            full_error += f"\n\nОтладка linprog:\n{debug_info}"
         print(f"Warning: {full_error}")
         raise ValueError(full_error)
     
     if result.x is None:
-        raise ValueError(solver_name + "Оптимизация не вернула решение. Проверьте входные данные.")
+        no_solution_error = solver_name + "Оптимизация не вернула решение. Проверьте входные данные."
+        if debug and debug_info is not None:
+            no_solution_error += f"\n\nОтладка linprog:\n{debug_info}"
+        raise ValueError(no_solution_error)
     
     x = result.x
 
@@ -762,11 +881,14 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     n_out = x[im * 4 + 2]
     capacity = x[im * 4 + 3]
     
-    return {
+    result_payload = {
         "optimal_power_in_mw": float(n_in),
         "optimal_power_out_mw": float(n_out),
         "optimal_capacity_mwh": float(capacity),
         "deficit_mw": float(system_with_enss_load_deficite)
     }
+    if debug and debug_info is not None:
+        result_payload["debug_info"] = debug_info
+    return result_payload
 
 

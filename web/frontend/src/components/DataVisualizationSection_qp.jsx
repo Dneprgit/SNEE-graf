@@ -45,7 +45,17 @@ const DraggableDot = ({ cx, cy, index, onDrag, isDragging, isActive }) => {
   );
 };
 
-const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate, onCalculateSchedule, isCalculating, error }) => {
+const DataVisualizationSection_qp = ({
+  loadProfile,
+  setLoadProfile,
+  onCalculate,
+  onCalculateSchedule,
+  isCalculating,
+  error,
+  debugMode,
+  setDebugMode,
+  optimalDebugInfo,
+}) => {
   const chartRef = useRef(null);
   const [draggingIndex, setDraggingIndex] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -432,6 +442,38 @@ const DataVisualizationSection_qp = ({ loadProfile, setLoadProfile, onCalculate,
           </div>
         </motion.div>
         </div>
+
+        <div className="mb-6 card border-2 border-slate-300 bg-slate-50">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">Режим отладки QP</h3>
+              <p className="text-sm text-slate-600">
+                Включает передачу расширенных логов LP-оптимизации с backend на frontend.
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={Boolean(debugMode)}
+                onChange={(e) => setDebugMode?.(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Debug Mode
+            </label>
+          </div>
+        </div>
+
+        {debugMode && optimalDebugInfo && (
+          <div className="mb-6 card border-2 border-indigo-300 bg-indigo-50">
+            <h3 className="text-lg font-bold text-indigo-900 mb-2">Логи calculate_optimal_parameters_qp</h3>
+            <p className="text-xs text-indigo-700 mb-3">
+              Временное окно отладки. Для возврата к пользовательскому виду отключите Debug Mode.
+            </p>
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap text-xs bg-white border border-indigo-200 rounded p-3">
+              {JSON.stringify(optimalDebugInfo, null, 2)}
+            </pre>
+          </div>
+        )}
 
         {/* Кнопка расчета */}
         <motion.div

@@ -43,6 +43,9 @@ function App() {
   const [isCalculatingOptimal_qp, setIsCalculatingOptimal_qp] = useState(false);
   const [error_qp, setError_qp] = useState(null);
   const [optimalError_qp, setOptimalError_qp] = useState(null);
+  const [qpDebugMode, setQpDebugMode] = useState(import.meta.env.VITE_QP_DEBUG_DEFAULT === 'true');
+  const [scheduleDebugInfo_qp, setScheduleDebugInfo_qp] = useState(null);
+  const [optimalDebugInfo_qp, setOptimalDebugInfo_qp] = useState(null);
 
   // Загрузка профиля по умолчанию при запуске
   useEffect(() => {
@@ -142,11 +145,14 @@ function App() {
         rated_output_power_mw: parameters_qp.dblNOut_pq,
         rated_capacity_mwh: parameters_qp.dblCapacity_pq,
         efficiency: parameters_qp.dblEfficiency_pq,
+        debug: qpDebugMode,
       });
       setCalculationResult_qp(result);
+      setScheduleDebugInfo_qp(result?.debug_info || null);
     } catch (err) {
       console.error('Calculation error:', err);
       setError_qp(err.response?.data?.detail || 'Ошибка при расчете графика');
+      setScheduleDebugInfo_qp(null);
     } finally {
       setIsCalculating_qp(false);
     }
@@ -172,6 +178,7 @@ function App() {
       const result = await apiService.calculateOptimalParameters_qp({
         load_profile: loadProfile_qp,
         efficiency: parameters_qp.dblEfficiency_pq,
+        debug: qpDebugMode,
       });
 
       const discharge_time = result.optimal_capacity_mwh / result.optimal_power_out_mw;
@@ -187,6 +194,7 @@ function App() {
         charge_energy,
         charge_time,
       });
+      setOptimalDebugInfo_qp(result?.debug_info || null);
 
       // На шаге расчета оценочных параметров сразу переносим их
       // в рабочие параметры СНЭЭ для следующего расчета графика.
@@ -200,6 +208,7 @@ function App() {
     } catch (err) {
       console.error('Optimal calculation error:', err);
       setOptimalError_qp(err.response?.data?.detail || 'Ошибка при расчете оценочных параметров');
+      setOptimalDebugInfo_qp(null);
     } finally {
       setIsCalculatingOptimal_qp(false);
     }
@@ -270,6 +279,9 @@ function App() {
               onCalculateSchedule={handleQpProfileChange}
               isCalculating={isCalculatingOptimal_qp}
               error={optimalError_qp}
+              debugMode={qpDebugMode}
+              setDebugMode={setQpDebugMode}
+              optimalDebugInfo={optimalDebugInfo_qp}
             />
           )}
 
@@ -284,6 +296,9 @@ function App() {
               onCalculateSchedule={handleCalculate_qp}
               isCalculatingSchedule={isCalculating_qp}
               scheduleError={error_qp}
+              debugMode={qpDebugMode}
+              scheduleDebugInfo={scheduleDebugInfo_qp}
+              optimalDebugInfo={optimalDebugInfo_qp}
             />
           )}
 

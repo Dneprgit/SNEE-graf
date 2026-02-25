@@ -25,6 +25,12 @@ app = FastAPI(
     version="2.0.0"
 )
 
+
+def _str_to_bool(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
 # CORS middleware для работы с фронтендом
 app.add_middleware(
     CORSMiddleware,
@@ -65,6 +71,7 @@ class CalculationResponse(BaseModel):
     resulting_balance: List[float] = Field(..., description="Результирующий баланс мощности")
     soc: List[float] = Field(..., description="Состояние заряда батареи (SOC)")
     summary: dict = Field(..., description="Сводная информация о работе СНЭЭ")
+    debug_info: Optional[dict] = Field(None, description="Подробная отладочная информация (только debug режим)")
 
 
 # Эндпоинты
@@ -233,6 +240,7 @@ class OptimalParametersRequest(BaseModel):
     load_profile: List[float] = Field(..., min_items=24, max_items=24, 
                                       description="Суточный профиль баланса мощности (24 часа)")
     efficiency: float = Field(..., gt=0, le=1, description="КПД цикла (0-1)")
+    debug: bool = Field(False, description="Флаг включения расширенного debug-режима")
 
     class Config:
         json_schema_extra = {
@@ -310,6 +318,7 @@ class CalculationRequest_qp(BaseModel):
     rated_output_power_mw: float = Field(..., ge=0, description="Выходная мощность инвертора в МВт (разряд)")
     rated_capacity_mwh: float = Field(..., ge=0, description="Емкость батареи в МВтч")
     efficiency: float = Field(..., gt=0, le=1, description="КПД цикла (0-1)")
+    debug: bool = Field(False, description="Флаг включения расширенного debug-режима")
 
     class Config:
         json_schema_extra = {
@@ -340,6 +349,8 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest_qp):
     - Отрицательное значение = избыток энергии
     """
     try:
+        debug_enabled = request.debug or _str_to_bool(os.getenv("ENABLE_QP_DEBUG"))
+
         # Создание калькулятора
         calculator = EnergyStorageCalculator_qp(
             rated_input_power_mw=request.rated_input_power_mw,
@@ -349,7 +360,10 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest_qp):
         )
         
         # Расчет графика через QP оптимизацию
-        qp_result = calculator.calculate_dispatch_schedule_qp(request.load_profile)
+        qp_result = calculator.calculate_dispatch_schedule_qp(
+            request.load_profile,
+            debug=debug_enabled,
+        )
         
         # Извлекаем результаты
         eess_schedule = qp_result['eess_load']
@@ -378,7 +392,8 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest_qp):
             eess_schedule=eess_schedule.tolist(),
             resulting_balance=resulting_balance,
             soc=soc,
-            summary=summary
+            summary=summary,
+            debug_info=qp_result.get("debug_info")
         )
         
     except ValueError as e:
@@ -397,18 +412,24 @@ async def calculate_optimal_params_qp(request: OptimalParametersRequest):
     входной мощности, выходной мощности, емкости и дефицита мощности.
     """
     try:
+        debug_enabled = request.debug or _str_to_bool(os.getenv("ENABLE_QP_DEBUG"))
+
         result = calculate_optimal_parameters_qp(
             request.load_profile,
-            request.efficiency
+            request.efficiency,
+            debug=debug_enabled,
         )
         
-        return {
+        response_payload = {
             "optimal_power_in_mw": result["optimal_power_in_mw"],
             "optimal_power_out_mw": result["optimal_power_out_mw"],
             "optimal_capacity_mwh": result["optimal_capacity_mwh"],
             "deficit_mw": result["deficit_mw"],
             "message": "Оптимальные параметры успешно рассчитаны (QP)"
         }
+        if "debug_info" in result:
+            response_payload["debug_info"] = result["debug_info"]
+        return response_payload
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

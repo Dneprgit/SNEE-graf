@@ -20,18 +20,18 @@ import * as XLSX from 'xlsx';
 const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
   const { eess_schedule, resulting_balance, soc, summary } = calculationResult;
 
-  const [preset, setPreset] = useState('bar');
+  const [preset, setPreset] = useState('lineBar');
 
   const [chartVisibility, setChartVisibility] = useState({
     original: true,
-    eess: false,
+    eess: true,
     resulting: true,
   });
 
   const [chartType, setChartType] = useState({
-    original: 'bar',
+    original: 'line',
     eess: 'bar',
-    resulting: 'bar',
+    resulting: 'line',
   });
 
   const applyPreset = (presetName) => {

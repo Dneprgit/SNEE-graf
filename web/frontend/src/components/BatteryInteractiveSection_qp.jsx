@@ -22,7 +22,10 @@ const BatteryInteractiveSection_qp = ({
   initialOptimalParams,
   onCalculateSchedule,
   isCalculatingSchedule,
-  scheduleError
+  scheduleError,
+  debugMode,
+  scheduleDebugInfo,
+  optimalDebugInfo,
 }) => {
   // Расчет максимальных значений
   const maxPower = maxAbsValue || Math.max(...loadProfile.map(v => Math.abs(v))); // Максимум мощности баланса по модулю
@@ -42,6 +45,7 @@ const BatteryInteractiveSection_qp = ({
   const [optimalParams, setOptimalParamsLocal] = useState(initialOptimalParams || EMPTY_OPTIMAL_PARAMS);
   const [isLoadingOptimal, setIsLoadingOptimal] = useState(false);
   const [optimalError, setOptimalError] = useState(null);
+  const [optimalDebugInfoLocal, setOptimalDebugInfoLocal] = useState(null);
   const skipNextOptimalFetchRef = useRef(Boolean(initialOptimalParams));
   
   // Состояние для drag & resize выходной батареи
@@ -183,7 +187,8 @@ const BatteryInteractiveSection_qp = ({
       try {
         const result = await apiService.calculateOptimalParameters_qp({
           load_profile: loadProfile,
-          efficiency: parameters.dblEfficiency_pq
+          efficiency: parameters.dblEfficiency_pq,
+          debug: debugMode,
         });
         
         // Рассчитываем дополнительные параметры на фронтенде
@@ -205,6 +210,7 @@ const BatteryInteractiveSection_qp = ({
         if (setOptimalParams) {
           setOptimalParams(newOptimalParams);
         }
+        setOptimalDebugInfoLocal(result?.debug_info || null);
         setOptimalError(null); // Сбрасываем ошибку при успешной оптимизации
       } catch (error) {
         console.error('Ошибка при расчете оптимальных параметров:', error);
@@ -212,6 +218,7 @@ const BatteryInteractiveSection_qp = ({
         // Извлекаем детальное сообщение об ошибке
         const errorMessage = error.response?.data?.detail || error.message || 'Неизвестная ошибка оптимизации';
         setOptimalError(errorMessage);
+        setOptimalDebugInfoLocal(null);
         
         const emptyParams = { ...EMPTY_OPTIMAL_PARAMS };
         setOptimalParamsLocal(emptyParams);
@@ -224,7 +231,7 @@ const BatteryInteractiveSection_qp = ({
     };
     
     calculateOptimal();
-  }, [loadProfile, parameters.dblEfficiency_pq]);
+  }, [loadProfile, parameters.dblEfficiency_pq, debugMode]);
   
   // Обработчики для drag выходной батареи
   const handleMouseMove = (e) => {
@@ -953,7 +960,7 @@ const BatteryInteractiveSection_qp = ({
                 <>
                   <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border-2 border-red-300">
                     <div className="text-xs text-gray-600 mb-0.5">Входная мощность2</div>
-                  <div className="text-2xl font-bold text-red-700">{optimalParams.power_in.toFixed(5)} МВт</div>
+                  <div className="text-2xl font-bold text-red-700">{optimalParams.power_in.toFixed(2)} МВт</div>
                   </div>
                   
                   <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border-2 border-green-300">
@@ -1031,6 +1038,24 @@ const BatteryInteractiveSection_qp = ({
             <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
             <span>{scheduleError}</span>
           </motion.div>
+        )}
+
+        {debugMode && scheduleDebugInfo && (
+          <div className="mt-4 p-4 bg-slate-50 border border-slate-300 rounded-lg text-slate-700 max-w-5xl mx-auto text-left">
+            <div className="font-semibold text-slate-900 mb-2">Логи calculate_dispatch_schedule_qp</div>
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap text-xs bg-white border border-slate-200 rounded p-3">
+              {JSON.stringify(scheduleDebugInfo, null, 2)}
+            </pre>
+          </div>
+        )}
+
+        {debugMode && (optimalDebugInfoLocal || optimalDebugInfo) && (
+          <div className="mt-4 p-4 bg-indigo-50 border border-indigo-300 rounded-lg text-indigo-900 max-w-5xl mx-auto text-left">
+            <div className="font-semibold mb-2">Логи calculate_optimal_parameters_qp (авторасчет в блоке батареи)</div>
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap text-xs bg-white border border-indigo-200 rounded p-3">
+              {JSON.stringify(optimalDebugInfoLocal || optimalDebugInfo, null, 2)}
+            </pre>
+          </div>
         )}
       </motion.div>
       </motion.div>
