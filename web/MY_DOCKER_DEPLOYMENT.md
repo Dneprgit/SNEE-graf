@@ -14,11 +14,11 @@ Dockerfile.frontend.prod
 #1 Запустить на компьютере  Docker Desktop
 
 #2 Собираем Backend образ
-docker build -f Dockerfile.backend.prod -t end2040/snee_web_spes-backend:1.525 .
+docker build -f Dockerfile.backend.prod -t end2040/snee_web_spes-backend:1.526 .
 # latest .
 
 #3 Собираем Frontend образ
-docker build -f Dockerfile.frontend.prod -t end2040/snee_web_spes-frontend:1.525 .
+docker build -f Dockerfile.frontend.prod -t end2040/snee_web_spes-frontend:1.526 .
 # latest .
 
 
@@ -31,8 +31,8 @@ docker login
 
 ### 2.2. Push образов в Docker Hub
 # Push Backend
-docker push end2040/snee_web_spes-backend:1.525
+docker push end2040/snee_web_spes-backend:1.526
 # latest
 # Push Frontend
-docker push end2040/snee_web_spes-frontend:1.525
+docker push end2040/snee_web_spes-frontend:1.526
 # latest

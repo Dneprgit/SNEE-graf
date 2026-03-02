@@ -805,7 +805,7 @@ def calculate_optimal_parameters_qp(load_profile: List[float], efficiency: float
     # 4.1. Границы для D[] - дефицит по часам
     # D[i] >= 0 всегда; верхняя граница не ограничиваем, чтобы не ломать выполнимость
     for i in range(im):
-        ub[i + im * 3] = np.inf
+        ub[i + im * 3] = np.inf if system_load[i]>0 else 0
 
     # 4.2. Формирование ограничений для scipy (список кортежей для каждой переменной)
     bounds = [(lb[i], ub[i]) for i in range(n)]
