@@ -15,7 +15,7 @@ const Footer = () => {
           className="text-center"
         >
           <div className="mb-6">
-            <h3 className="text-2xl font-bold mb-2">СНЭЭ Graf v1.525</h3>
+            <h3 className="text-2xl font-bold mb-2">СНЭЭ Graf v1.526</h3>
             <p className="text-gray-400">
               Визуализация диспетчерского графика системы накопления электрической энергии
             </p>
