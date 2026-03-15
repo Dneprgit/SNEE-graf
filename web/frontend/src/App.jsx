@@ -47,8 +47,16 @@ function App() {
   const [scheduleDebugInfo_qp, setScheduleDebugInfo_qp] = useState(null);
   const [optimalDebugInfo_qp, setOptimalDebugInfo_qp] = useState(null);
   const [scheduleSolver_qp, setScheduleSolver_qp] = useState('linprog');
+  const [activeParamsGroup_qp, setActiveParamsGroup_qp] = useState('factory');
   const [activeScheduleSolver_qp, setActiveScheduleSolver_qp] = useState(null);
   const [calculatingScheduleSolver_qp, setCalculatingScheduleSolver_qp] = useState(null);
+  const [lastUsedParameters_qp, setLastUsedParameters_qp] = useState({
+    dblNIn_pq: 115,
+    dblNOut_pq: 145,
+    dblCapacity_pq: 535,
+    dblEfficiency_pq: 0.84,
+  });
+  const [lastUsedParamsGroup_qp, setLastUsedParamsGroup_qp] = useState('factory');
 
   // Загрузка профиля по умолчанию при запуске
   useEffect(() => {
@@ -125,9 +133,10 @@ function App() {
     }
   };
 
-  const handleCalculate_qp = async (overrideLoadProfile, solverOverride = null) => {
+  const handleCalculate_qp = async (overrideLoadProfile, solverOverride = null, paramsGroupOverride = null) => {
     const profile = Array.isArray(overrideLoadProfile) ? overrideLoadProfile : loadProfile_qp;
     const solverToUse = solverOverride || scheduleSolver_qp;
+    const paramsGroupToUse = paramsGroupOverride || activeParamsGroup_qp;
     if (solverOverride) {
       setScheduleSolver_qp(solverOverride);
     }
@@ -147,12 +156,33 @@ function App() {
     setError_qp(null);
 
     try {
+      const hasOptimalParams = Boolean(
+        optimalParams_qp?.power_in && optimalParams_qp?.power_out && optimalParams_qp?.capacity
+      );
+      if (paramsGroupToUse === 'optimal' && !hasOptimalParams) {
+        throw new Error('Оценочные параметры СНЭЭ недоступны. Выполните их расчет или переключитесь на заводские параметры.');
+      }
+
+      const paramsForCalculation = paramsGroupToUse === 'optimal'
+        ? {
+            dblNIn_pq: optimalParams_qp.power_in,
+            dblNOut_pq: optimalParams_qp.power_out,
+            dblCapacity_pq: optimalParams_qp.capacity,
+            dblEfficiency_pq: parameters_qp.dblEfficiency_pq,
+          }
+        : {
+            dblNIn_pq: parameters_qp.dblNIn_pq,
+            dblNOut_pq: parameters_qp.dblNOut_pq,
+            dblCapacity_pq: parameters_qp.dblCapacity_pq,
+            dblEfficiency_pq: parameters_qp.dblEfficiency_pq,
+          };
+
       const payload = {
         load_profile: profile,
-        rated_input_power_mw: parameters_qp.dblNIn_pq,
-        rated_output_power_mw: parameters_qp.dblNOut_pq,
-        rated_capacity_mwh: parameters_qp.dblCapacity_pq,
-        efficiency: parameters_qp.dblEfficiency_pq,
+        rated_input_power_mw: paramsForCalculation.dblNIn_pq,
+        rated_output_power_mw: paramsForCalculation.dblNOut_pq,
+        rated_capacity_mwh: paramsForCalculation.dblCapacity_pq,
+        efficiency: paramsForCalculation.dblEfficiency_pq,
         debug: qpDebugMode,
       };
       const result = solverToUse === 'highs_qp'
@@ -161,14 +191,25 @@ function App() {
       setCalculationResult_qp(result);
       setScheduleDebugInfo_qp(result?.debug_info || null);
       setActiveScheduleSolver_qp(solverToUse);
+      setLastUsedParameters_qp(paramsForCalculation);
+      setLastUsedParamsGroup_qp(paramsGroupToUse);
     } catch (err) {
       console.error('Calculation error:', err);
-      setError_qp(err.response?.data?.detail || 'Ошибка при расчете графика');
+      setError_qp(err.response?.data?.detail || err.message || 'Ошибка при расчете графика');
       setScheduleDebugInfo_qp(null);
     } finally {
       setIsCalculating_qp(false);
       setCalculatingScheduleSolver_qp(null);
     }
+  };
+
+  const handleActivateParamsGroup_qp = async (group) => {
+    setActiveParamsGroup_qp(group);
+    if (!loadProfile_qp || loadProfile_qp.length !== 24) {
+      return;
+    }
+    const solverToUse = activeScheduleSolver_qp || scheduleSolver_qp || 'linprog';
+    await handleCalculate_qp(undefined, solverToUse, group);
   };
 
   const handleCalculateOptimal_qp = async () => {
@@ -208,16 +249,6 @@ function App() {
         charge_time,
       });
       setOptimalDebugInfo_qp(result?.debug_info || null);
-
-      // На шаге расчета оценочных параметров сразу переносим их
-      // в рабочие параметры СНЭЭ для следующего расчета графика.
-      setParameters_qp(prev => ({
-        ...prev,
-        dblNIn_pq: result.optimal_power_in_mw,
-        dblNOut_pq: result.optimal_power_out_mw,
-        dblCapacity_pq: result.optimal_capacity_mwh,
-        runtime_hours: discharge_time,
-      }));
     } catch (err) {
       console.error('Optimal calculation error:', err);
       setOptimalError_qp(err.response?.data?.detail || 'Ошибка при расчете оценочных параметров');
@@ -309,6 +340,10 @@ function App() {
               onCalculateScheduleLinprog={() => handleCalculate_qp(undefined, 'linprog')}
               onCalculateScheduleHighs={() => handleCalculate_qp(undefined, 'highs_qp')}
               isCalculatingSchedule={isCalculating_qp}
+              activeParamsGroup={activeParamsGroup_qp}
+              onActivateFactoryParams={() => handleActivateParamsGroup_qp('factory')}
+              onActivateOptimalParams={() => handleActivateParamsGroup_qp('optimal')}
+              hasOptimalParams={Boolean(optimalParams_qp?.power_in && optimalParams_qp?.power_out && optimalParams_qp?.capacity)}
               activeScheduleSolver={activeScheduleSolver_qp}
               calculatingScheduleSolver={calculatingScheduleSolver_qp}
               scheduleError={error_qp}
@@ -323,13 +358,14 @@ function App() {
               <ChartsSection_qp
                 loadProfile={loadProfile_qp}
                 calculationResult={calculationResult_qp}
-                parameters={parameters_qp}
+                parameters={lastUsedParameters_qp}
                 scheduleSolver={activeScheduleSolver_qp}
+                paramsGroup={lastUsedParamsGroup_qp}
               />
               
               <SchematicSection_qp
                 calculationResult={calculationResult_qp}
-                parameters={parameters_qp}
+                parameters={lastUsedParameters_qp}
               />
             </>
           )}
