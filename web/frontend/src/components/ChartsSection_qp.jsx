@@ -17,8 +17,12 @@ import {
 import { BarChart3, Activity, Battery, Download , Zap } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
+const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, scheduleSolver }) => {
   const { eess_schedule, resulting_balance, soc, summary } = calculationResult;
+  const resolvedSolver = scheduleSolver || summary?.solver || 'linprog';
+  const solverMessage = resolvedSolver === 'highs_qp'
+    ? 'Выполнен расчет HiGHS QP'
+    : 'Выполнен расчет SciPy linprog';
 
   const [preset, setPreset] = useState('lineBar');
 
@@ -160,6 +164,9 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters }) => {
                 <Activity className="w-5 h-5 mr-2 text-primary-600" />
                 Ключевые показатели
               </h3>
+              <div className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md px-2 py-1">
+                {solverMessage}
+              </div>
               <button
                 onClick={exportResults}
                 className="btn-secondary text-xs flex items-center justify-center"

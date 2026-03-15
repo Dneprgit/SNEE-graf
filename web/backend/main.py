@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from dotenv import load_dotenv
 import sys
 import os
 import numpy as np
@@ -24,6 +25,14 @@ app = FastAPI(
     description="API для расчета диспетчерского графика системы накопления электрической энергии",
     version="2.0.0"
 )
+
+
+def load_env() -> None:
+    """Загрузка переменных окружения из .env (если файл доступен в окружении)."""
+    load_dotenv()
+
+
+load_env()
 
 
 def _str_to_bool(value: Optional[str]) -> bool:
@@ -396,6 +405,60 @@ async def calculate_dispatch_schedule_qp(request: CalculationRequest_qp):
             debug_info=qp_result.get("debug_info")
         )
         
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при расчете: {str(e)}")
+
+
+@app.post("/api/v1/calculate-qp-highs", response_model=CalculationResponse)
+async def calculate_dispatch_schedule_qp_highs(request: CalculationRequest_qp):
+    """
+    Расчет диспетчерского графика СНЭЭ через реальную QP-оптимизацию HiGHS (highspy).
+    """
+    try:
+        debug_enabled = request.debug or _str_to_bool(os.getenv("ENABLE_QP_DEBUG"))
+
+        calculator = EnergyStorageCalculator_qp(
+            rated_input_power_mw=request.rated_input_power_mw,
+            rated_output_power_mw=request.rated_output_power_mw,
+            rated_capacity_mwh=request.rated_capacity_mwh,
+            efficiency=request.efficiency
+        )
+
+        qp_result = calculator.calculate_dispatch_schedule_qp_highs(
+            request.load_profile,
+            debug=debug_enabled,
+        )
+
+        eess_schedule = qp_result['eess_load']
+        soc_energy = qp_result['soc_energy']
+        deficit_mw = qp_result['deficit']
+        reserve_mw = qp_result['reserve']
+
+        resulting_balance = [
+            request.load_profile[i] - eess_schedule[i]
+            for i in range(24)
+        ]
+
+        soc = soc_energy.tolist()
+
+        summary = calculator.get_summary_qp(
+            request.load_profile,
+            eess_schedule,
+            deficit_mw=deficit_mw,
+            reserve_mw=reserve_mw
+        )
+        summary["solver"] = "highs_qp"
+
+        return CalculationResponse(
+            eess_schedule=eess_schedule.tolist(),
+            resulting_balance=resulting_balance,
+            soc=soc,
+            summary=summary,
+            debug_info=qp_result.get("debug_info")
+        )
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

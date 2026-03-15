@@ -46,6 +46,9 @@ function App() {
   const [qpDebugMode, setQpDebugMode] = useState(import.meta.env.VITE_QP_DEBUG_DEFAULT === 'true');
   const [scheduleDebugInfo_qp, setScheduleDebugInfo_qp] = useState(null);
   const [optimalDebugInfo_qp, setOptimalDebugInfo_qp] = useState(null);
+  const [scheduleSolver_qp, setScheduleSolver_qp] = useState('linprog');
+  const [activeScheduleSolver_qp, setActiveScheduleSolver_qp] = useState(null);
+  const [calculatingScheduleSolver_qp, setCalculatingScheduleSolver_qp] = useState(null);
 
   // Загрузка профиля по умолчанию при запуске
   useEffect(() => {
@@ -122,8 +125,12 @@ function App() {
     }
   };
 
-  const handleCalculate_qp = async (overrideLoadProfile) => {
+  const handleCalculate_qp = async (overrideLoadProfile, solverOverride = null) => {
     const profile = Array.isArray(overrideLoadProfile) ? overrideLoadProfile : loadProfile_qp;
+    const solverToUse = solverOverride || scheduleSolver_qp;
+    if (solverOverride) {
+      setScheduleSolver_qp(solverOverride);
+    }
     if (!profile || profile.length !== 24) {
       setError_qp('Необходимо загрузить корректный профиль баланса (24 значения)');
       return;
@@ -136,25 +143,31 @@ function App() {
     }
 
     setIsCalculating_qp(true);
+    setCalculatingScheduleSolver_qp(solverToUse);
     setError_qp(null);
 
     try {
-      const result = await apiService.calculateSchedule_qp({
+      const payload = {
         load_profile: profile,
         rated_input_power_mw: parameters_qp.dblNIn_pq,
         rated_output_power_mw: parameters_qp.dblNOut_pq,
         rated_capacity_mwh: parameters_qp.dblCapacity_pq,
         efficiency: parameters_qp.dblEfficiency_pq,
         debug: qpDebugMode,
-      });
+      };
+      const result = solverToUse === 'highs_qp'
+        ? await apiService.calculateSchedule_qp_highs(payload)
+        : await apiService.calculateSchedule_qp(payload);
       setCalculationResult_qp(result);
       setScheduleDebugInfo_qp(result?.debug_info || null);
+      setActiveScheduleSolver_qp(solverToUse);
     } catch (err) {
       console.error('Calculation error:', err);
       setError_qp(err.response?.data?.detail || 'Ошибка при расчете графика');
       setScheduleDebugInfo_qp(null);
     } finally {
       setIsCalculating_qp(false);
+      setCalculatingScheduleSolver_qp(null);
     }
   };
 
@@ -293,8 +306,11 @@ function App() {
               maxAbsValue={Math.max(...loadProfile_qp.map(v => Math.abs(v)))}
               setOptimalParams={setOptimalParams_qp}
               initialOptimalParams={optimalParams_qp}
-              onCalculateSchedule={handleCalculate_qp}
+              onCalculateScheduleLinprog={() => handleCalculate_qp(undefined, 'linprog')}
+              onCalculateScheduleHighs={() => handleCalculate_qp(undefined, 'highs_qp')}
               isCalculatingSchedule={isCalculating_qp}
+              activeScheduleSolver={activeScheduleSolver_qp}
+              calculatingScheduleSolver={calculatingScheduleSolver_qp}
               scheduleError={error_qp}
               debugMode={qpDebugMode}
               scheduleDebugInfo={scheduleDebugInfo_qp}
@@ -308,6 +324,7 @@ function App() {
                 loadProfile={loadProfile_qp}
                 calculationResult={calculationResult_qp}
                 parameters={parameters_qp}
+                scheduleSolver={activeScheduleSolver_qp}
               />
               
               <SchematicSection_qp

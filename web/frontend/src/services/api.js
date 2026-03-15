@@ -77,6 +77,12 @@ export const apiService = {
     return response.data;
   },
 
+  // Рассчитать диспетчерский график (реальный HiGHS QP)
+  async calculateSchedule_qp_highs(data) {
+    const response = await api.post('/api/v1/calculate-qp-highs', data);
+    return response.data;
+  },
+
   // Рассчитать оптимальные параметры СНЭЭ (QP)
   async calculateOptimalParameters_qp(data) {
     const response = await api.post('/api/v1/calculate-optimal-parameters-qp', data);

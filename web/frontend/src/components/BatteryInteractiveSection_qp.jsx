@@ -20,13 +20,20 @@ const BatteryInteractiveSection_qp = ({
   maxAbsValue,
   setOptimalParams,
   initialOptimalParams,
-  onCalculateSchedule,
+  onCalculateScheduleLinprog,
+  onCalculateScheduleHighs,
   isCalculatingSchedule,
+  activeScheduleSolver,
+  calculatingScheduleSolver,
   scheduleError,
   debugMode,
   scheduleDebugInfo,
   optimalDebugInfo,
 }) => {
+  const isLinprogCalculating = isCalculatingSchedule && calculatingScheduleSolver === 'linprog';
+  const isHighsCalculating = isCalculatingSchedule && calculatingScheduleSolver === 'highs_qp';
+  const isLinprogActive = activeScheduleSolver === 'linprog' || isLinprogCalculating;
+  const isHighsActive = activeScheduleSolver === 'highs_qp' || isHighsCalculating;
   // Расчет максимальных значений
   const maxPower = maxAbsValue || Math.max(...loadProfile.map(v => Math.abs(v))); // Максимум мощности баланса по модулю
   const totalSurplus = loadProfile.filter(v => v > 0).reduce((a, b) => a + b, 0); // Избыток энергии
@@ -1009,25 +1016,51 @@ const BatteryInteractiveSection_qp = ({
         viewport={{ once: true }}
         className="text-center mt-8"
       >
-        <button
-          onClick={onCalculateSchedule}
-          disabled={!loadProfile || isCalculatingSchedule}
-          className={`btn-primary text-lg px-12 py-4 ${
-            !loadProfile || isCalculatingSchedule ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-        >
-          {isCalculatingSchedule ? (
-            <>
-              <span className="inline-block animate-spin mr-2">⚙️</span>
-              Расчет...
-            </>
-          ) : (
-            <>
-              <Calculator className="inline-block w-6 h-6 mr-2" />
-              Рассчитать диспетчерский график работы СНЭЭ
-            </>
-          )}
-        </button>
+        <div className="flex flex-col sm:flex-row justify-center gap-3">
+          <button
+            onClick={onCalculateScheduleLinprog}
+            disabled={!loadProfile || isCalculatingSchedule}
+            className={`btn-primary text-lg px-8 py-4 border-2 transition-all ${
+              isLinprogActive ? 'ring-2 ring-blue-300 border-blue-700 shadow-lg' : 'border-transparent'
+            } ${
+              !loadProfile || isCalculatingSchedule ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isLinprogCalculating ? (
+              <>
+                <span className="inline-block animate-spin mr-2">⚙️</span>
+                Расчет SciPy linprog...
+              </>
+            ) : (
+              <>
+                <Calculator className="inline-block w-6 h-6 mr-2" />
+                Рассчитать диспетчерский график работы СНЭЭ
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={onCalculateScheduleHighs}
+            disabled={!loadProfile || isCalculatingSchedule}
+            className={`btn-secondary text-lg px-8 py-4 border-2 transition-all ${
+              isHighsActive ? 'ring-2 ring-purple-300 border-purple-700 shadow-lg' : 'border-transparent'
+            } ${
+              !loadProfile || isCalculatingSchedule ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isHighsCalculating ? (
+              <>
+                <span className="inline-block animate-spin mr-2">⚙️</span>
+                Расчет HiGHS QP...
+              </>
+            ) : (
+              <>
+                <Calculator className="inline-block w-6 h-6 mr-2" />
+                Рассчитать диспетчерский график работы СНЭЭ HiGHS QP
+              </>
+            )}
+          </button>
+        </div>
 
         {scheduleError && (
           <motion.div
