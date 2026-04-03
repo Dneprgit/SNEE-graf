@@ -22,6 +22,7 @@ const BatteryInteractiveSection_qp = ({
   initialOptimalParams,
   onCalculateScheduleLinprog,
   onCalculateScheduleHighs,
+  onCalculateScheduleHighsModified,
   isCalculatingSchedule,
   activeParamsGroup,
   onActivateFactoryParams,
@@ -36,8 +37,10 @@ const BatteryInteractiveSection_qp = ({
 }) => {
   const isLinprogCalculating = isCalculatingSchedule && calculatingScheduleSolver === 'linprog';
   const isHighsCalculating = isCalculatingSchedule && calculatingScheduleSolver === 'highs_qp';
+  const isHighsModifiedCalculating = isCalculatingSchedule && calculatingScheduleSolver === 'highs_qp_modified';
   const isLinprogActive = activeScheduleSolver === 'linprog' || isLinprogCalculating;
   const isHighsActive = activeScheduleSolver === 'highs_qp' || isHighsCalculating;
+  const isHighsModifiedActive = activeScheduleSolver === 'highs_qp_modified' || isHighsModifiedCalculating;
   const isFactoryParamsActive = activeParamsGroup === 'factory';
   const isOptimalParamsActive = activeParamsGroup === 'optimal';
   const paramsGroupButtonBase =
@@ -1108,6 +1111,28 @@ const BatteryInteractiveSection_qp = ({
               <>
                 <Calculator className="inline-block w-6 h-6 mr-2" />
                 Рассчитать диспетчерский график работы СНЭЭ (решатель HiGHS QP)
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={onCalculateScheduleHighsModified}
+            disabled={!loadProfile || isCalculatingSchedule}
+            className={`${solverButtonBase} ${
+              isHighsModifiedActive ? solverButtonActive : solverButtonInactive
+            } ${
+              !loadProfile || isCalculatingSchedule ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isHighsModifiedCalculating ? (
+              <>
+                <span className="inline-block animate-spin mr-2">⚙️</span>
+                Расчет HiGHS QP модиф...
+              </>
+            ) : (
+              <>
+                <Calculator className="inline-block w-6 h-6 mr-2" />
+                Рассчитать диспетчерский график работы СНЭЭ (решатель HiGHS QP модиф)
               </>
             )}
           </button>

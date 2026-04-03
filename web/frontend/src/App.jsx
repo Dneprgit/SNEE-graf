@@ -35,6 +35,7 @@ function App() {
     dblNOut_pq: 145,
     dblCapacity_pq: 535,
     dblEfficiency_pq: 0.84,
+    standby_load_mw: 0,
   });
   const [calculationResult_qp, setCalculationResult_qp] = useState(null);
   const [showBatterySection_qp, setShowBatterySection_qp] = useState(false);
@@ -55,6 +56,7 @@ function App() {
     dblNOut_pq: 145,
     dblCapacity_pq: 535,
     dblEfficiency_pq: 0.84,
+    standby_load_mw: 0,
   });
   const [lastUsedParamsGroup_qp, setLastUsedParamsGroup_qp] = useState('factory');
 
@@ -102,7 +104,13 @@ function App() {
       }, 500); // Debounce 500ms
       return () => clearTimeout(timer);
     }
-  }, [parameters_qp.dblNIn_pq, parameters_qp.dblNOut_pq, parameters_qp.dblCapacity_pq, parameters_qp.dblEfficiency_pq]);
+  }, [
+    parameters_qp.dblNIn_pq,
+    parameters_qp.dblNOut_pq,
+    parameters_qp.dblCapacity_pq,
+    parameters_qp.dblEfficiency_pq,
+    parameters_qp.standby_load_mw,
+  ]);
 
   const handleCalculate = async () => {
     if (!loadProfile || loadProfile.length !== 24) {
@@ -169,12 +177,14 @@ function App() {
             dblNOut_pq: optimalParams_qp.power_out,
             dblCapacity_pq: optimalParams_qp.capacity,
             dblEfficiency_pq: parameters_qp.dblEfficiency_pq,
+            standby_load_mw: parameters_qp.standby_load_mw,
           }
         : {
             dblNIn_pq: parameters_qp.dblNIn_pq,
             dblNOut_pq: parameters_qp.dblNOut_pq,
             dblCapacity_pq: parameters_qp.dblCapacity_pq,
             dblEfficiency_pq: parameters_qp.dblEfficiency_pq,
+            standby_load_mw: parameters_qp.standby_load_mw,
           };
 
       const payload = {
@@ -183,11 +193,14 @@ function App() {
         rated_output_power_mw: paramsForCalculation.dblNOut_pq,
         rated_capacity_mwh: paramsForCalculation.dblCapacity_pq,
         efficiency: paramsForCalculation.dblEfficiency_pq,
+        standby_load_mw: paramsForCalculation.standby_load_mw,
         debug: qpDebugMode,
       };
       const result = solverToUse === 'highs_qp'
         ? await apiService.calculateSchedule_qp_highs(payload)
-        : await apiService.calculateSchedule_qp(payload);
+        : solverToUse === 'highs_qp_modified'
+          ? await apiService.calculateSchedule_qp_highs_modified(payload)
+          : await apiService.calculateSchedule_qp(payload);
       setCalculationResult_qp(result);
       setScheduleDebugInfo_qp(result?.debug_info || null);
       setActiveScheduleSolver_qp(solverToUse);
@@ -339,6 +352,7 @@ function App() {
               initialOptimalParams={optimalParams_qp}
               onCalculateScheduleLinprog={() => handleCalculate_qp(undefined, 'linprog')}
               onCalculateScheduleHighs={() => handleCalculate_qp(undefined, 'highs_qp')}
+              onCalculateScheduleHighsModified={() => handleCalculate_qp(undefined, 'highs_qp_modified')}
               isCalculatingSchedule={isCalculating_qp}
               activeParamsGroup={activeParamsGroup_qp}
               onActivateFactoryParams={() => handleActivateParamsGroup_qp('factory')}

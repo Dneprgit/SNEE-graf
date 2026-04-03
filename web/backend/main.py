@@ -18,6 +18,7 @@ from energy_storage_calculator_ import (
     EnergyStorageCalculator, calculate_optimal_parameters,
     EnergyStorageCalculator_qp, calculate_optimal_parameters_qp
 )
+from graph import TestQpSolverModified
 from data_manager import DataManager
 
 app = FastAPI(
@@ -327,6 +328,7 @@ class CalculationRequest_qp(BaseModel):
     rated_output_power_mw: float = Field(..., ge=0, description="Выходная мощность инвертора в МВт (разряд)")
     rated_capacity_mwh: float = Field(..., ge=0, description="Емкость батареи в МВтч")
     efficiency: float = Field(..., gt=0, le=1, description="КПД цикла (0-1)")
+    standby_load_mw: float = Field(0.0, ge=0, description="Мощность в режиме ожидания, МВт")
     debug: bool = Field(False, description="Флаг включения расширенного debug-режима")
 
     class Config:
@@ -340,7 +342,8 @@ class CalculationRequest_qp(BaseModel):
                 "rated_input_power_mw": 115,
                 "rated_output_power_mw": 145,
                 "rated_capacity_mwh": 535,
-                "efficiency": 0.84
+                "efficiency": 0.84,
+                "standby_load_mw": 0.0
             }
         }
 
@@ -457,6 +460,69 @@ async def calculate_dispatch_schedule_qp_highs(request: CalculationRequest_qp):
             soc=soc,
             summary=summary,
             debug_info=qp_result.get("debug_info")
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при расчете: {str(e)}")
+
+
+@app.post("/api/v1/calculate-qp-highs-modified", response_model=CalculationResponse)
+async def calculate_dispatch_schedule_qp_highs_modified(request: CalculationRequest_qp):
+    """
+    Расчет диспетчерского графика СНЭЭ через модифицированный HiGHS QP решатель
+    с учетом standby_load_mw.
+    """
+    try:
+        debug_enabled = request.debug or _str_to_bool(os.getenv("ENABLE_QP_DEBUG"))
+
+        rated_power_mw = min(request.rated_input_power_mw, request.rated_output_power_mw)
+        calculator = TestQpSolverModified(
+            rated_power_mw=rated_power_mw,
+            rated_capacity_mwh=request.rated_capacity_mwh,
+            total_efficiency=request.efficiency,
+            standby_load_mw=request.standby_load_mw,
+        )
+
+        qp_result = calculator.calculate_dispatch_schedule_qp_highs_modified(
+            request.load_profile,
+            debug=debug_enabled,
+        )
+
+        eess_schedule = qp_result["eess_load"]
+        soc_energy = qp_result["soc_energy"]
+        deficit_mw = qp_result["deficit"]
+        reserve_mw = qp_result["reserve"]
+
+        resulting_balance = [
+            request.load_profile[i] - eess_schedule[i]
+            for i in range(24)
+        ]
+        soc = soc_energy.tolist()
+
+        summary_calculator = EnergyStorageCalculator_qp(
+            rated_input_power_mw=request.rated_input_power_mw,
+            rated_output_power_mw=request.rated_output_power_mw,
+            rated_capacity_mwh=request.rated_capacity_mwh,
+            efficiency=request.efficiency,
+        )
+        summary = summary_calculator.get_summary_qp(
+            request.load_profile,
+            eess_schedule,
+            deficit_mw=deficit_mw,
+            reserve_mw=reserve_mw,
+        )
+        summary["solver"] = "highs_qp_modified"
+        summary["standby_load_mw"] = request.standby_load_mw
+        summary["rated_power_used_mw"] = rated_power_mw
+
+        return CalculationResponse(
+            eess_schedule=eess_schedule.tolist(),
+            resulting_balance=resulting_balance,
+            soc=soc,
+            summary=summary,
+            debug_info=qp_result.get("debug_info"),
         )
 
     except ValueError as e:

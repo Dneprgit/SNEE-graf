@@ -434,6 +434,23 @@ const DataInputSection_qp = ({
                   Значение от 0 до 1 (например: 0.84)
                 </p>
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Мощность в режиме ожидания (standby_load_mw), МВт
+                </label>
+                <input
+                  type="number"
+                  value={parameters.standby_load_mw ?? 0}
+                  onChange={(e) => handleParameterChange('standby_load_mw', e.target.value)}
+                  className="input-field"
+                  min="0"
+                  step="0.01"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  По умолчанию: 0
+                </p>
+              </div>
             </div>
           </motion.div>
 

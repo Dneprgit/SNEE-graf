@@ -22,7 +22,9 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, schedule
   const resolvedSolver = scheduleSolver || summary?.solver || 'linprog';
   const solverMessage = resolvedSolver === 'highs_qp'
     ? 'Выполнен расчет решателем HiGHS QP'
-    : 'Выполнен расчет решателем SciPy linprog';
+    : resolvedSolver === 'highs_qp_modified'
+      ? 'Выполнен расчет решателем HiGHS QP модиф'
+      : 'Выполнен расчет решателем SciPy linprog';
   const paramsGroupMessage = paramsGroup === 'optimal'
     ? 'Выполнен расчет с использованием оценочных параметров СНЭЭ'
     : 'Выполнен расчет с использованием заводских параметров СНЭЭ';
@@ -124,6 +126,7 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, schedule
       ['Номинальная активная выходная мощность (dblNOut), МВт', parameters.dblNOut_pq],
       ['Энергия, фактически отдаваемая в рабочем диапазоне (dblCapacity), МВтч', parameters.dblCapacity_pq],
       ['Энергоэффективность (КПД) (dblEfficiency)', parameters.dblEfficiency_pq],
+      ['Мощность в режиме ожидания (standby_load_mw), МВт', parameters.standby_load_mw ?? 0],
       ['', ''],
       ['Примечание', ''],
       ['Полярность баланса для QP:', 'положительное = дефицит, отрицательное = избыток'],
