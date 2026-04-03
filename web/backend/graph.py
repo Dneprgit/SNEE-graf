@@ -6,6 +6,7 @@ from scipy import sparse as sp
 
 
 def _to_serializable(value: Any) -> Any:
+    """Преобразование numpy/scipy структур в JSON-совместимый формат."""
     if isinstance(value, np.ndarray):
         return _to_serializable(value.tolist())
     if isinstance(value, (np.floating, float)):
@@ -36,6 +37,7 @@ def _collect_highs_qp_debug_modified(
     alpha_d: float,
     standby_load_mw: float,
 ) -> Dict[str, Any]:
+    """Сбор подробной отладочной информации для модифицированного HiGHS QP."""
     return {
         "mode": mode,
         "solver": "HiGHS.QP.highspy.modified",
@@ -67,6 +69,14 @@ def _collect_highs_qp_debug_modified(
 
 
 class TestQpSolverModified:
+    """
+    Модифицированный QP-решатель диспетчерского графика СНЭЭ.
+
+    Особенность модификации: учитывается постоянная нагрузка собственных нужд
+    `standby_load_mw`, а также ее влияние на эквивалентный КПД по переменной
+    части потерь (`pin_loss_factor`).
+    """
+
     def __init__(
         self,
         rated_power_mw: float,
@@ -74,6 +84,15 @@ class TestQpSolverModified:
         total_efficiency: float = 0.84,
         standby_load_mw: float = 0.0,
     ) -> None:
+        """
+        Инициализация калькулятора СНЭЭ.
+
+        Args:
+            rated_power_mw: Мощность преобразователя в МВт (используется симметрично).
+            rated_capacity_mwh: Емкость накопителя в МВтч.
+            total_efficiency: Полный КПД цикла (0..1).
+            standby_load_mw: Почасовое потребление в режиме ожидания, МВт.
+        """
         if rated_power_mw <= 0 or rated_capacity_mwh <= 0:
             raise ValueError("Мощность и емкость должны быть положительными")
         if total_efficiency <= 0 or total_efficiency > 1:
@@ -81,7 +100,7 @@ class TestQpSolverModified:
         if standby_load_mw < 0:
             raise ValueError("Мощность в режиме ожидания должна быть неотрицательной")
 
-        self.period_length = 24
+        self.period_length = 24  # длина расчетного периода в часах
         self.rated_capacity = float(rated_capacity_mwh)
         self.total_efficiency = float(total_efficiency)
         self.pin_max = float(rated_power_mw) * np.ones(self.period_length)
@@ -103,6 +122,7 @@ class TestQpSolverModified:
         self.standby_load_mw = float(standby_load_mw)
 
     def check(self) -> None:
+        """Базовые проверки ограничений и параметров модели."""
         if np.min(self.pin_max) < 0:
             raise ValueError("Входная мощность должна быть неотрицательной")
         if np.min(self.pout_max) < 0:
@@ -119,6 +139,16 @@ class TestQpSolverModified:
         load_profile: List[float],
         debug: bool = False,
     ) -> dict:
+        """
+        Расчет диспетчерского графика СНЭЭ квадратичной оптимизацией (HiGHS/highspy).
+
+        Возвращает:
+            - eess_load: график мощности СНЭЭ (+ разряд, - заряд)
+            - soc_energy: запас энергии в батарее по часам
+            - deficit: максимальный дефицит мощности (Dmax)
+            - reserve: максимальный избыток мощности (Rmax) с учетом потерь
+            - debug_info: расширенная отладочная информация (если debug=True)
+        """
         try:
             import highspy
         except ImportError as exc:
@@ -133,20 +163,24 @@ class TestQpSolverModified:
         self.system_load = np.array(load_profile, dtype=float)
 
         m = self.period_length
+        # вспомогательные данные
         imm = sp.identity(m, format="csc")
         zmm = sp.csc_array((m, m))
         z2 = sp.csc_array((2, 2))
 
         inf = highspy.kHighsInf
+        # размер задачи
         n = m * 2 + 2  # L[24] + EC[24] + Dmax + Rmax
         k = m * 2
 
+        # сальдо (график без потерь)
         s = np.zeros(m)
         for i in range(m):
             s[i] = (
                 self.pin_loss_factor if self.system_load[i] < 0.0 else 1.0
             ) * self.system_load[i]
 
+        # быстрая проверка возможности заряда для покрытия standby-потребления
         max_charge_window = np.sum(
             np.minimum(np.maximum(-s, np.zeros(m)), self.pin_loss_factor * self.pin_max)
         )
@@ -157,30 +191,42 @@ class TestQpSolverModified:
         smin = float(np.min(s))
         smax = float(np.max(s))
 
-        q0_weight = 1e-20
-        qcap_weight = 1e-9
-        qec_weight = 1e-9
+        # веса квадратичной части
+        q0_weight = 1e-20  # диагональное усиление
+        qcap_weight = 1e-9  # емкость
+        qec_weight = 1e-9  # обменная мощность
+        # веса линейной части
         dmax_weight = 1.0
         dsum_weight = dmax_weight / (m + 1)
         rmax_weight = dsum_weight / (m + 1)
 
+        # линейная часть целевой функции
         c = np.zeros(n)
+        # квадратичная часть целевой функции
         qc = zmm + imm * qcap_weight
         qec = zmm + imm * qec_weight
         qdr = z2
 
+        # дообуславливание: максимизация уровня заряда и минимизация обменной мощности
         for i in range(m):
             c[i] -= 2.0 * qcap_weight * self.rated_capacity
+            # основная целевая функция для EC[]:
+            # максимальная выдача в часы дефицита
             c[i + m] -= dsum_weight * (1.0 if s[i] > 0 else 0.0)
         c[2 * m] += dmax_weight
         c[2 * m + 1] += rmax_weight
 
+        # сборка матрицы Q
         q = sp.block_diag((qc, qec, qdr), format="csc")
+        # диагональное усиление
         q = q + sp.identity(n, format="csc") * q0_weight
 
+        # формирование ограничений
         alb = np.zeros(k)
         aub = np.zeros(k)
 
+        # баланс между запасом энергии, обменной мощностью и потреблением на с.н.
+        # циклическая матрица конечно-разностной схемы
         diags = np.zeros((3, m))
         diags[0, :] = -1.0
         diags[1, :] = 1.0
@@ -191,6 +237,7 @@ class TestQpSolverModified:
             alb[i] = -self.standby_load[i]
             aub[i] = -self.standby_load[i]
 
+        # ограничения на максимальный дефицит и максимальный избыток
         zs = np.zeros((m, 2))
         for i in range(m):
             zs[i, 0] = 1.0 if s[i] > 0 else 0.0
@@ -198,11 +245,13 @@ class TestQpSolverModified:
             alb[i + m] = s[i] if s[i] > 0 else -inf
             aub[i + m] = s[i] if s[i] <= 0 else inf
 
+        # сборка матрицы A
         a = sp.block_array(
             [[ac, imm, None], [None, imm, sp.csc_array(zs)]],
             format="csc",
         )
 
+        # диапазон для переменных
         lb = np.zeros(n)
         ub = np.zeros(n)
         for i in range(m):
@@ -218,11 +267,13 @@ class TestQpSolverModified:
         lb[2 * m + 1] = 0.0
         ub[2 * m + 1] = -smin
 
+        # квадратичная часть цели (реальный QP): штрафует почасовой обмен EC[i]
         alpha_d = float(os.getenv("QP_HIGHS_ALPHA_D", "1.0"))
         for i in range(m):
             idx = i + m
             q[idx, idx] = q[idx, idx] + 2.0 * alpha_d
 
+        # наполнение модели HiGHS в col-wise sparse формате
         model = highspy.HighsModel()
         model.lp_.num_col_ = n
         model.lp_.num_row_ = k
@@ -247,6 +298,8 @@ class TestQpSolverModified:
         run_status = qp.run()
         model_status = qp.getModelStatus()
         model_status_str = qp.modelStatusToString(model_status)
+
+        # проверка статуса решения
         if "Optimal" not in model_status_str:
             raise ValueError(
                 "HiGHS QP (модиф.) не нашел оптимальное решение. "
@@ -258,6 +311,7 @@ class TestQpSolverModified:
         if x.size != n:
             raise ValueError("HiGHS QP (модиф.) не вернул корректный вектор решения.")
 
+        # контроль уравнения баланса заряд-разряд + собственные нужды
         balance_check = float(np.sum(x[m : 2 * m] + self.standby_load))
         if abs(balance_check) >= 0.001:
             print(
@@ -271,6 +325,7 @@ class TestQpSolverModified:
                 (1.0 if x[i + m] > 0 else 1.0 / self.pin_loss_factor) * x[i + m]
             )
 
+        # формирование результата
         result_payload = {
             "eess_load": eens_load,
             "soc_energy": eens_energy_available,

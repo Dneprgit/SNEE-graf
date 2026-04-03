@@ -1,0 +1,916 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор стоимости подстанции"</title>
+    <meta name="development-author" content="Бакшина Юлия Рашидовна">
+    <style>
+        :root {
+            --primary: #1a5276;
+            --primary-light: #2980b9;
+            --accent: #f39c12;
+            --bg: #f0f4f8;
+            --card: #ffffff;
+            --text: #2c3e50;
+            --text-light: #7f8c8d;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --border: #dce1e6;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* === HEADER === */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 18px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        nav a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            margin-left: 28px;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--accent);
+        }
+
+        /* === HERO === */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, #1a6ea0 50%, var(--primary-light) 100%);
+            color: white;
+            text-align: center;
+            padding: 60px 30px 50px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            opacity: 0.9;
+            max-width: 650px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* === MAIN CONTAINER === */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 30px;
+        }
+
+        /* === CALCULATOR GRID === */
+        .calc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title .icon {
+            font-size: 1.4rem;
+        }
+
+        /* === FORM ELEMENTS === */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.92rem;
+            color: var(--text);
+        }
+
+        .form-group .hint {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 6px;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            color: var(--text);
+            background: #fafbfc;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        select:focus, input[type="number"]:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.15);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f7f9fb;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .checkbox-item:hover {
+            border-color: var(--primary-light);
+            background: #eef4fa;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-light);
+        }
+
+        /* === BUTTON === */
+        .btn-calculate {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent) 0%, #e67e22 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            letter-spacing: 0.5px;
+            margin-top: 10px;
+        }
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        .btn-calculate:active {
+            transform: translateY(0);
+        }
+
+        /* === RESULTS === */
+        .results-panel {
+            position: sticky;
+            top: 80px;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px dashed var(--border);
+            font-size: 0.95rem;
+        }
+
+        .result-row:last-child {
+            border-bottom: none;
+        }
+
+        .result-row .label {
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-row .value {
+            font-weight: 700;
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        .total-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            margin: 24px -30px -30px;
+            padding: 24px 30px;
+            border-radius: 0 0 16px 16px;
+            color: white;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .total-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .total-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        .total-note {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-top: 8px;
+            text-align: right;
+        }
+
+        /* === BREAKDOWN BAR === */
+        .breakdown-bar {
+            display: flex;
+            height: 12px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0 10px;
+        }
+
+        .bar-segment {
+            transition: width 0.5s ease;
+            min-width: 2px;
+        }
+
+        .bar-segment:nth-child(1) { background: var(--primary); }
+        .bar-segment:nth-child(2) { background: var(--primary-light); }
+        .bar-segment:nth-child(3) { background: var(--accent); }
+        .bar-segment:nth-child(4) { background: var(--success); }
+        .bar-segment:nth-child(5) { background: #8e44ad; }
+        .bar-segment:nth-child(6) { background: var(--danger); }
+        .bar-segment:nth-child(7) { background: #1abc9c; }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            color: var(--text-light);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        /* === INFO SECTION === */
+        .info-section {
+            margin-top: 40px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .info-card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 28px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .info-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .info-card .info-icon {
+            font-size: 2.5rem;
+            margin-bottom: 14px;
+        }
+
+        .info-card h3 {
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        .info-card p {
+            font-size: 0.88rem;
+            color: var(--text-light);
+        }
+
+        /* === FOOTER === */
+        footer {
+            background: var(--primary);
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+            padding: 30px;
+            margin-top: 50px;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* === ANIMATIONS === */
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* === PDF BUTTON === */
+        .btn-pdf {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-pdf:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: white;
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 900px) {
+            .calc-grid {
+                grid-template-columns: 1fr;
+            }
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            .results-panel {
+                position: static;
+            }
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            nav { display: none; }
+        }
+
+        /* === TOOLTIP === */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* Placeholder */
+        .placeholder-msg {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        .placeholder-msg .big-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+    <div class="header-inner">
+        <div class="logo">
+            <span class="logo-icon">⚡</span>
+            АО "СО ЕЭС"<span>
+        </div>
+        <nav>
+            <a href="#calculator">Калькулятор</a>
+            <a href="#info">О расчёте</a>
+            <a href="#contacts">Контакты</a>
+        </nav>
+    </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+    <h1>Расчёт стоимости строительства подстанции</h1>
+    <p>Рассчитайте ориентировочную стоимость строительства трансформаторной подстанции за несколько шагов</p>
+</div>
+
+<!-- CALCULATOR -->
+<div class="container" id="calculator">
+    <div class="calc-grid">
+
+        <!-- LEFT: INPUTS -->
+        <div>
+            <!-- Основные параметры -->
+            <div class="card fade-in" style="margin-bottom: 24px;">
+                <div class="card-title"><span class="icon">🔧</span> Основные параметры</div>
+
+                <div class="form-group">
+                    <label>Класс напряжения (ВН)</label>
+                    <div class="hint">Высокая сторона подстанции</div>
+                    <select id="voltageClass">
+                        <option value="10">10 кВ</option>
+                        <option value="35">35 кВ</option>
+                        <option value="110" selected>110 кВ</option>
+                        <option value="220">220 кВ</option>
+                        <option value="330">330 кВ</option>
+                        <option value="500">500 кВ</option>
+                        <option value="750">750 кВ</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Мощность трансформатора, МВА</label>
+                    <div class="hint">Единичная мощность одного трансформатора</div>
+                    <select id="transformerPower">
+                        <option value="2.5">2.5 МВА</option>
+                        <option value="6.3">6.3 МВА</option>
+                        <option value="10">10 МВА</option>
+                        <option value="16">16 МВА</option>
+                        <option value="25">25 МВА</option>
+                        <option value="40">40 МВА</option>
+                        <option value="63" selected>63 МВА</option>
+                        <option value="100">100 МВА</option>
+                        <option value="125">125 МВА</option>
+                        <option value="200">200 МВА</option>
+                        <option value="250">250 МВА</option>
+                        <option value="400">400 МВА</option>
+                        <option value="500">500 МВА</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Количество трансформаторов</label>
+                    <select id="transformerCount">
+                        <option value="1">1 трансформатор</option>
+                        <option value="2" selected>2 трансформатора</option>
+                        <option value="3">3 трансформатора</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Тип подстанции</label>
+                    <select id="substationType">
+                        <option value="open" selected>Открытая (ОРУ)</option>
+                        <option value="closed">Закрытая (ЗРУ)</option>
+                        <option value="kis">Комплектная (КРУЭ / КРУ)</option>
+                        <option value="modular">Блочно-модульная (БКТП)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Количество линейных ячеек ВН</label>
+                    <input type="number" id="cellCountHV" value="4" min="1" max="30">
+                </div>
+
+                <div class="form-group">
+                    <label>Количество ячеек РУ НН (6–10 кВ)</label>
+                    <input type="number" id="cellCountLV" value="12" min="1" max="60">
+                </div>
+            </div>
+
+            <!-- Дополнительное оборудование -->
+            <div class="card fade-in" style="margin-bottom: 24px;">
+                <div class="card-title"><span class="icon">⚙️</span> Дополнительное оборудование</div>
+
+                <div class="form-group">
+                    <label>Включить в расчёт:</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="optRelay" checked> РЗА (релейная защита)
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="optASUTP" checked> АСУ ТП
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="optDC"> Аккум. батарея (СОПТ)
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="optGround" checked> Заземление и молниезащита
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="optFire"> Пожаротушение
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="optSecurity"> Охрана и видеонаблюдение
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Работы и услуги -->
+            <div class="card fade-in" style="margin-bottom: 24px;">
+                <div class="card-title"><span class="icon">📋</span> Работы и услуги</div>
+
+                <div class="form-group">
+                    <label>Регион строительства</label>
+                    <div class="hint">Коэффициент удорожания по региону</div>
+                    <select id="region">
+                        <option value="0.85">Центральный ФО (×0.85)</option>
+                        <option value="1.0" selected>Среднее по РФ (×1.0)</option>
+                        <option value="1.15">Урал / Сибирь (×1.15)</option>
+                        <option value="1.4">Дальний Восток (×1.4)</option>
+                        <option value="1.6">Крайний Север (×1.6)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Включить проектирование (ПИР)</label>
+                    <select id="designWork">
+                        <option value="0">Нет</option>
+                        <option value="1" selected>Да (стандартный проект)</option>
+                        <option value="2">Да (индивидуальный проект)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Включить СМР (строительно-монтажные работы)</label>
+                    <select id="constructionWork">
+                        <option value="0">Нет</option>
+                        <option value="1" selected>Да</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Пуско-наладочные работы (ПНР)</label>
+                    <select id="commissioningWork">
+                        <option value="0">Нет</option>
+                        <option value="1" selected>Да</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-calculate" onclick="calculate()">⚡ Рассчитать стоимость</button>
+        </div>
+
+        <!-- RIGHT: RESULTS -->
+        <div class="results-panel">
+            <div class="card fade-in" id="resultsCard">
+                <div class="card-title"><span class="icon">📊</span> Результат расчёта</div>
+
+                <div id="resultsContent">
+                    <div class="placeholder-msg">
+                        <div class="big-icon">📐</div>
+                        Заполните параметры слева и нажмите<br><b>«Рассчитать стоимость»</b>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO SECTION -->
+    <div class="info-section" id="info">
+        <div class="info-grid">
+            <div class="info-card fade-in">
+                <div class="info-icon">🏗️</div>
+                <h3>Точность ±15–20%</h3>
+                <p>Расчёт даёт ориентировочную оценку для бюджетного планирования. Точная стоимость определяется проектной документацией.</p>
+            </div>
+            <div class="info-card fade-in">
+                <div class="info-icon">📑</div>
+                <h3>Базовые цены 2024</h3>
+                <p>Стоимости оборудования и работ основаны на рыночных ценах и укрупнённых сметных нормативах.</p>
+            </div>
+            <div class="info-card fade-in">
+                <div class="info-icon">🤝</div>
+                <h3>Бесплатная консультация</h3>
+                <p>Для получения коммерческого предложения свяжитесь с нашими специалистами по телефону или email.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<footer id="contacts">
+    <p>© 2024 АО "СО ЕЭС" — Калькулятор стоимости подстанций | <a href="#">https://www.so-ups.ru/</a>
+    <p style="margin-top:6px; font-size:0.8rem;">Данные расчёта носят информационный характер и не являются коммерческим предложением.</p>
+</footer>
+
+<script>
+    // ============ PRICE DATABASE (базовые цены в млн. руб.) ============
+
+    // Стоимость силовых трансформаторов (в млн руб.) по мощности
+    const transformerPrices = {
+        2.5: 3.5, 6.3: 6.2, 10: 9.5, 16: 14, 25: 20,
+        40: 30, 63: 45, 100: 70, 125: 90, 200: 140,
+        250: 175, 400: 260, 500: 340
+    };
+
+    // Стоимость ячеек (ВН) по классу напряжения (млн руб. за ячейку)
+    const cellPricesHV = {
+        10: 0.8, 35: 2.5, 110: 12, 220: 28, 330: 45, 500: 80, 750: 130
+    };
+
+    // Стоимость ячеек НН 6-10 кВ (млн руб.)
+    const cellPriceLV = 1.2;
+
+    // Коэффициент удорожания по типу подстанции
+    const typeCoefficients = {
+        open: 1.0,
+        closed: 1.35,
+        kis: 1.65,
+        modular: 0.85
+    };
+
+    // Стоимость допоборудования (базовая, млн руб.) — зависит от масштаба
+    function getOptionalCosts(baseCost) {
+        return {
+            optRelay: baseCost * 0.08,
+            optASUTP: baseCost * 0.06,
+            optDC: baseCost * 0.03,
+            optGround: baseCost * 0.025,
+            optFire: baseCost * 0.035,
+            optSecurity: baseCost * 0.015
+        };
+    }
+
+    // ============ CALCULATION ============
+
+    function calculate() {
+        const voltageClass = parseFloat(document.getElementById('voltageClass').value);
+        const transformerPower = parseFloat(document.getElementById('transformerPower').value);
+        const transformerCount = parseInt(document.getElementById('transformerCount').value);
+        const substationType = document.getElementById('substationType').value;
+        const cellCountHV = parseInt(document.getElementById('cellCountHV').value) || 4;
+        const cellCountLV = parseInt(document.getElementById('cellCountLV').value) || 12;
+        const regionCoeff = parseFloat(document.getElementById('region').value);
+        const designWork = parseInt(document.getElementById('designWork').value);
+        const constructionWork = parseInt(document.getElementById('constructionWork').value);
+        const commissioningWork = parseInt(document.getElementById('commissioningWork').value);
+
+        // 1) Трансформаторы
+        const costTransformers = (transformerPrices[transformerPower] || 45) * transformerCount;
+
+        // 2) Ячейки ВН
+        const costCellsHV = (cellPricesHV[voltageClass] || 12) * cellCountHV;
+
+        // 3) Ячейки НН
+        const costCellsLV = cellPriceLV * cellCountLV;
+
+        // 4) Тип подстанции
+        const typeCoeff = typeCoefficients[substationType] || 1.0;
+
+        // Базовая стоимость оборудования
+        let costEquipment = (costTransformers + costCellsHV + costCellsLV) * typeCoeff;
+
+        // 5) Допоборудование
+        const optCosts = getOptionalCosts(costEquipment);
+        let costOptional = 0;
+        const optItems = {};
+        ['optRelay', 'optASUTP', 'optDC', 'optGround', 'optFire', 'optSecurity'].forEach(id => {
+            if (document.getElementById(id).checked) {
+                costOptional += optCosts[id];
+                optItems[id] = optCosts[id];
+            }
+        });
+
+        // 6) Итого оборудование
+        let totalEquip = costEquipment + costOptional;
+
+        // 7) Проектирование
+        let costDesign = 0;
+        if (designWork === 1) costDesign = totalEquip * 0.08;
+        else if (designWork === 2) costDesign = totalEquip * 0.14;
+
+        // 8) СМР
+        let costSMR = 0;
+        if (constructionWork === 1) costSMR = totalEquip * 0.35;
+
+        // 9) ПНР
+        let costPNR = 0;
+        if (commissioningWork === 1) costPNR = totalEquip * 0.07;
+
+        // 10) Региональный коэффициент
+        let subtotal = totalEquip + costDesign + costSMR + costPNR;
+        let total = subtotal * regionCoeff;
+
+        // Пересчёт составляющих с регионом
+        const rCostTransformers = costTransformers * typeCoeff * regionCoeff;
+        const rCostCellsHV = costCellsHV * typeCoeff * regionCoeff;
+        const rCostCellsLV = costCellsLV * typeCoeff * regionCoeff;
+        const rCostOptional = costOptional * regionCoeff;
+        const rCostDesign = costDesign * regionCoeff;
+        const rCostSMR = costSMR * regionCoeff;
+        const rCostPNR = costPNR * regionCoeff;
+
+        // ============ RENDER RESULTS ============
+        const parts = [
+            { label: 'Силовые трансформаторы', value: rCostTransformers, color: 'var(--primary)' },
+            { label: 'Ячейки ВН', value: rCostCellsHV, color: 'var(--primary-light)' },
+            { label: 'Ячейки НН (6–10 кВ)', value: rCostCellsLV, color: 'var(--accent)' },
+            { label: 'Доп. оборудование', value: rCostOptional, color: 'var(--success)' },
+            { label: 'Проектирование (ПИР)', value: rCostDesign, color: '#8e44ad' },
+            { label: 'СМР', value: rCostSMR, color: 'var(--danger)' },
+            { label: 'ПНР', value: rCostPNR, color: '#1abc9c' },
+        ].filter(p => p.value > 0);
+
+        let html = '';
+
+        // Result rows
+        parts.forEach(p => {
+            html += `
+                <div class="result-row">
+                    <div class="label">
+                        <span class="legend-dot" style="background:${p.color};display:inline-block;width:10px;height:10px;border-radius:50%;"></span>
+                        ${p.label}
+                    </div>
+                    <div class="value">${formatPrice(p.value)}</div>
+                </div>`;
+        });
+
+        // Breakdown bar
+        html += '<div class="breakdown-bar">';
+        parts.forEach(p => {
+            const pct = (p.value / total * 100);
+            html += `<div class="bar-segment" style="width:${pct}%;background:${p.color};" title="${p.label}: ${pct.toFixed(1)}%"></div>`;
+        });
+        html += '</div>';
+
+        // Legend
+        html += '<div class="legend">';
+        parts.forEach(p => {
+            const pct = (p.value / total * 100).toFixed(1);
+            html += `<div class="legend-item"><span class="legend-dot" style="background:${p.color}"></span>${p.label} (${pct}%)</div>`;
+        });
+        html += '</div>';
+
+        // Summary info
+        html += `
+            <div style="margin-top:18px; padding:14px; background:#f0f7ff; border-radius:10px; font-size:0.85rem; color:var(--text-light);">
+                <b>Параметры:</b> ПС ${voltageClass}/${voltageClass <= 35 ? '0.4' : '6–10'} кВ, ${transformerCount}×${transformerPower} МВА,
+                ${getSubstationTypeName(substationType)}, регион ×${regionCoeff}
+            </div>
+        `;
+
+        // Total
+        html += `
+            <div class="total-section">
+                <div class="total-row">
+                    <div class="total-label">ИТОГО (ориентировочно)</div>
+                    <div class="total-value">${formatPrice(total)}</div>
+                </div>
+                <div class="total-note">* Цены указаны без НДС. Точность ±15–20%</div>
+                <button class="btn-pdf" onclick="exportResults()">📄 Сохранить расчёт (печать)</button>
+            </div>`;
+
+        document.getElementById('resultsContent').innerHTML = html;
+
+        // Scroll to results on mobile
+        if (window.innerWidth < 900) {
+            document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    function formatPrice(millions) {
+        if (millions >= 1000) {
+            return (millions / 1000).toFixed(2) + ' млрд ₽';
+        }
+        if (millions >= 1) {
+            return millions.toFixed(2) + ' млн ₽';
+        }
+        return (millions * 1000).toFixed(0) + ' тыс ₽';
+    }
+
+    function getSubstationTypeName(type) {
+        const names = { open: 'ОРУ', closed: 'ЗРУ', kis: 'КРУЭ/КРУ', modular: 'БКТП' };
+        return names[type] || type;
+    }
+
+    function exportResults() {
+        window.print();
+    }
+</script>
+
+</body>
+</html>

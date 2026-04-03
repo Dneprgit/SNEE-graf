@@ -1,0 +1,1623 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор стоимости подстанции и ЛЭП</title>
+<meta name="development-author" content="Бакшина Юлия Рашидовна">
+<style>
+/* ══════════════════════ VARIABLES ══════════════════════ */
+:root {
+  --primary:    #0d3b6e;
+  --prime-mid:  #1a5fa8;
+  --prime-lt:   #2980b9;
+  --accent:     #e67e22;
+  --accent-dk:  #c0392b;
+  --green:      #27ae60;
+  --teal:       #16a085;
+  --purple:     #7d3c98;
+  --red:        #e74c3c;
+  --yellow:     #f39c12;
+  --orange:     #d35400;
+  --lep-vl:     #1e8449;
+  --lep-kl:     #1a5276;
+  --lep-kvl:    #6c3483;
+  --bg:         #eef2f7;
+  --card:       #ffffff;
+  --border:     #dae2ec;
+  --text:       #1e2d3d;
+  --muted:      #6b7a8d;
+  --light:      #f4f7fb;
+  --sh-sm:      0 2px 10px rgba(0,0,0,.08);
+  --sh-md:      0 6px 24px rgba(0,0,0,.11);
+  --r:          14px;
+  --rsm:        8px;
+  --tr:         .2s ease;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px;min-height:100vh;}
+h1,h2,h3,h4{line-height:1.25;font-weight:700;}
+button,input,select{font-family:inherit;}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:#f0f4f8;}
+::-webkit-scrollbar-thumb{background:#b0bec5;border-radius:3px;}
+
+/* ══════════════════════ NAVBAR ══════════════════════ */
+.navbar{
+  background:linear-gradient(120deg,var(--primary) 0%,var(--prime-mid) 55%,var(--prime-lt) 100%);
+  height:60px;display:flex;align-items:center;gap:6px;
+  padding:0 24px;position:sticky;top:0;z-index:500;
+  box-shadow:0 2px 16px rgba(0,0,0,.3);
+}
+.logo{font-size:1.25rem;font-weight:800;color:#fff;letter-spacing:-.5px;margin-right:auto;display:flex;align-items:center;gap:8px;}
+.logo-sub{background:var(--accent);color:#fff;font-size:.58rem;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:.4px;}
+.nav-pill{
+  padding:6px 16px;border-radius:30px;border:2px solid rgba(255,255,255,.3);
+  color:rgba(255,255,255,.8);background:transparent;font-size:.83rem;font-weight:600;
+  cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;transition:all var(--tr);
+}
+.nav-pill:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.7);color:#fff;}
+.nav-pill.active{background:rgba(255,255,255,.22);border-color:#fff;color:#fff;}
+
+/* ══════════════════════ PAGES ══════════════════════ */
+.page{display:none;animation:pgIn .28s ease;}
+.page.active{display:block;}
+@keyframes pgIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ══════════════════════ HERO ══════════════════════ */
+.hero{
+  background:linear-gradient(135deg,var(--primary) 0%,var(--prime-mid) 55%,var(--prime-lt) 100%);
+  color:#fff;padding:44px 24px 36px;text-align:center;position:relative;overflow:hidden;
+}
+.hero::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 100%,rgba(41,128,185,.22),transparent);pointer-events:none;}
+.hero h1{font-size:clamp(1.5rem,3vw,2.3rem);margin-bottom:8px;position:relative;}
+.hero p{font-size:1rem;opacity:.88;max-width:600px;margin:0 auto;position:relative;}
+.hero-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-top:16px;position:relative;}
+.hchip{background:rgba(255,255,255,.14);backdrop-filter:blur(5px);color:#fff;padding:3px 12px;border-radius:20px;font-size:.74rem;font-weight:600;border:1px solid rgba(255,255,255,.22);}
+
+/* ══════════════════════ LAYOUT ══════════════════════ */
+.wrap{max-width:1340px;margin:0 auto;padding:28px 22px;}
+.two-col{display:grid;grid-template-columns:1fr 400px;gap:24px;align-items:start;}
+.sidebar-sticky{position:sticky;top:70px;}
+
+/* ══════════════════════ CARDS ══════════════════════ */
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--sh-sm);overflow:hidden;margin-bottom:20px;}
+.card:last-child{margin-bottom:0;}
+.card-head{padding:15px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;background:linear-gradient(90deg,var(--light),var(--card));}
+.card-head h3{font-size:.97rem;font-weight:700;color:var(--primary);}
+.step-b{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.card-body{padding:22px;}
+
+/* ══════════════════════ CATEGORY TABS ══════════════════════ */
+.cat-tabs{display:flex;gap:0;margin-bottom:20px;border-radius:12px;overflow:hidden;border:2px solid var(--border);background:var(--light);}
+.cat-tab{
+  flex:1;padding:11px 8px;text-align:center;cursor:pointer;
+  font-size:.82rem;font-weight:700;color:var(--muted);
+  border-right:2px solid var(--border);transition:all var(--tr);
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.cat-tab:last-child{border-right:none;}
+.cat-tab .ct-ico{font-size:1.3rem;}
+.cat-tab:hover{background:#e8f2fb;color:var(--prime-mid);}
+.cat-tab.active{background:var(--primary);color:#fff;}
+.cat-tab.active-lep-vl{background:var(--lep-vl);color:#fff;}
+.cat-tab.active-lep-kl{background:var(--lep-kl);color:#fff;}
+.cat-tab.active-lep-kvl{background:var(--lep-kvl);color:#fff;}
+
+/* ══════════════════════ TYPE GRID ══════════════════════ */
+.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:18px 22px;}
+.type-card{
+  border:2px solid var(--border);border-radius:10px;
+  padding:18px 12px 14px;cursor:pointer;text-align:center;
+  background:var(--light);transition:all var(--tr);position:relative;overflow:hidden;
+}
+.type-card:hover{border-color:var(--prime-lt);transform:translateY(-2px);box-shadow:var(--sh-md);}
+.type-card.sel{border-color:var(--prime-mid);background:#e8f2fb;box-shadow:0 0 0 3px rgba(26,95,168,.18);}
+.type-card.sel-vl{border-color:var(--lep-vl);background:#e8f5ee;box-shadow:0 0 0 3px rgba(30,132,73,.18);}
+.type-card.sel-kl{border-color:var(--lep-kl);background:#e8f2fb;box-shadow:0 0 0 3px rgba(26,82,118,.18);}
+.type-card.sel-kvl{border-color:var(--lep-kvl);background:#f3e8f9;box-shadow:0 0 0 3px rgba(108,52,131,.18);}
+.t-ico{font-size:2rem;display:block;margin-bottom:8px;}
+.t-name{font-weight:700;font-size:.9rem;color:var(--primary);margin-bottom:3px;}
+.t-desc{font-size:.71rem;color:var(--muted);line-height:1.35;}
+.t-kv{display:inline-block;margin-top:8px;padding:2px 8px;border-radius:12px;background:#ddeeff;color:var(--prime-mid);font-size:.67rem;font-weight:700;}
+.type-card.sel-vl .t-kv{background:var(--lep-vl);color:#fff;}
+.type-card.sel-kl .t-kv{background:var(--lep-kl);color:#fff;}
+.type-card.sel-kvl .t-kv{background:var(--lep-kvl);color:#fff;}
+.sel-check{position:absolute;top:7px;right:7px;width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff;display:none;align-items:center;justify-content:center;font-size:.65rem;font-weight:900;}
+.type-card.sel .sel-check,.type-card.sel-vl .sel-check,.type-card.sel-kl .sel-check,.type-card.sel-kvl .sel-check{display:flex;}
+
+/* ══════════════════════ FORM ══════════════════════ */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-grid.g3{grid-template-columns:1fr 1fr 1fr;}
+.form-grid.g1{grid-template-columns:1fr;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:.82rem;font-weight:600;color:var(--text);}
+.fg .hint{font-size:.71rem;color:var(--muted);margin-top:-1px;}
+select,input[type=number],input[type=text]{
+  padding:9px 11px;border:2px solid var(--border);border-radius:var(--rsm);
+  background:var(--light);color:var(--text);font-size:.88rem;outline:none;width:100%;
+  transition:border-color var(--tr),box-shadow var(--tr);
+}
+select:focus,input:focus{border-color:var(--prime-lt);box-shadow:0 0 0 3px rgba(41,128,185,.13);background:#fff;}
+.sep{display:flex;align-items:center;gap:9px;margin:16px 0 12px;}
+.sep span{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);white-space:nowrap;}
+.sep::before,.sep::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ══════════════════════ CHECKBOXES ══════════════════════ */
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.chk-item{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  border-radius:var(--rsm);border:2px solid var(--border);
+  background:var(--light);cursor:pointer;font-size:.82rem;font-weight:500;
+  transition:all var(--tr);user-select:none;
+}
+.chk-item:hover{border-color:var(--prime-lt);background:#edf4fb;}
+.chk-item input{width:15px;height:15px;accent-color:var(--prime-mid);flex-shrink:0;}
+.chk-item.is-on{border-color:var(--prime-mid);background:#e8f2fb;}
+
+/* ══════════════════════ LEP SPECIAL ELEMENTS ══════════════════════ */
+.lep-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 14px;border-radius:20px;font-size:.78rem;font-weight:700;
+  margin-bottom:14px;
+}
+.lep-vl-badge{background:#d5f0e3;color:var(--lep-vl);border:1px solid #a9dfbf;}
+.lep-kl-badge{background:#d6eaf8;color:var(--lep-kl);border:1px solid #a9cce3;}
+.lep-kvl-badge{background:#e8d5f5;color:var(--lep-kvl);border:1px solid #d2b4de;}
+
+.lep-km-display{
+  background:linear-gradient(135deg,var(--lep-vl),#1a8a55);
+  color:#fff;border-radius:10px;padding:14px 18px;
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:16px;
+}
+.lep-km-display.kl{background:linear-gradient(135deg,var(--lep-kl),#1f618d);}
+.lep-km-display.kvl{background:linear-gradient(135deg,var(--lep-kvl),#5b2c6f);}
+.lkd-label{font-size:.8rem;opacity:.85;}
+.lkd-val{font-size:1.6rem;font-weight:800;}
+.lkd-unit{font-size:.78rem;opacity:.75;margin-top:2px;}
+
+/* Km breakdown bar */
+.km-breakdown{margin:12px 0;display:flex;height:10px;border-radius:6px;overflow:hidden;}
+.km-seg{height:100%;transition:width .4s ease;}
+
+/* ══════════════════════ BUTTONS ══════════════════════ */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:9px;border:none;font-weight:700;font-size:.88rem;cursor:pointer;transition:all var(--tr);white-space:nowrap;}
+.btn:hover{transform:translateY(-2px);}
+.btn:active{transform:none;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-dk));color:#fff;box-shadow:0 4px 14px rgba(230,126,34,.35);}
+.btn-primary:hover{box-shadow:0 6px 20px rgba(230,126,34,.5);}
+.btn-blue{background:var(--prime-mid);color:#fff;box-shadow:0 4px 14px rgba(26,95,168,.3);}
+.btn-blue:hover{background:var(--primary);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-outline{background:transparent;border:2px solid var(--prime-mid);color:var(--prime-mid);}
+.btn-outline:hover{background:#edf4fb;}
+.btn-ghost{background:transparent;border:2px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--muted);color:var(--text);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-sm{padding:6px 13px;font-size:.78rem;border-radius:6px;}
+.btn-lg{padding:13px 30px;font-size:.97rem;}
+.btn-full{width:100%;justify-content:center;}
+.btn-group{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px;}
+
+/* ══════════════════════ PREVIEW PANEL ══════════════════════ */
+.prev-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border);}
+.prev-row:last-child{border-bottom:none;}
+.pr-l{font-size:.8rem;color:var(--muted);}
+.pr-v{font-size:.86rem;font-weight:700;}
+.total-pill{background:linear-gradient(135deg,var(--primary),var(--prime-lt));color:#fff;border-radius:10px;padding:16px 18px;margin-top:14px;}
+.total-pill .tl{font-size:.82rem;opacity:.8;margin-bottom:3px;}
+.total-pill .tv{font-size:1.7rem;font-weight:800;line-height:1.1;}
+.total-pill .tn{font-size:.7rem;opacity:.6;margin-top:5px;}
+.total-pill.vl{background:linear-gradient(135deg,var(--lep-vl),#1a8a55);}
+.total-pill.kl{background:linear-gradient(135deg,var(--lep-kl),#1f618d);}
+.total-pill.kvl{background:linear-gradient(135deg,var(--lep-kvl),#5b2c6f);}
+
+/* ══════════════════════ REPORT ══════════════════════ */
+.rpt-hero{padding:30px 24px;color:#fff;}
+.rpt-hero.ps{background:linear-gradient(135deg,var(--primary) 0%,var(--prime-mid) 60%,var(--teal) 100%);}
+.rpt-hero.vl{background:linear-gradient(135deg,#145a32 0%,var(--lep-vl) 60%,#58d68d 100%);}
+.rpt-hero.kl{background:linear-gradient(135deg,#0a2540 0%,var(--lep-kl) 60%,var(--prime-lt) 100%);}
+.rpt-hero.kvl{background:linear-gradient(135deg,#3d1454 0%,var(--lep-kvl) 60%,#c39bd3 100%);}
+.rpt-hero h2{font-size:1.6rem;margin-bottom:5px;}
+.rpt-hero .meta{font-size:.83rem;opacity:.8;}
+.rpt-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px;}
+.rchip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);color:#fff;padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:600;}
+.rpt-grid{display:grid;grid-template-columns:1fr 350px;gap:22px;align-items:start;}
+
+/* Cost tables */
+.ct{width:100%;border-collapse:collapse;font-size:.85rem;}
+.ct th{background:var(--light);padding:8px 12px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:2px solid var(--border);}
+.ct td{padding:9px 12px;border-bottom:1px solid var(--border);}
+.ct tr:last-child td{border-bottom:none;}
+.ct .gr td{background:linear-gradient(90deg,#edf4fb,var(--light));font-weight:700;color:var(--primary);font-size:.76rem;text-transform:uppercase;letter-spacing:.3px;padding:7px 12px;}
+.ct .gr-vl td{background:linear-gradient(90deg,#e8f5ee,var(--light));color:var(--lep-vl);}
+.ct .gr-kl td{background:linear-gradient(90deg,#e8f2fb,var(--light));color:var(--lep-kl);}
+.ct .gr-kvl td{background:linear-gradient(90deg,#f3e8f9,var(--light));color:var(--lep-kvl);}
+.ct .sub td{padding-left:24px;color:var(--text);}
+.ct .sub td:first-child::before{content:'└ ';color:#ccc;font-size:.78em;}
+.ct .gt td{background:#f0f7e8;color:var(--green);font-weight:700;font-size:.8rem;border-top:1px solid #d4edda;}
+.ct .tot-r td{background:linear-gradient(90deg,var(--primary),var(--prime-mid));color:#fff;font-weight:800;font-size:.92rem;padding:11px 12px;}
+.ct .tot-vl td{background:linear-gradient(90deg,#145a32,var(--lep-vl));}
+.ct .tot-kl td{background:linear-gradient(90deg,#0a2540,var(--lep-kl));}
+.ct .tot-kvl td{background:linear-gradient(90deg,#3d1454,var(--lep-kvl));}
+
+/* Summary */
+.sum-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border);}
+.sum-row:last-child{border-bottom:none;}
+.sl{font-size:.8rem;color:var(--muted);}
+.sv{font-size:.87rem;font-weight:700;}
+.grand-box{border-radius:11px;padding:18px 20px;margin-top:16px;color:#fff;}
+.grand-box.ps{background:linear-gradient(135deg,var(--primary),var(--prime-lt));}
+.grand-box.vl{background:linear-gradient(135deg,#145a32,var(--lep-vl));}
+.grand-box.kl{background:linear-gradient(135deg,#0a2540,var(--lep-kl));}
+.grand-box.kvl{background:linear-gradient(135deg,#3d1454,var(--lep-kvl));}
+.grand-box .gl{font-size:.82rem;opacity:.75;margin-bottom:3px;}
+.grand-box .gv{font-size:1.9rem;font-weight:800;line-height:1.1;}
+.grand-box .gn{font-size:.7rem;opacity:.6;margin-top:6px;}
+
+/* Charts */
+.donut-wrap{position:relative;width:190px;height:190px;margin:0 auto 12px;}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
+.dc-v{font-size:.95rem;font-weight:800;color:var(--primary);}
+.dc-l{font-size:.65rem;color:var(--muted);}
+.legend{list-style:none;display:flex;flex-direction:column;gap:5px;}
+.legend li{display:flex;align-items:center;gap:7px;font-size:.78rem;padding:3px 5px;border-radius:5px;transition:background var(--tr);}
+.legend li:hover{background:var(--light);}
+.ldot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.lpct{margin-left:auto;font-weight:700;color:var(--muted);font-size:.73rem;}
+.barchart{display:flex;flex-direction:column;gap:7px;margin-top:8px;}
+.bar-row{display:grid;grid-template-columns:120px 1fr 84px;gap:7px;align-items:center;}
+.bar-lbl{font-size:.73rem;color:var(--text);text-align:right;line-height:1.2;}
+.bar-track{background:#eef2f7;border-radius:4px;height:14px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1);}
+.bar-val{font-size:.73rem;font-weight:700;}
+
+/* ══════════════════════ ALERTS ══════════════════════ */
+.alert{padding:11px 15px;border-radius:var(--rsm);font-size:.83rem;display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;}
+.alert-warn{background:#fff8e8;border:1px solid #fde8b8;color:#8a5d0a;}
+.alert-info{background:#e8f4ff;border:1px solid #b8d9f7;color:#1a4f8a;}
+.alert-vl{background:#e8f5ee;border:1px solid #a9dfbf;color:#145a32;}
+.alert-kl{background:#e8f2fb;border:1px solid #a9cce3;color:#1a4f8a;}
+.notice{background:#fff8e8;border:1px solid #fde8b8;border-left:4px solid var(--yellow);padding:11px 15px;border-radius:var(--rsm);font-size:.82rem;color:#7a4f00;margin-bottom:16px;}
+
+/* ══════════════════════ ADMIN PAGE ══════════════════════ */
+.adm-hero{background:linear-gradient(135deg,#1a2a3a,var(--primary));color:#fff;padding:26px 24px;}
+.adm-hero h2{font-size:1.4rem;margin-bottom:4px;}
+.adm-hero p{font-size:.85rem;opacity:.72;}
+.adm-layout{display:grid;grid-template-columns:210px 1fr;gap:22px;align-items:start;}
+.adm-nav{background:var(--card);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--sh-sm);overflow:hidden;position:sticky;top:70px;}
+.adm-nav-title{padding:12px 16px;background:var(--light);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);border-bottom:1px solid var(--border);}
+.adm-nav-item{display:flex;align-items:center;gap:9px;padding:11px 16px;cursor:pointer;font-size:.85rem;font-weight:600;transition:all var(--tr);border-bottom:1px solid var(--border);color:var(--muted);}
+.adm-nav-item:last-child{border-bottom:none;}
+.adm-nav-item:hover{background:var(--light);color:var(--text);}
+.adm-nav-item.active{background:#e8f2fb;color:var(--prime-mid);}
+.adm-nav-item.active-vl{background:#e8f5ee;color:var(--lep-vl);}
+.adm-nav-item.active-kl{background:#e8f2fb;color:var(--lep-kl);}
+.adm-nav-item.active-kvl{background:#f3e8f9;color:var(--lep-kvl);}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background var(--tr);}
+.adm-nav-item.active .nav-dot{background:var(--prime-mid);}
+.adm-nav-item.active-vl .nav-dot{background:var(--lep-vl);}
+.adm-nav-item.active-kl .nav-dot{background:var(--lep-kl);}
+.adm-nav-item.active-kvl .nav-dot{background:var(--lep-kvl);}
+.adm-panel{display:none;}
+.adm-panel.active{display:block;}
+.pt{width:100%;border-collapse:collapse;}
+.pt thead th{background:var(--light);padding:8px 11px;font-size:.71rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:2px solid var(--border);text-align:left;}
+.pt tbody td{padding:7px 11px;border-bottom:1px solid var(--border);font-size:.84rem;vertical-align:middle;}
+.pt tbody tr:hover td{background:var(--light);}
+.pt .sh td{background:linear-gradient(90deg,#edf4fb,var(--light));font-weight:700;color:var(--primary);font-size:.76rem;text-transform:uppercase;letter-spacing:.3px;padding:6px 11px;}
+.pt .sh-vl td{background:linear-gradient(90deg,#e8f5ee,var(--light));color:var(--lep-vl);}
+.pt .sh-kl td{background:linear-gradient(90deg,#e8f2fb,var(--light));color:var(--lep-kl);}
+.pt .sh-kvl td{background:linear-gradient(90deg,#f3e8f9,var(--light));color:var(--lep-kvl);}
+.pt input[type=number]{padding:5px 8px;border:2px solid var(--border);border-radius:5px;font-size:.82rem;width:105px;text-align:right;}
+.pt input:focus{border-color:var(--prime-lt);outline:none;}
+.coeff-g{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.ci{background:var(--light);border:2px solid var(--border);border-radius:9px;padding:12px;transition:border-color var(--tr);}
+.ci:hover{border-color:var(--prime-lt);}
+.ci label{display:block;font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.ci input{width:100%;text-align:center;font-size:.95rem;font-weight:700;color:var(--primary);}
+.ci .cin{font-size:.68rem;color:var(--muted);margin-top:4px;text-align:center;}
+
+/* ══════════════════════ EMPTY STATE ══════════════════════ */
+.empty-s{text-align:center;padding:44px 18px;color:var(--muted);}
+.empty-s .ei{font-size:2.8rem;margin-bottom:10px;}
+.empty-s h3{color:var(--text);margin-bottom:5px;}
+
+/* ══════════════════════ TOAST ══════════════════════ */
+#toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--green);color:#fff;padding:11px 20px;border-radius:9px;font-weight:700;font-size:.85rem;box-shadow:var(--sh-md);opacity:0;transform:translateY(6px);transition:all .28s;pointer-events:none;}
+#toast.show{opacity:1;transform:translateY(0);}
+
+/* ══════════════════════ PRINT ══════════════════════ */
+@media print{
+  .navbar,.hero,.btn,.btn-group,.adm-nav,#page-input,#page-admin,.alert,
+  .rpt-hero .btn-group{display:none!important;}
+  #page-report{display:block!important;}
+  .rpt-grid{grid-template-columns:1fr!important;}
+  .card{box-shadow:none!important;}
+  body{background:#fff;}
+}
+
+/* ══════════════════════ RESPONSIVE ══════════════════════ */
+@media(max-width:1100px){
+  .two-col,.rpt-grid{grid-template-columns:1fr;}
+  .adm-layout{grid-template-columns:1fr;}
+  .adm-nav{position:static;display:flex;flex-wrap:wrap;border-radius:var(--rsm);}
+  .adm-nav-title{display:none;}
+  .adm-nav-item{flex:1;min-width:100px;justify-content:center;border-bottom:none;border-right:1px solid var(--border);}
+  .sidebar-sticky{position:static;}
+}
+@media(max-width:760px){
+  .type-grid{grid-template-columns:repeat(2,1fr);}
+  .form-grid,.form-grid.g3{grid-template-columns:1fr;}
+  .check-grid{grid-template-columns:1fr;}
+  .coeff-g{grid-template-columns:1fr 1fr;}
+  .cat-tabs{flex-wrap:wrap;}
+  .cat-tab{min-width:80px;}
+}
+@media(max-width:520px){
+  .type-grid{grid-template-columns:1fr;}
+  .coeff-g{grid-template-columns:1fr;}
+  .hero h1{font-size:1.35rem;}
+  .navbar{padding:0 12px;}
+  .wrap{padding:16px 12px;}
+  .bar-row{grid-template-columns:90px 1fr 70px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ NAVBAR ══════════════════════ -->
+<nav class="navbar">
+  <div class="logo"> АО "СО ЕЭС" </span></div>                                                                                              
+  <button class="nav-pill active" id="nav-input"  onclick="gotoPage('input')">📐 Калькулятор</button>
+  <button class="nav-pill"        id="nav-report" onclick="gotoPage('report')">📊 Отчёт</button>
+  <button class="nav-pill"        id="nav-admin"  onclick="gotoPage('admin')">⚙️ Прайс-лист</button>
+</nav>
+
+<!-- ══════════════════════ PAGE: INPUT ══════════════════════ -->
+<div id="page-input" class="page active">
+  <div class="hero">
+    <h1>Калькулятор стоимости строительства подстанций и ЛЭП</h1>
+    <p>Подстанции 10–220 кВ, воздушные линии, кабельные линии и КВЛ — всё в одном инструменте</p>
+    <div class="hero-chips">
+      <span class="hchip">6 типов ПС</span>
+      <span class="hchip">ВЛ 0.4–500 кВ</span>
+      <span class="hchip">КЛ 0.4–220 кВ</span>
+      <span class="hchip">КВЛ (комбинированные)</span>
+      <span class="hchip">8 регионов РФ</span>
+      <span class="hchip">Точность ±15%</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="two-col">
+
+      <!-- ── ЛЕВАЯ КОЛОНКА ── -->
+      <div>
+
+        <!-- STEP 1 -->
+        <div class="card">
+          <div class="card-head">
+            <span class="step-b">1</span>
+            <h3>Выбор категории и типа объекта</h3>
+          </div>
+          <div class="card-body">
+            <div class="cat-tabs" id="catTabs">
+              <div class="cat-tab active" id="ctab-ps" onclick="switchCat('ps')">
+                <span class="ct-ico">🏭</span>Подстанции
+              </div>
+              <div class="cat-tab" id="ctab-vl" onclick="switchCat('vl')">
+                <span class="ct-ico">🗼</span>ВЛ
+              </div>
+              <div class="cat-tab" id="ctab-kl" onclick="switchCat('kl')">
+                <span class="ct-ico">🔵</span>КЛ
+              </div>
+              <div class="cat-tab" id="ctab-kvl" onclick="switchCat('kvl')">
+                <span class="ct-ico">⚡</span>КВЛ
+              </div>
+            </div>
+            <div class="type-grid" id="typeGrid"></div>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="card" id="step2card">
+          <div class="card-head">
+            <span class="step-b">2</span>
+            <h3 id="step2title">Параметры объекта</h3>
+          </div>
+          <div class="card-body" id="paramsArea">
+            <div class="empty-s"><div class="ei">👆</div><h3>Выберите тип объекта</h3><p>Форма параметров появится здесь</p></div>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="card">
+          <div class="card-head"><span class="step-b">3</span><h3>Работы, регион и прочее</h3></div>
+          <div class="card-body">
+            <div class="form-grid" style="margin-bottom:14px">
+              <div class="fg">
+                <label>Регион строительства</label>
+                <select id="region" onchange="refreshPreview()">
+                  <option value="0.85">Москва и МО (×0.85)</option>
+                  <option value="0.92">ЦФО, прочие (×0.92)</option>
+                  <option value="1.00" selected>Поволжье / Юг РФ (×1.00)</option>
+                  <option value="1.10">Северо-Западный ФО (×1.10)</option>
+                  <option value="1.22">Урал (×1.22)</option>
+                  <option value="1.38">Западная Сибирь (×1.38)</option>
+                  <option value="1.58">Дальний Восток (×1.58)</option>
+                  <option value="1.85">Крайний Север (×1.85)</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label>НДС</label>
+                <select id="vat" onchange="refreshPreview()">
+                  <option value="0">Без НДС</option>
+                  <option value="0.20" selected>С НДС 20%</option>
+                </select>
+              </div>
+            </div>
+            <div class="sep"><span>Включить в расчёт</span></div>
+            <div class="check-grid">
+              <label class="chk-item">
+                <input type="checkbox" id="chk-pir" checked onchange="syncChk(this);refreshPreview()">📐 Проектирование (ПИР)
+              </label>
+              <label class="chk-item">
+                <input type="checkbox" id="chk-smr" checked onchange="syncChk(this);refreshPreview()">🏗️ Строительно-монтажные работы
+              </label>
+              <label class="chk-item">
+                <input type="checkbox" id="chk-pnr" checked onchange="syncChk(this);refreshPreview()">🔌 Пуско-наладочные работы
+              </label>
+              <label class="chk-item">
+                <input type="checkbox" id="chk-res" onchange="syncChk(this);refreshPreview()">📦 Непредвиденные расходы (5%)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary btn-lg" onclick="doCalc()">⚡ Рассчитать стоимость</button>
+          <button class="btn btn-ghost" onclick="resetForm()">🔄 Сбросить</button>
+        </div>
+      </div>
+
+      <!-- ── ПРАВАЯ КОЛОНКА (PREVIEW) ── -->
+      <div class="sidebar-sticky">
+        <div class="card">
+          <div class="card-head" style="background:linear-gradient(90deg,var(--primary),var(--prime-mid))">
+            <h3 style="color:#fff">📋 Предварительный расчёт</h3>
+          </div>
+          <div class="card-body" id="previewBody">
+            <div class="empty-s" style="padding:28px 14px">
+              <div class="ei">📊</div>
+              <p>Заполните параметры для быстрой оценки стоимости</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ PAGE: REPORT ══════════════════════ -->
+<div id="page-report" class="page">
+  <div id="reportRoot">
+    <div class="wrap">
+      <div class="empty-s" style="padding:70px 20px">
+        <div class="ei">📊</div>
+        <h3>Отчёт не сформирован</h3>
+        <p style="margin:7px 0 18px">Перейдите в калькулятор и нажмите «Рассчитать стоимость»</p>
+        <button class="btn btn-blue" onclick="gotoPage('input')">→ Перейти к расчёту</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ PAGE: ADMIN ══════════════════════ -->
+<div id="page-admin" class="page">
+  <div class="adm-hero">
+    <h2>⚙️ Администрирование прайс-листа</h2>
+    <p>Редактируйте базовые цены оборудования подстанций, ВЛ, КЛ и расчётные коэффициенты. Данные сохраняются в браузере.</p>
+  </div>
+  <div class="wrap">
+    <div class="notice">⚠️ Все цены — в <b>млн рублей без НДС</b> за единицу. Для линий: цена за 1 км трассы (включая материалы).</div>
+    <div class="adm-layout">
+      <div class="adm-nav" id="admNav"></div>
+      <div id="admPanels"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════
+   DEFAULT PRICE DATABASE
+══════════════════════════════════════════ */
+const DEFAULT_DB = {
+
+  /* ── Трансформаторы КТП 10/0.4 кВ ── */
+  tr_ktp:{100:.18,160:.23,250:.30,400:.40,630:.55,1000:.76,1600:1.15,2500:1.65},
+  /* ── Трансформаторы ПС 35/10 ── */
+  tr_35:{2.5:4.6,4:7.0,6.3:9.5,10:15,16:21,25:29},
+  /* ── Трансформаторы ПС 110/10 ── */
+  tr_110:{16:23,25:33,40:48,63:70,80:88,100:108},
+  /* ── Автотрансформаторы ПС 220 ── */
+  tr_220:{125:155,200:215,250:270,400:390},
+
+  /* ── Ячейки РУ ── */
+  cell_kru10:1.25, cell_krue110:8.80, cell_zru110:4.40,
+
+  /* ── ОРУ 35 кВ ── */
+  e35_vvb:.68, e35_razed:.19, e35_opn:.045, e35_tt:.095, e35_tn:.23, e35_opory:.42,
+  /* ── ОРУ 110 кВ ── */
+  e110_vvb:3.60, e110_razed:.40, e110_opn:.13, e110_tt:.30, e110_tn:.58, e110_opory:1.25,
+  /* ── ОРУ 220 кВ ── */
+  e220_vvb:9.80, e220_razed:.78, e220_opn:.24, e220_tt:.68, e220_tn:1.90, e220_opory:3.60,
+
+  /* ── Строительство ПС ── */
+  b_ktp_metal:.38, b_ktp_brick:.68, b_ktp_concrete:.58,
+  b_ktp_cont:1.90, b_ktp_termo:2.50, b_ktp_north:3.30,
+  b_nn_panel:.085, b_nn_cell:.048, b_vvod_vn:.13,
+  b_opu_35:2.90, b_opu_110:5.60, b_opu_220:14.5,
+  b_found_35:1.55, b_found_110:4.40, b_found_220:12.5,
+  b_fence:.95, b_fence_220:2.30,
+  b_cable_trays:1.85, b_inner_road:3.60,
+  b_zru_bld:5.20, b_shunt_r:18.5,
+  b_metering_bas:.085, b_metering_adv:.24,
+
+  /* ─────────── ВЛ — стоимость км трассы (млн руб./км) ─────────── */
+  /* Включает: опоры + фундаменты + монтаж + провода + изоляторы + фурнитура */
+  vl_04_sip_wood:   0.90,   /* ВЛ-0.4 кВ, СИП, дерев. опоры */
+  vl_04_sip_conc:   1.20,   /* ВЛ-0.4 кВ, СИП, ЖБ опоры */
+  vl_610_as_wood:   2.20,   /* ВЛ-6/10 кВ, провод АС, дерев. */
+  vl_610_as_conc:   2.80,   /* ВЛ-6/10 кВ, провод АС, ЖБ */
+  vl_610_as_metal:  3.40,   /* ВЛ-6/10 кВ, провод АС, металл. */
+  vl_35_as_metal:   7.50,   /* ВЛ-35 кВ, металл. опоры */
+  vl_35_as_conc:    6.20,   /* ВЛ-35 кВ, ЖБ опоры */
+  vl_110_as_metal:  14.0,   /* ВЛ-110 кВ, металл. опоры */
+  vl_110_ac_metal:  16.0,   /* ВЛ-110 кВ, провод АС увелич. */
+  vl_220_as_metal:  30.0,   /* ВЛ-220 кВ, металл. опоры, одна цепь */
+  vl_220_ac_metal:  35.0,   /* ВЛ-220 кВ, расщепл. провод */
+  vl_500_ac_metal:  75.0,   /* ВЛ-500 кВ */
+
+  /* Доп. затраты ВЛ за 1 объект (млн руб.) */
+  vl_cross_road:    0.45,   /* Пересечение с а/дорогой */
+  vl_cross_rail:    1.80,   /* Пересечение с ж/дорогой */
+  vl_cross_river:   2.80,   /* Пересечение с рекой */
+  vl_cross_pipe:    0.65,   /* Пересечение с трубопроводом */
+  vl_clear_km:      0.28,   /* Просека (млн руб./км) */
+  vl_terrain_coeff_flat:   1.00,
+  vl_terrain_coeff_hilly:  1.18,
+  vl_terrain_coeff_mountain:1.45,
+  vl_terrain_coeff_swamp:  1.55,
+  vl_circuit_coeff_2:      1.55,  /* коэф. для 2-цепной линии */
+  vl_circuit_coeff_3:      2.05,
+
+  /* Оборудование ВЛ (порталы, ОПН, разъед. на концах) */
+  vl_portal_35:     0.35,  /* портальная опора ОРУ-35 */
+  vl_portal_110:    0.85,
+  vl_portal_220:    2.20,
+  vl_opn_35:        0.04,
+  vl_opn_110:       0.13,
+  vl_opn_220:       0.24,
+
+  /* ─────────── КЛ — стоимость км трассы (млн руб./км) ─────────── */
+  /* Включает: кабель + прокладка в земле */
+  kl_04_xlpe_trench:  2.20,  /* КЛ 0.4 кВ, ААШв, траншея */
+  kl_04_xlpe_pipe:    2.80,  /* КЛ 0.4 кВ, в трубах */
+  kl_610_xlpe_trench: 5.50,  /* КЛ 6-10 кВ, ААШв/ПвП, траншея */
+  kl_610_xlpe_pipe:   7.00,  /* КЛ 6-10 кВ, в трубах / блоках */
+  kl_610_xlpe_tunnel: 12.0,  /* КЛ 6-10 кВ, в кабельном тоннеле */
+  kl_35_xlpe_trench:  22.0,  /* КЛ 35 кВ, ПвП, траншея */
+  kl_35_xlpe_pipe:    28.0,
+  kl_35_xlpe_tunnel:  48.0,
+  kl_110_xlpe_trench: 55.0,  /* КЛ 110 кВ, ПвПу */
+  kl_110_xlpe_pipe:   68.0,
+  kl_110_xlpe_tunnel: 110.0,
+  kl_220_xlpe_trench: 130.0, /* КЛ 220 кВ */
+  kl_220_xlpe_pipe:   160.0,
+  kl_220_xlpe_tunnel: 250.0,
+
+  /* Муфты и концевые заделки */
+  kl_joint_04:        0.04,   /* Соединительная муфта 0.4 кВ */
+  kl_joint_610:       0.18,   /* Соединит. муфта 6-10 кВ */
+  kl_joint_35:        0.55,
+  kl_joint_110:       2.20,
+  kl_joint_220:       5.50,
+  kl_term_04:         0.06,   /* Концевая заделка 0.4 кВ */
+  kl_term_610:        0.28,
+  kl_term_35:         0.85,
+  kl_term_110:        3.50,
+  kl_term_220:        8.00,
+
+  /* Дополнительные работы КЛ */
+  kl_manhole_km:      0.45,   /* Кабельные колодцы (за км) */
+  kl_hdd_m:           0.008,  /* ГНБ (горизонт. направл. бурение) за 1м */
+  kl_test_km:         0.12,   /* Испытания и диагностика за км */
+  kl_cross_road:      0.22,   /* Пересечение с а/дорогой (ГНБ) */
+  kl_cross_rail:      0.95,   /* Пересечение с ж/дорогой */
+  kl_cross_river:     1.80,   /* Пересечение с рекой */
+  kl_road_restore_km: 0.35,   /* Восстановление дорожного полотна за км */
+
+  /* ── Коэффициенты дополнительных систем ПС ── */
+  k_rza:.090, k_asutp:.070, k_sopt:.032, k_ground:.026,
+  k_fire:.036, k_cctv:.016, k_road:.042, k_avr:.026,
+  k_cable_e:.022, k_kompens:.062,
+
+  /* ── Коэффициенты дополнительных работ ЛЭП ── */
+  k_vl_rza:.035,      /* РЗА для ВЛ */
+  k_vl_asutp:.025,
+  k_vl_ground:.020,
+  k_vl_cctv:.008,
+  k_kl_rza:.040,
+  k_kl_asutp:.030,
+  k_kl_diag:.025,     /* Диагностика и мониторинг КЛ */
+  k_kl_cctv:.010,
+
+  /* ── Коэффициенты работ (общие) ── */
+  k_pir:.090, k_smr:.360, k_pnr:.072, k_reserve:.050,
+};
+
+/* ══════════════════════════════════════════
+   SUBSTATION TYPES
+══════════════════════════════════════════ */
+const PS_TYPES = [
+  /* ── КТП Киосковая ── */
+  {id:'ktp_kiosk',cat:'ps',name:'КТП Киосковая',ico:'🏠',kv:'10/0.4 кВ',
+   desc:'Однотрансформаторная уличная КТП до 1000 кВА',
+   params:[
+    {id:'qty',   label:'Количество КТП, шт.',     type:'num',min:1,max:30,def:1},
+    {id:'power', label:'Мощность трансформатора',  type:'sel',opts:[100,160,250,400,630,1000].map(v=>({v,l:`${v} кВА`})),def:630},
+    {id:'body',  label:'Исполнение корпуса',       type:'sel',opts:[{v:'metal',l:'Металлический'},{v:'brick',l:'Кирпичный'},{v:'concrete',l:'ЖБ'}],def:'metal'},
+    {id:'nn_c',  label:'Ячеек НН 0.4 кВ',         type:'num',min:2,max:16,def:4},
+    {id:'metering',label:'Узел учёта',             type:'sel',opts:[{v:'none',l:'Без учёта'},{v:'basic',l:'Базовый'},{v:'smart',l:'АСКУЭ'}],def:'basic'},
+   ],
+   extras:['avr','cable_e','ground','cctv'],
+   calc:(p,D)=>{const n=+p.qty,tr=D.tr_ktp[+p.power]??0.55,bP={metal:D.b_ktp_metal,brick:D.b_ktp_brick,concrete:D.b_ktp_concrete}[p.body],mP=p.metering==='smart'?D.b_metering_adv:p.metering==='basic'?D.b_metering_bas:0;
+    return[{g:'Трансформаторы'},{n:`Трансформатор ТМГ-${p.power}/10/0.4 кВ`,q:n,u:'шт',p:tr},{g:'Корпус и коммутация'},{n:`Корпус (${({metal:'металл',brick:'кирпич',concrete:'ЖБ'})[p.body]})`,q:n,u:'шт',p:bP},{n:'Вводное устройство ВН 10 кВ',q:n,u:'шт',p:D.b_vvod_vn},{n:`Щит НН 0.4 кВ (${p.nn_c} пан.)`,q:n,u:'к.',p:D.b_nn_cell*+p.nn_c},...(mP?[{n:'Узел учёта',q:n,u:'к.',p:mP}]:[])];
+   }
+  },
+  /* ── КТП Блочная ── */
+  {id:'ktp_block',cat:'ps',name:'КТП Блочная',ico:'📦',kv:'10/0.4 кВ',
+   desc:'Блок-контейнерная 2Т с КРУ-10 кВ до 2500 кВА',
+   params:[
+    {id:'tcount',label:'Количество тр-ров',type:'sel',opts:[{v:1,l:'1Т'},{v:2,l:'2Т (АВР)'}],def:2},
+    {id:'power', label:'Мощность тр-ра',   type:'sel',opts:[630,1000,1600,2500].map(v=>({v,l:`${v} кВА`})),def:1000},
+    {id:'vn_c',  label:'Ячеек КРУ-10 кВ', type:'num',min:2,max:10,def:4},
+    {id:'nn_c',  label:'Панелей НН 0.4 кВ',type:'num',min:2,max:24,def:8},
+    {id:'bloc',  label:'Блок-контейнер',   type:'sel',opts:[{v:'std',l:'Стандартный'},{v:'termo',l:'Утеплённый'},{v:'north',l:'Северный'}],def:'std'},
+   ],
+   extras:['rza','asutp','avr','ground','cable_e','cctv'],
+   calc:(p,D)=>{const n=+p.tcount,tr=D.tr_ktp[+p.power]??1.15,bP={std:D.b_ktp_cont,termo:D.b_ktp_termo,north:D.b_ktp_north}[p.bloc];
+    return[{g:'Трансформаторы'},{n:`ТМГ-${p.power}/10/0.4 кВ`,q:n,u:'шт',p:tr},{g:'РУ 10 кВ'},{n:'Ячейка КРУ-10 кВ с ВВ',q:+p.vn_c,u:'шт',p:D.cell_kru10},{g:'РУ 0.4 кВ'},{n:'Панель НН 0.4 кВ',q:+p.nn_c,u:'шт',p:D.b_nn_panel},{g:'Строительство'},{n:`Блок-контейнер`,q:1,u:'к.',p:bP}];
+   }
+  },
+  /* ── ПС 35/10 ── */
+  {id:'ps_35',cat:'ps',name:'ПС 35/10 кВ',ico:'🔌',kv:'35/10 кВ',
+   desc:'Тупиковая ПС с ОРУ-35 кВ и КРУ-10 кВ',
+   params:[
+    {id:'power',   label:'Мощность тр-ра, МВА',type:'sel',opts:[2.5,4,6.3,10,16,25].map(v=>({v,l:`${v} МВА`})),def:10},
+    {id:'tcount',  label:'Кол-во тр-ров',       type:'sel',opts:[{v:1,l:'1Т'},{v:2,l:'2Т'}],def:2},
+    {id:'oru35_c', label:'Ячеек ОРУ-35 кВ',    type:'num',min:2,max:14,def:4},
+    {id:'kru10_c', label:'Ячеек КРУ-10 кВ',    type:'num',min:4,max:40,def:12},
+    {id:'scheme',  label:'Схема ГРУ-35 кВ',     type:'sel',opts:[{v:'block',l:'Блок Л-Т'},{v:'1bus',l:'Одна СШ'},{v:'2bus',l:'Две СШ'}],def:'1bus'},
+   ],
+   extras:['rza','asutp','sopt','ground','fire','cctv','road'],
+   calc:(p,D)=>{const n=+p.tcount,c35=+p.oru35_c,c10=+p.kru10_c,tr=D.tr_35[+p.power]??getMVA(+p.power,'35');
+    return[{g:'Силовые трансформаторы'},{n:`ТДН-${p.power}000/35/10 кВ`,q:n,u:'шт',p:tr},{g:'ОРУ 35 кВ — коммутация'},{n:'Выключатель ВВУ-35 кВ',q:c35,u:'шт',p:D.e35_vvb},{n:'Разъединитель 35 кВ',q:c35*2,u:'шт',p:D.e35_razed},{n:'ОПН-35 кВ',q:n*3,u:'шт',p:D.e35_opn},{n:'ТТ-35 кВ (ТОГ)',q:c35*3,u:'шт',p:D.e35_tt},{n:'ТН-35 кВ',q:n,u:'к.',p:D.e35_tn},{g:'ОРУ 35 кВ — конструкции'},{n:'Опоры и порталы',q:c35,u:'к.',p:D.e35_opory},{n:'Шинопроводы и ошиновка',q:1,u:'к.',p:.18*c35},{g:'КРУ 10 кВ'},{n:'Ячейка КРУ-10 кВ с ВВ и РЗА',q:c10,u:'шт',p:D.cell_kru10},{g:'Строительная часть'},{n:'Здание ОПУ',q:1,u:'шт',p:D.b_opu_35},{n:'Фундаменты и кабельные лотки',q:1,u:'к.',p:D.b_found_35},{n:'Ограждение территории',q:1,u:'к.',p:D.b_fence}];
+   }
+  },
+  /* ── ПС 110/10 ОРУ ── */
+  {id:'ps_110_oru',cat:'ps',name:'ПС 110/10 кВ (ОРУ)',ico:'🗼',kv:'110/10 кВ',
+   desc:'Открытое РУ-110 кВ, элегазовые выключатели',
+   params:[
+    {id:'power',    label:'Мощность тр-ра, МВА',    type:'sel',opts:[16,25,40,63,80].map(v=>({v,l:`${v} МВА`})),def:63},
+    {id:'tcount',   label:'Кол-во тр-ров',           type:'sel',opts:[{v:1,l:'1Т'},{v:2,l:'2Т'}],def:2},
+    {id:'oru110_c', label:'Ячеек ОРУ-110 кВ',       type:'num',min:2,max:14,def:4},
+    {id:'kru10_c',  label:'Ячеек КРУ-10 кВ',        type:'num',min:6,max:60,def:18},
+    {id:'sch110',   label:'Схема ОРУ-110 кВ',        type:'sel',opts:[{v:'H',l:'4Н мостик'},{v:'1bus',l:'1 СШ + обходная'},{v:'2bus',l:'2 СШ + обходная'}],def:'1bus'},
+   ],
+   extras:['rza','asutp','sopt','ground','fire','cctv','road','kompens'],
+   calc:(p,D)=>{const n=+p.tcount,c110=+p.oru110_c,c10=+p.kru10_c,tr=D.tr_110[+p.power]??getMVA(+p.power,'110'),sb={H:0,'1bus':1,'2bus':2}[p.sch110]??1;
+    return[{g:'Силовые трансформаторы'},{n:`ТРДН-${p.power}000/110/10 кВ`,q:n,u:'шт',p:tr},{g:'ОРУ 110 кВ — коммутация'},{n:'Выключатель элегаз. 110 кВ',q:c110+sb,u:'шт',p:D.e110_vvb},{n:'Разъединитель 110 кВ',q:c110*3,u:'шт',p:D.e110_razed},{n:'ОПН-110 кВ',q:n*3,u:'шт',p:D.e110_opn},{n:'ТТ-110 кВ (ТФЗМ)',q:c110*3,u:'шт',p:D.e110_tt},{n:'ТН-110 кВ (НАМИ)',q:n*2,u:'шт',p:D.e110_tn},{g:'ОРУ 110 кВ — конструкции'},{n:'Опоры, порталы, ошиновка',q:c110,u:'к.',p:D.e110_opory},{n:'Молниезащита',q:1,u:'к.',p:.22*c110},{g:'КРУ 10 кВ'},{n:'Ячейка КРУ-10 кВ с ВВ и РЗА',q:c10,u:'шт',p:D.cell_kru10},{g:'Строительная часть'},{n:'Здание ОПУ',q:1,u:'шт',p:D.b_opu_110},{n:'Фундаменты и кабельные каналы',q:1,u:'к.',p:D.b_found_110},{n:'Кабельные лотки',q:1,u:'к.',p:D.b_cable_trays},{n:'Ограждение',q:1,u:'к.',p:D.b_fence}];
+   }
+  },
+  /* ── ПС 110/10 КРУЭ ── */
+  {id:'ps_110_zru',cat:'ps',name:'ПС 110/10 кВ (КРУЭ)',ico:'🏢',kv:'110/10 кВ',
+   desc:'Закрытое РУ или КРУЭ-110 кВ, компактное исполнение',
+   params:[
+    {id:'power',   label:'Мощность тр-ра, МВА',  type:'sel',opts:[25,40,63,80,100].map(v=>({v,l:`${v} МВА`})),def:63},
+    {id:'tcount',  label:'Кол-во тр-ров',         type:'sel',opts:[{v:1,l:'1Т'},{v:2,l:'2Т'}],def:2},
+    {id:'ru_type', label:'Тип РУ-110 кВ',         type:'sel',opts:[{v:'krue',l:'КРУЭ-110 кВ'},{v:'zru',l:'ЗРУ-110 кВ'}],def:'krue'},
+    {id:'c110',    label:'Ячеек КРУЭ/ЗРУ-110 кВ',type:'num',min:2,max:18,def:6},
+    {id:'kru10_c', label:'Ячеек КРУ-10 кВ',      type:'num',min:6,max:60,def:20},
+   ],
+   extras:['rza','asutp','sopt','ground','fire','cctv','road','kompens'],
+   calc:(p,D)=>{const n=+p.tcount,c110=+p.c110,c10=+p.kru10_c,tr=D.tr_110[+p.power]??getMVA(+p.power,'110'),cellP=p.ru_type==='krue'?D.cell_krue110:D.cell_zru110,bldP=D.b_zru_bld+.65*c110;
+    return[{g:'Силовые трансформаторы'},{n:`ТРДН-${p.power}000/110/10 кВ`,q:n,u:'шт',p:tr},{g:`${p.ru_type==='krue'?'КРУЭ':'ЗРУ'}-110 кВ`},{n:`Ячейка ${p.ru_type==='krue'?'КРУЭ':'ЗРУ'}-110 кВ`,q:c110,u:'шт',p:cellP},{n:`Здание ${p.ru_type==='krue'?'КРУЭ':'ЗРУ'}`,q:1,u:'шт',p:bldP},{g:'КРУ 10 кВ'},{n:'Ячейка КРУ-10 кВ с ВВ и РЗА',q:c10,u:'шт',p:D.cell_kru10},{g:'Строительная часть'},{n:'Здание ОПУ',q:1,u:'шт',p:D.b_opu_110},{n:'Фундаменты',q:1,u:'к.',p:D.b_found_110},{n:'Ограждение',q:1,u:'к.',p:D.b_fence}];
+   }
+  },
+  /* ── ПС 220 ── */
+  {id:'ps_220',cat:'ps',name:'ПС 220/110/10 кВ',ico:'⚡',kv:'220 кВ',
+   desc:'Узловая ПС с автотрансформаторами 220 кВ',
+   params:[
+    {id:'power',  label:'Мощность АТ, МВА',  type:'sel',opts:[125,200,250,400].map(v=>({v,l:`${v} МВА`})),def:200},
+    {id:'tcount', label:'Кол-во АТ',          type:'sel',opts:[{v:1,l:'1АТ'},{v:2,l:'2АТ'}],def:2},
+    {id:'c220',   label:'Ячеек ОРУ-220 кВ',  type:'num',min:2,max:12,def:4},
+    {id:'c110',   label:'Ячеек ОРУ-110 кВ',  type:'num',min:2,max:14,def:6},
+    {id:'c10',    label:'Ячеек КРУ-10 кВ',   type:'num',min:6,max:60,def:24},
+    {id:'shunt',  label:'Реактор 220 кВ',     type:'sel',opts:[{v:'0',l:'Нет'},{v:'1',l:'1×60 МВАр'},{v:'2',l:'2×60 МВАр'}],def:'0'},
+   ],
+   extras:['rza','asutp','sopt','ground','fire','cctv','road','kompens'],
+   calc:(p,D)=>{const n=+p.tcount,c220=+p.c220,c110=+p.c110,c10=+p.c10,tr=D.tr_220[+p.power]??getMVA(+p.power,'220');
+    const rows=[{g:'Автотрансформаторы'},{n:`АТДЦТН-${p.power}000/220/110/10 кВ`,q:n,u:'шт',p:tr}];
+    if(+p.shunt>0) rows.push({n:'Шунт. реактор 60 МВАр 220 кВ',q:+p.shunt,u:'шт',p:D.b_shunt_r});
+    rows.push({g:'ОРУ 220 кВ'},{n:'Выключатель элегаз. 220 кВ',q:c220,u:'шт',p:D.e220_vvb},{n:'Разъединитель 220 кВ',q:c220*3,u:'шт',p:D.e220_razed},{n:'ОПН-220 кВ',q:n*3,u:'шт',p:D.e220_opn},{n:'ТТ-220 кВ',q:c220*3,u:'шт',p:D.e220_tt},{n:'ТН-220 кВ',q:2,u:'к.',p:D.e220_tn},{n:'Опоры, порталы, шины',q:c220,u:'к.',p:D.e220_opory},{g:'ОРУ 110 кВ'},{n:'Выключатель элегаз. 110 кВ',q:c110,u:'шт',p:D.e110_vvb},{n:'Разъединитель 110 кВ',q:c110*3,u:'шт',p:D.e110_razed},{n:'ТТ-110 кВ',q:c110*3,u:'шт',p:D.e110_tt},{n:'Опоры и ошиновка ОРУ-110',q:c110,u:'к.',p:D.e110_opory},{g:'КРУ 10 кВ'},{n:'Ячейка КРУ-10 кВ с ВВ и РЗА',q:c10,u:'шт',p:D.cell_kru10},{g:'Строительная часть'},{n:'Главный корпус ОПУ',q:1,u:'шт',p:D.b_opu_220},{n:'Фундаменты и кабельные сооружения',q:1,u:'к.',p:D.b_found_220},{n:'Внутрипроизводственные дороги',q:1,u:'к.',p:D.b_inner_road},{n:'Ограждение территории',q:1,u:'к.',p:D.b_fence_220});
+    return rows;
+   }
+  },
+
+  /* ══════════════════════════════════════════
+     ВЛ — ВОЗДУШНЫЕ ЛИНИИ
+  ══════════════════════════════════════════ */
+  {id:'vl',cat:'vl',name:'ВЛ (Воздушная линия)',ico:'🗼',kv:'0.4–500 кВ',
+   desc:'Одно- и двухцепные ВЛ любого напряжения',
+   params:[
+    {id:'voltage',  label:'Класс напряжения', type:'sel',
+     opts:[{v:'04',l:'0.4 кВ'},{v:'610',l:'6–10 кВ'},{v:'35',l:'35 кВ'},{v:'110',l:'110 кВ'},{v:'220',l:'220 кВ'},{v:'500',l:'500 кВ'}],def:'110'},
+    {id:'length',   label:'Длина трассы, км', type:'num',min:0.1,max:1000,def:10},
+    {id:'circuits', label:'Число цепей',       type:'sel',opts:[{v:'1',l:'1 цепь'},{v:'2',l:'2 цепи'},{v:'3',l:'3 цепи'}],def:'1'},
+    {id:'wire',     label:'Тип провода / опор',type:'sel',opts:[
+      {v:'std',l:'Стандарт (АС / металл. опоры)'},
+      {v:'big',l:'Увеличенное сечение (АСО / расщепл.)'},
+      {v:'wood',l:'АС / деревянные опоры'},
+      {v:'conc',l:'СИП / ЖБ опоры (0.4–10 кВ)'},
+    ],def:'std'},
+    {id:'terrain',  label:'Рельеф местности', type:'sel',
+     opts:[{v:'flat',l:'Равнина'},{v:'hilly',l:'Холмистая'},{v:'mountain',l:'Горная'},{v:'swamp',l:'Заболоченная'}],def:'flat'},
+    {id:'cross_road',  label:'Пересеч. а/дорог, шт.',   type:'num',min:0,max:50,def:2},
+    {id:'cross_rail',  label:'Пересеч. ж/дорог, шт.',   type:'num',min:0,max:20,def:0},
+    {id:'cross_river', label:'Пересеч. рек и водоёмов', type:'num',min:0,max:10,def:0},
+    {id:'clear_km',    label:'Просека (вырубка), км',    type:'num',min:0,max:500,def:0},
+   ],
+   extras:['vl_rza','vl_asutp','vl_ground','vl_cctv'],
+   calc:(p,D)=>{
+    const L=+p.length, V=p.voltage, W=p.wire, circ=+p.circuits, terrain=p.terrain;
+    /* Базовая цена 1 км (1 цепь) */
+    let baseKm=0;
+    if(V==='04'){  baseKm=W==='conc'?D.vl_04_sip_conc:D.vl_04_sip_wood; }
+    else if(V==='610'){ baseKm=W==='metal'||W==='std'?D.vl_610_as_metal:W==='conc'?D.vl_610_as_conc:D.vl_610_as_wood; }
+    else if(V==='35'){ baseKm=W==='big'?D.vl_35_as_metal:D.vl_35_as_conc; }
+    else if(V==='110'){ baseKm=W==='big'?D.vl_110_ac_metal:D.vl_110_as_metal; }
+    else if(V==='220'){ baseKm=W==='big'?D.vl_220_ac_metal:D.vl_220_as_metal; }
+    else { baseKm=D.vl_500_ac_metal; }
+    /* Коэф. цепности */
+    const circCoeff=circ===1?1:circ===2?D.vl_circuit_coeff_2:D.vl_circuit_coeff_3;
+    /* Коэф. рельефа */
+    const terrCoeff={flat:D.vl_terrain_coeff_flat,hilly:D.vl_terrain_coeff_hilly,mountain:D.vl_terrain_coeff_mountain,swamp:D.vl_terrain_coeff_swamp}[terrain]??1;
+    const lineCost = baseKm * L * circCoeff * terrCoeff;
+    /* Пересечения и просека */
+    const crossRoad  = +p.cross_road  * D.vl_cross_road;
+    const crossRail  = +p.cross_rail  * D.vl_cross_rail;
+    const crossRiver = +p.cross_river * D.vl_cross_river;
+    const clearCost  = +p.clear_km   * D.vl_clear_km;
+    /* Конечные порталы и защита для ВН */
+    let termCost=0, opnCost=0;
+    if(V==='35'){ termCost=D.vl_portal_35*2*circ; opnCost=D.vl_opn_35*3*2*circ; }
+    else if(V==='110'){ termCost=D.vl_portal_110*2*circ; opnCost=D.vl_opn_110*3*2*circ; }
+    else if(V==='220'||V==='500'){ termCost=D.vl_portal_220*2*circ; opnCost=D.vl_opn_220*3*2*circ; }
+
+    const rows=[
+      {g:'Линейная часть'},
+      {n:`ВЛ-${V==='04'?'0.4':V==='610'?'6–10':V} кВ — провода, опоры, изоляторы, монтаж`,q:L,u:'км',p:baseKm*circCoeff*terrCoeff},
+    ];
+    if(crossRoad>0)  rows.push({n:`Пересечение с а/дорогой (${p.cross_road} шт.)`,q:+p.cross_road,u:'шт',p:D.vl_cross_road});
+    if(crossRail>0)  rows.push({n:`Пересечение с ж/дорогой (${p.cross_rail} шт.)`,q:+p.cross_rail,u:'шт',p:D.vl_cross_rail});
+    if(crossRiver>0) rows.push({n:`Пересечение с рекой/водоёмом (${p.cross_river} шт.)`,q:+p.cross_river,u:'шт',p:D.vl_cross_river});
+    if(clearCost>0)  rows.push({n:'Просека (вырубка леса)',q:+p.clear_km,u:'км',p:D.vl_clear_km});
+    if(termCost>0){
+      rows.push({g:'Оборудование концов линии'});
+      rows.push({n:`Концевые порталы (начало и конец, ${circ} цепи)`,q:2*circ,u:'шт',p:{35:D.vl_portal_35,110:D.vl_portal_110,220:D.vl_portal_220,500:D.vl_portal_220}[V]??0});
+      rows.push({n:`ОПН-${V} кВ (фазные комплекты)`,q:3*2*circ,u:'шт',p:{35:D.vl_opn_35,110:D.vl_opn_110,220:D.vl_opn_220,500:D.vl_opn_220}[V]??0});
+    }
+    return rows;
+   }
+  },
+
+  /* ══════════════════════════════════════════
+     КЛ — КАБЕЛЬНЫЕ ЛИНИИ
+  ══════════════════════════════════════════ */
+  {id:'kl',cat:'kl',name:'КЛ (Кабельная линия)',ico:'🔵',kv:'0.4–220 кВ',
+   desc:'Кабельная линия в земле, трубах или тоннеле',
+   params:[
+    {id:'voltage',  label:'Класс напряжения', type:'sel',
+     opts:[{v:'04',l:'0.4 кВ'},{v:'610',l:'6–10 кВ'},{v:'35',l:'35 кВ'},{v:'110',l:'110 кВ'},{v:'220',l:'220 кВ'}],def:'110'},
+    {id:'length',   label:'Длина трассы, км', type:'num',min:0.05,max:500,def:5},
+    {id:'circuits', label:'Число кабельных цепей', type:'sel',opts:[{v:1,l:'1 цепь'},{v:2,l:'2 цепи'},{v:3,l:'3 цепи'}],def:1},
+    {id:'cable_type',label:'Тип кабеля',      type:'sel',
+     opts:[{v:'xlpe',l:'ПвП (XLPE) — сшитый полиэтилен'},{v:'paper',l:'ААШв (бумага-масло)'}],def:'xlpe'},
+    {id:'laying',   label:'Способ прокладки', type:'sel',
+     opts:[{v:'trench',l:'В траншее (прямое залег.)'},{v:'pipe',l:'В трубах / блоках'},{v:'tunnel',l:'В кабельном тоннеле'}],def:'trench'},
+    {id:'urban',    label:'Тип местности',    type:'sel',
+     opts:[{v:'rural',l:'Загородная (поле, лес)'},{v:'urban',l:'Городская / промышленная'}],def:'urban'},
+    {id:'joints',   label:'Соединит. муфт, шт.', type:'num',min:0,max:200,def:4},
+    {id:'cross_road', label:'Пересеч. а/дорог (ГНБ), шт.', type:'num',min:0,max:30,def:2},
+    {id:'cross_rail', label:'Пересеч. ж/дорог, шт.',       type:'num',min:0,max:10,def:0},
+    {id:'cross_river',label:'Пересеч. рек (дюкер/ГНБ), шт.',type:'num',min:0,max:5,def:0},
+    {id:'road_rest',  label:'Восстановление дороги, км',    type:'num',min:0,max:100,def:1},
+   ],
+   extras:['kl_rza','kl_asutp','kl_diag','kl_cctv'],
+   calc:(p,D)=>{
+    const L=+p.length, V=p.voltage, lay=p.laying, circ=+p.circuits;
+    const urbanCoeff = p.urban==='urban' ? 1.28 : 1.0;
+    /* Базовая цена 1 км 1 цепь */
+    let baseKm=0;
+    const k = `kl_${V==='04'?'04':V==='610'?'610':V==='35'?'35':V==='110'?'110':'220'}_xlpe_${lay}`;
+    baseKm = D[k] ?? (V==='04'?2.2:V==='610'?5.5:V==='35'?22:V==='110'?55:130);
+    const lineCost = baseKm * L * circ * urbanCoeff;
+
+    /* Муфты и концевые заделки */
+    const jKey=`kl_joint_${V==='04'?'04':V==='610'?'610':V==='35'?'35':V==='110'?'110':'220'}`;
+    const tKey=`kl_term_${V==='04'?'04':V==='610'?'610':V==='35'?'35':V==='110'?'110':'220'}`;
+    const jointCost = +p.joints * (D[jKey]??0.18);
+    const termCost  = 2 * circ * 3 * (D[tKey]??0.28); /* 2 конца, 3 фазы */
+
+    /* Кабельные колодцы */
+    const manholes = D.kl_manhole_km * L;
+    /* Испытания */
+    const tests = D.kl_test_km * L * circ;
+
+    /* Пересечения */
+    const cr = +p.cross_road * D.kl_cross_road;
+    const rail= +p.cross_rail * D.kl_cross_rail;
+    const river=+p.cross_river* D.kl_cross_river;
+    const roadRestore= +p.road_rest * D.kl_road_restore_km;
+
+    const rows=[
+      {g:'Кабельная линия'},
+      {n:`Кабель ${V==='04'?'0.4':V==='610'?'6–10':V} кВ ${p.cable_type==='xlpe'?'(ПвП/ПвПу)':'(ААШв)'} — прокладка ${({trench:'в траншее',pipe:'в трубах',tunnel:'в тоннеле'})[lay]}`,q:L*circ,u:'км',p:baseKm*urbanCoeff},
+      {g:'Муфты и концевые заделки'},
+      {n:'Соединительные муфты',q:+p.joints,u:'шт',p:D[jKey]??0.18},
+      {n:`Концевые заделки (2 конца × ${circ} цепи × 3 фазы)`,q:2*circ*3,u:'шт',p:D[tKey]??0.28},
+      {g:'Дополнительные работы'},
+    ];
+    if(manholes>0) rows.push({n:'Кабельные колодцы и лотки',q:L,u:'км',p:D.kl_manhole_km});
+    if(tests>0)    rows.push({n:'Испытания кабеля (высокое напряжение + ЧР)',q:L*circ,u:'км',p:D.kl_test_km});
+    if(cr>0)    rows.push({n:`Пересечение а/дороги (ГНБ) — ${p.cross_road} шт.`,q:+p.cross_road,u:'шт',p:D.kl_cross_road});
+    if(rail>0)  rows.push({n:`Пересечение ж/дороги — ${p.cross_rail} шт.`,q:+p.cross_rail,u:'шт',p:D.kl_cross_rail});
+    if(river>0) rows.push({n:`Пересечение реки (дюкер/ГНБ) — ${p.cross_river} шт.`,q:+p.cross_river,u:'шт',p:D.kl_cross_river});
+    if(roadRestore>0) rows.push({n:'Восстановление дорожного полотна',q:+p.road_rest,u:'км',p:D.kl_road_restore_km});
+    return rows;
+   }
+  },
+
+  /* ══════════════════════════════════════════
+     КВЛ — КАБЕЛЬНО-ВОЗДУШНАЯ ЛИНИЯ
+  ══════════════════════════════════════════ */
+  {id:'kvl',cat:'kvl',name:'КВЛ (Кабельно-воздушная)',ico:'🔀',kv:'6–220 кВ',
+   desc:'Комбинированная линия: ВЛ + КЛ участки',
+   params:[
+    {id:'voltage',  label:'Класс напряжения',     type:'sel',
+     opts:[{v:'610',l:'6–10 кВ'},{v:'35',l:'35 кВ'},{v:'110',l:'110 кВ'},{v:'220',l:'220 кВ'}],def:'110'},
+    {id:'total_len',label:'Общая длина трассы, км',type:'num',min:0.1,max:1000,def:20},
+    {id:'kl_len',   label:'Из них КЛ-участки, км',type:'num',min:0.0,max:999,def:4},
+    {id:'circuits', label:'Число цепей',            type:'sel',opts:[{v:1,l:'1 цепь'},{v:2,l:'2 цепи'}],def:1},
+    {id:'vl_wire',  label:'Тип провода ВЛ',         type:'sel',opts:[{v:'std',l:'АС / металл. опоры'},{v:'big',l:'Увел. сечение / расщепл.'}],def:'std'},
+    {id:'kl_lay',   label:'Прокладка КЛ',           type:'sel',opts:[{v:'trench',l:'В траншее'},{v:'pipe',l:'В трубах / блоках'},{v:'tunnel',l:'В тоннеле'}],def:'pipe'},
+    {id:'kl_joints',label:'Муфт соединительных',    type:'num',min:0,max:100,def:4},
+    {id:'vl_crosses',label:'Пересечений ВЛ (дороги+реки)',type:'num',min:0,max:30,def:2},
+    {id:'kl_crosses',label:'Пересечений КЛ (ГНБ)',  type:'num',min:0,max:20,def:3},
+    {id:'terrain',  label:'Рельеф (для ВЛ участков)',type:'sel',opts:[{v:'flat',l:'Равнина'},{v:'hilly',l:'Холмистая'},{v:'swamp',l:'Заболоченная'}],def:'flat'},
+   ],
+   extras:['vl_rza','vl_asutp','vl_ground','kl_diag','vl_cctv'],
+   calc:(p,D)=>{
+    const V=p.voltage, circ=+p.circuits;
+    const totalL=+p.total_len, klL=Math.min(+p.kl_len, totalL), vlL=Math.max(0,totalL-klL);
+    const terrCoeff={flat:D.vl_terrain_coeff_flat,hilly:D.vl_terrain_coeff_hilly,swamp:D.vl_terrain_coeff_swamp}[p.terrain]??1;
+    const circCoeff=circ===1?1:D.vl_circuit_coeff_2;
+    /* ВЛ часть */
+    let vlKm=0;
+    if(V==='610') vlKm=p.vl_wire==='big'?D.vl_610_as_metal:D.vl_610_as_wood;
+    else if(V==='35') vlKm=p.vl_wire==='big'?D.vl_35_as_metal:D.vl_35_as_conc;
+    else if(V==='110') vlKm=p.vl_wire==='big'?D.vl_110_ac_metal:D.vl_110_as_metal;
+    else vlKm=p.vl_wire==='big'?D.vl_220_ac_metal:D.vl_220_as_metal;
+    const vlTotal=vlKm*vlL*circCoeff*terrCoeff;
+    /* КЛ часть */
+    const klKey=`kl_${V==='610'?'610':V==='35'?'35':V==='110'?'110':'220'}_xlpe_${p.kl_lay}`;
+    const klKm=D[klKey]??(V==='610'?7:V==='35'?28:V==='110'?68:160);
+    const klTotal=klKm*klL*circ;
+    /* Муфты */
+    const jKey=`kl_joint_${V==='610'?'610':V==='35'?'35':V==='110'?'110':'220'}`;
+    const tKey=`kl_term_${V==='610'?'610':V==='35'?'35':V==='110'?'110':'220'}`;
+    const joints=+p.kl_joints*(D[jKey]??0.28);
+    /* Переходные муфты ВЛ→КЛ (2 перехода × circ цепей × 3 фазы) */
+    const transTerms=2*circ*3*(D[tKey]??0.55);
+    /* Концевые порталы ВЛ */
+    const portP={610:0,35:D.vl_portal_35,110:D.vl_portal_110,220:D.vl_portal_220}[V]??D.vl_portal_110;
+    const portCost=portP*2*circ;
+    /* Пересечения */
+    const vlCr=+p.vl_crosses*D.vl_cross_road;
+    const klCr=+p.kl_crosses*D.kl_cross_road;
+
+    const rows=[
+      {g:'ВЛ-участок'},
+      {n:`ВЛ-${V==='610'?'6–10':V} кВ — провода, опоры, монтаж (${vlL.toFixed(1)} км)`,q:vlL,u:'км',p:vlKm*circCoeff*terrCoeff},
+    ];
+    if(vlCr>0) rows.push({n:`Пересечения ВЛ (дороги, реки) — ${p.vl_crosses} шт.`,q:+p.vl_crosses,u:'шт',p:D.vl_cross_road});
+    rows.push({g:'КЛ-участок'});
+    if(klL>0){
+      rows.push({n:`Кабель ${V==='610'?'6–10':V} кВ ПвПу, прокладка ${({trench:'траншея',pipe:'трубы',tunnel:'тоннель'})[p.kl_lay]}`,q:klL*circ,u:'км',p:klKm});
+      if(klCr>0) rows.push({n:`Пересечения КЛ (ГНБ) — ${p.kl_crosses} шт.`,q:+p.kl_crosses,u:'шт',p:D.kl_cross_road});
+    }
+    rows.push({g:'Муфты и концевые устройства'});
+    rows.push({n:`Переходные концевые заделки ВЛ→КЛ (2 перехода×${circ}цепи×3ф.)`,q:2*circ*3,u:'шт',p:D[tKey]??0.55});
+    if(joints>0) rows.push({n:'Соединительные муфты КЛ',q:+p.kl_joints,u:'шт',p:D[jKey]??0.28});
+    if(portCost>0){
+      rows.push({g:'Порталы и защита ВЛ'});
+      rows.push({n:`Концевые порталы ВЛ (2 конца × ${circ} цепи)`,q:2*circ,u:'шт',p:portP});
+      rows.push({n:`ОПН-${V} кВ (фазные комплекты)`,q:3*2*circ,u:'шт',p:{35:D.vl_opn_35,110:D.vl_opn_110,220:D.vl_opn_220}[V]??D.vl_opn_110});
+    }
+    return rows;
+   }
+  },
+];
+
+/* Extras dictionary — ПС и ЛЭП */
+const EXTRAS_ALL = {
+  rza:      {label:'РЗА и автоматика',               key:'k_rza',      ico:'🔋'},
+  asutp:    {label:'АСУ ТП и телемеханика',           key:'k_asutp',    ico:'🖥️'},
+  sopt:     {label:'СОПТ / АКБ',                     key:'k_sopt',     ico:'🔌'},
+  ground:   {label:'Заземление и молниезащита',       key:'k_ground',   ico:'⛔'},
+  fire:     {label:'Система пожаротушения',           key:'k_fire',     ico:'🔥'},
+  cctv:     {label:'СКУД и видеонаблюдение',         key:'k_cctv',     ico:'📷'},
+  road:     {label:'Дороги и благоустройство',       key:'k_road',     ico:'🛣️'},
+  avr:      {label:'АВР (автовключение резерва)',     key:'k_avr',      ico:'🔄'},
+  cable_e:  {label:'Кабельные вводы и муфты',        key:'k_cable_e',  ico:'🔗'},
+  kompens:  {label:'Компенсация РМ (конденсаторы)',  key:'k_kompens',  ico:'⚙️'},
+  vl_rza:   {label:'РЗА для ВЛ (дистанц., ДФЗ)',    key:'k_vl_rza',   ico:'🔋'},
+  vl_asutp: {label:'АСУ ТП и телемеханика ВЛ',       key:'k_vl_asutp', ico:'🖥️'},
+  vl_ground:{label:'Заземление ВЛ (тросовое)',       key:'k_vl_ground',ico:'⛔'},
+  vl_cctv:  {label:'Видеонаблюдение коридора ВЛ',    key:'k_vl_cctv',  ico:'📷'},
+  kl_rza:   {label:'РЗА для КЛ (токовая, ДЗ)',       key:'k_kl_rza',   ico:'🔋'},
+  kl_asutp: {label:'АСУ ТП и телемеханика КЛ',       key:'k_kl_asutp', ico:'🖥️'},
+  kl_diag:  {label:'Диагностика и мониторинг КЛ',    key:'k_kl_diag',  ico:'📊'},
+  kl_cctv:  {label:'Видеонаблюдение трассы КЛ',      key:'k_kl_cctv',  ico:'📷'},
+};
+
+/* ══════════════════════════════════════════
+   STATE & HELPERS
+══════════════════════════════════════════ */
+let DB = loadDB();
+let selType = null, selCat = 'ps', rptData = null;
+
+function loadDB(){
+  try{ const s=localStorage.getItem('subcalc_db3'); if(s) return JSON.parse(s); }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_DB));
+}
+function saveDB(){
+  localStorage.setItem('subcalc_db3', JSON.stringify(DB));
+  toast('Сохранено ✓');
+}
+function getMVA(mva,kv){ return {220:mva*1.05,110:mva*1.10,35:mva*1.50}[kv]??mva; }
+function fm(v){
+  if(v===undefined||v===null||isNaN(+v)) return '—';
+  v=+v;
+  if(v>=1000) return (v/1000).toFixed(3)+' млрд ₽';
+  if(v>=1)    return v.toFixed(3)+' млн ₽';
+  if(v>=0.001)return (v*1000).toFixed(1)+' тыс ₽';
+  return '< 1 тыс ₽';
+}
+
+/* ══════════════════════════════════════════
+   SPA NAVIGATION
+══════════════════════════════════════════ */
+function gotoPage(n){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-pill').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+n).classList.add('active');
+  document.getElementById('nav-'+n).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ══════════════════════════════════════════
+   CATEGORY SWITCHING
+══════════════════════════════════════════ */
+function switchCat(cat){
+  selCat=cat; selType=null;
+  ['ps','vl','kl','kvl'].forEach(c=>{
+    const t=document.getElementById('ctab-'+c);
+    t.className='cat-tab';
+    if(c===cat) t.className='cat-tab active'+(cat==='ps'?'':' active-lep-'+cat);
+  });
+  buildTypeGrid();
+  document.getElementById('paramsArea').innerHTML=`<div class="empty-s"><div class="ei">👆</div><h3>Выберите тип объекта</h3></div>`;
+  document.getElementById('previewBody').innerHTML=`<div class="empty-s" style="padding:28px 14px"><div class="ei">📊</div><p>Выберите тип и заполните параметры</p></div>`;
+}
+
+/* ══════════════════════════════════════════
+   TYPE GRID
+══════════════════════════════════════════ */
+function buildTypeGrid(){
+  const types = PS_TYPES.filter(t=>t.cat===selCat);
+  const selClass = selCat==='ps'?'sel':selCat==='vl'?'sel-vl':selCat==='kl'?'sel-kl':'sel-kvl';
+  const grid=document.getElementById('typeGrid');
+  /* For ВЛ/КЛ/КВЛ show single card, for PS show 3-col grid */
+  if(selCat!=='ps'){
+    grid.style.gridTemplateColumns='1fr 1fr 1fr';
+  }
+  grid.innerHTML=types.map(t=>`
+    <div class="type-card ${selType===t.id?selClass:''}" onclick="pickType('${t.id}')">
+      <span class="sel-check">✓</span>
+      <span class="t-ico">${t.ico}</span>
+      <div class="t-name">${t.name}</div>
+      <div class="t-desc">${t.desc}</div>
+      <span class="t-kv">${t.kv}</span>
+    </div>`).join('');
+}
+
+function pickType(id){
+  selType=id;
+  buildTypeGrid();
+  buildParams();
+  refreshPreview();
+}
+
+/* ══════════════════════════════════════════
+   PARAMS FORM
+══════════════════════════════════════════ */
+function buildParams(){
+  const def=PS_TYPES.find(t=>t.id===selType);
+  if(!def) return;
+  document.getElementById('step2title').textContent=`Параметры — ${def.name}`;
+  const isLEP = def.cat!=='ps';
+  const badgeMap={vl:'lep-vl-badge 🗼 Воздушная линия',kl:'lep-kl-badge 🔵 Кабельная линия',kvl:'lep-kvl-badge 🔀 Кабельно-воздушная линия'};
+  let h='';
+  if(isLEP) h+=`<span class="lep-badge ${badgeMap[def.cat]||''}">${def.name}</span>`;
+  h+=`<div class="form-grid">`;
+  def.params.forEach(par=>{
+    h+=`<div class="fg"><label>${par.label}</label>`;
+    if(par.type==='sel'){
+      h+=`<select id="p_${par.id}" onchange="refreshPreview()">`;
+      par.opts.forEach(o=>h+=`<option value="${o.v}"${o.v==par.def?' selected':''}>${o.l}</option>`);
+      h+=`</select>`;
+    } else {
+      h+=`<input type="number" id="p_${par.id}" value="${par.def}" min="${par.min}" max="${par.max}" onchange="refreshPreview()" oninput="refreshPreview()">`;
+    }
+    h+=`</div>`;
+  });
+  h+=`</div>`;
+  /* KVL km breakdown live bar */
+  if(def.id==='kvl'){
+    h+=`<div id="kvlBreakdown" style="margin-top:14px"></div>`;
+  }
+  if(def.extras?.length){
+    h+=`<div class="sep"><span>Дополнительные системы</span></div><div class="check-grid">`;
+    def.extras.forEach(eid=>{
+      const ex=EXTRAS_ALL[eid]; if(!ex) return;
+      h+=`<label class="chk-item"><input type="checkbox" id="x_${eid}" checked onchange="syncChk(this);refreshPreview()"> ${ex.ico} ${ex.label}</label>`;
+    });
+    h+=`</div>`;
+  }
+  document.getElementById('paramsArea').innerHTML=h;
+  syncAllChk();
+  if(def.id==='kvl') refreshKVLBreakdown();
+}
+
+function refreshKVLBreakdown(){
+  const el=document.getElementById('kvlBreakdown');
+  if(!el) return;
+  const tot=+(document.getElementById('p_total_len')?.value||0);
+  const kl=Math.min(+(document.getElementById('p_kl_len')?.value||0),tot);
+  const vl=Math.max(0,tot-kl);
+  const klPct=tot>0?kl/tot*100:0;
+  const vlPct=100-klPct;
+  el.innerHTML=`
+    <div style="font-size:.76rem;color:var(--muted);margin-bottom:6px;font-weight:600">Состав трассы: ВЛ ${vl.toFixed(1)} км + КЛ ${kl.toFixed(1)} км = ${tot.toFixed(1)} км</div>
+    <div class="km-breakdown">
+      <div class="km-seg" style="width:${vlPct}%;background:var(--lep-vl);"></div>
+      <div class="km-seg" style="width:${klPct}%;background:var(--lep-kl);"></div>
+    </div>
+    <div style="display:flex;gap:14px;font-size:.72rem;margin-top:4px">
+      <span style="color:var(--lep-vl)">■ ВЛ ${vlPct.toFixed(0)}%</span>
+      <span style="color:var(--lep-kl)">■ КЛ ${klPct.toFixed(0)}%</span>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════
+   CHECKBOX SYNC
+══════════════════════════════════════════ */
+function syncChk(el){ const w=el.closest('.chk-item'); if(w) w.classList.toggle('is-on',el.checked); }
+function syncAllChk(){ document.querySelectorAll('.chk-item input[type=checkbox]').forEach(syncChk); }
+
+/* ══════════════════════════════════════════
+   COLLECT PARAMS
+══════════════════════════════════════════ */
+function getParams(){
+  const def=PS_TYPES.find(t=>t.id===selType); const p={};
+  def.params.forEach(par=>{ const el=document.getElementById('p_'+par.id); p[par.id]=el?el.value:par.def; });
+  return p;
+}
+function getExtras(){
+  const def=PS_TYPES.find(t=>t.id===selType);
+  return (def.extras||[]).filter(eid=>{ const el=document.getElementById('x_'+eid); return el&&el.checked; });
+}
+
+/* ══════════════════════════════════════════
+   COMPUTE ENGINE
+══════════════════════════════════════════ */
+function compute(){
+  const def=PS_TYPES.find(t=>t.id===selType);
+  const params=getParams();
+  const rawRows=def.calc(params,DB);
+  /* Build groups */
+  let groups=[],cur=null,curSum=0,equip=0;
+  const tmp=[];
+  rawRows.forEach(r=>{
+    if(r.g!==undefined){
+      if(cur) groups.push({name:cur,sum:curSum,items:[...tmp.splice(0)]});
+      else tmp.splice(0);
+      cur=r.g;
+    } else {
+      const tot=r.p*r.q;
+      tmp.push({name:r.n,qty:r.q,unit:r.u,price:r.p,total:tot});
+      curSum+=tot;
+    }
+    if(r.g!==undefined) curSum=0;
+  });
+  if(cur) groups.push({name:cur,sum:curSum,items:[...tmp]});
+  groups.forEach(g=>equip+=g.sum);
+
+  /* Extras */
+  const extSel=getExtras();
+  const extRows=extSel.map(eid=>{ const ex=EXTRAS_ALL[eid]; const c=DB[ex.key]??0.05; return{id:eid,label:ex.label,ico:ex.ico,coeff:c,sum:equip*c}; });
+  const extTotal=extRows.reduce((s,r)=>s+r.sum,0);
+
+  const region=parseFloat(document.getElementById('region').value);
+  const vat=parseFloat(document.getElementById('vat').value);
+  const base=(equip+extTotal)*region;
+  const pirSum=document.getElementById('chk-pir').checked?base*DB.k_pir:0;
+  const smrSum=document.getElementById('chk-smr').checked?base*DB.k_smr:0;
+  const pnrSum=document.getElementById('chk-pnr').checked?base*DB.k_pnr:0;
+  const resSum=document.getElementById('chk-res').checked?base*DB.k_reserve:0;
+  const noVat=base+pirSum+smrSum+pnrSum+resSum;
+  const vatSum=noVat*vat;
+  const grand=noVat+vatSum;
+
+  return{def,params,groups,extRows,equip,extTotal,region,vat,base,pirSum,smrSum,pnrSum,resSum,noVat,vatSum,grand};
+}
+
+/* ══════════════════════════════════════════
+   LIVE PREVIEW
+══════════════════════════════════════════ */
+function refreshPreview(){
+  if(!selType) return;
+  if(document.getElementById('p_total_len') && document.getElementById('p_kl_len')) refreshKVLBreakdown();
+  try{
+    const d=compute();
+    const cat=d.def.cat;
+    const COLORS=['#0d3b6e','#1a5fa8','#e67e22','#27ae60','#7d3c98','#e74c3c','#16a085'];
+    const pieD=[
+      {l:'Оборудование',v:d.equip*d.region,c:COLORS[0]},
+      {l:'Доп. системы',v:d.extTotal*d.region,c:COLORS[1]},
+      {l:'ПИР',v:d.pirSum,c:COLORS[2]},
+      {l:'СМР',v:d.smrSum,c:COLORS[3]},
+      {l:'ПНР',v:d.pnrSum,c:COLORS[4]},
+      {l:'Резерв',v:d.resSum,c:COLORS[5]},
+      {l:'НДС',v:d.vatSum,c:COLORS[6]},
+    ].filter(s=>s.v>0.001);
+    let h='';
+    [{l:'Оборудование/материалы',v:d.equip*d.region},{l:'Доп. системы',v:d.extTotal*d.region},
+     {l:'ПИР',v:d.pirSum},{l:'СМР',v:d.smrSum},{l:'ПНР',v:d.pnrSum},
+     {l:'Непредвиденные',v:d.resSum},{l:'НДС 20%',v:d.vatSum}]
+    .filter(x=>x.v>0.001).forEach(x=>{ h+=`<div class="prev-row"><span class="pr-l">${x.l}</span><span class="pr-v">${fm(x.v)}</span></div>`; });
+    h+=`<div class="total-pill ${cat!=='ps'?cat:''}">
+      <div class="tl">Итого к финансированию</div>
+      <div class="tv">${fm(d.grand)}</div>
+      <div class="tn">${d.vat>0?'С НДС 20%':'Без НДС'} · Регион ×${d.region}</div>
+    </div>`;
+    h+=`<canvas id="prvC" width="170" height="170" style="display:block;margin:16px auto 0"></canvas>`;
+    document.getElementById('previewBody').innerHTML=h;
+    requestAnimationFrame(()=>drawDonut('prvC',pieD));
+  } catch(e){
+    document.getElementById('previewBody').innerHTML=`<div class="alert alert-warn">⚠️ ${e.message}</div>`;
+  }
+}
+
+/* ══════════════════════════════════════════
+   MAIN CALCULATE → REPORT
+══════════════════════════════════════════ */
+function doCalc(){
+  if(!selType){ alert('⚠️ Выберите тип объекта!'); return; }
+  try{
+    rptData=compute();
+    rptData.date=new Date().toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'});
+    rptData.time=new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    renderReport(rptData);
+    gotoPage('report');
+  } catch(e){ alert('Ошибка расчёта: '+e.message); console.error(e); }
+}
+
+/* ══════════════════════════════════════════
+   RENDER REPORT
+══════════════════════════════════════════ */
+function renderReport(d){
+  const cat=d.def.cat;
+  const grClass={ps:'gr',vl:'gr-vl',kl:'gr-kl',kvl:'gr-kvl'}[cat]??'gr';
+  const totClass={ps:'tot-r',vl:'tot-vl',kl:'tot-kl',kvl:'tot-kvl'}[cat]??'tot-r';
+  const boxClass=cat!=='ps'?cat:'ps';
+  const COLORS=['#0d3b6e','#1a5fa8','#e67e22','#27ae60','#7d3c98','#e74c3c','#16a085','#f39c12'];
+  const pieD=[
+    {l:'Оборудование',v:d.equip*d.region,c:COLORS[0]},
+    {l:'Доп. системы',v:d.extTotal*d.region,c:COLORS[1]},
+    {l:'ПИР',v:d.pirSum,c:COLORS[2]},
+    {l:'СМР',v:d.smrSum,c:COLORS[3]},
+    {l:'ПНР',v:d.pnrSum,c:COLORS[4]},
+    {l:'Резерв',v:d.resSum,c:COLORS[5]},
+    {l:'НДС',v:d.vatSum,c:COLORS[6]},
+  ].filter(s=>s.v>0.001);
+
+  /* Параметры в шапке */
+  const chips=d.def.params.map(par=>{
+    const el=document.getElementById('p_'+par.id);
+    const lbl=el?.selectedOptions?.[0]?.text??el?.value??d.params[par.id];
+    return `<span class="rchip">${par.label}: ${lbl}</span>`;
+  }).join('');
+
+  /* Equipment table */
+  let eqH='';
+  d.groups.forEach(gr=>{
+    eqH+=`<tr class="${grClass}"><td colspan="5">📁 ${gr.name}</td></tr>`;
+    gr.items.forEach(it=>{
+      eqH+=`<tr class="sub"><td>${it.name}</td><td style="text-align:right">${it.qty}</td><td>${it.unit}</td><td style="text-align:right">${fm(it.price)}</td><td style="text-align:right;font-weight:700">${fm(it.total)}</td></tr>`;
+    });
+    eqH+=`<tr class="gt"><td colspan="4" style="text-align:right">Итого «${gr.name}»:</td><td style="text-align:right">${fm(gr.sum)}</td></tr>`;
+  });
+
+  /* Extras table */
+  let exH=d.extRows.map(r=>`<tr class="sub"><td>${r.ico} ${r.label}</td><td colspan="2">% от осн. затрат</td><td style="text-align:right">${(r.coeff*100).toFixed(1)}%</td><td style="text-align:right;font-weight:700">${fm(r.sum)}</td></tr>`).join('');
+
+  /* Svodka */
+  const sv=[
+    [`Материалы и оборудование (с рег. коэфф. ×${d.region})`,fm(d.base),true],
+    d.pirSum>0?[`— Проектирование ПИР (${(DB.k_pir*100).toFixed(0)}%)`,fm(d.pirSum),false]:null,
+    d.smrSum>0?[`— СМР (${(DB.k_smr*100).toFixed(0)}%)`,fm(d.smrSum),false]:null,
+    d.pnrSum>0?[`— ПНР (${(DB.k_pnr*100).toFixed(0)}%)`,fm(d.pnrSum),false]:null,
+    d.resSum>0?[`— Непредвиденные расходы (${(DB.k_reserve*100).toFixed(0)}%)`,fm(d.resSum),false]:null,
+    ['<b>Итого без НДС</b>',`<b>${fm(d.noVat)}</b>`,true],
+    d.vatSum>0?['— НДС 20%',fm(d.vatSum),false]:null,
+  ].filter(Boolean).map(r=>`<tr${r[2]?' class="warn-r"':''} style="${r[2]?'':''}"><td>${r[0]}</td><td style="text-align:right;font-weight:700">${r[1]}</td></tr>`).join('');
+
+  /* Legend */
+  const tot4l=pieD.reduce((s,x)=>s+x.v,0);
+  const legendH=pieD.map(s=>`<li><span class="ldot" style="background:${s.c}"></span>${s.l}<span style="margin-left:4px;color:var(--muted)">${fm(s.v)}</span><span class="lpct">${tot4l>0?(s.v/tot4l*100).toFixed(1):0}%</span></li>`).join('');
+
+  /* Bars */
+  const maxV=Math.max(...pieD.map(s=>s.v));
+  const barsH=`<div class="barchart">${pieD.map(s=>`<div class="bar-row"><div class="bar-lbl">${s.l}</div><div class="bar-track"><div class="bar-fill" style="width:${maxV?s.v/maxV*100:0}%;background:${s.c}"></div></div><div class="bar-val">${fm(s.v)}</div></div>`).join('')}</div>`;
+
+  /* Summary rows */
+  const sumH=[['Оборудование / материалы',d.equip*d.region],d.extTotal>0?['Доп. системы',d.extTotal*d.region]:null,d.pirSum>0?['ПИР',d.pirSum]:null,d.smrSum>0?['СМР',d.smrSum]:null,d.pnrSum>0?['ПНР',d.pnrSum]:null,d.resSum>0?['Непредвиденные',d.resSum]:null,d.vatSum>0?['НДС 20%',d.vatSum]:null]
+    .filter(Boolean).map(([l,v])=>`<div class="sum-row"><span class="sl">${l}</span><span class="sv">${fm(v)}</span></div>`).join('');
+
+  /* LEP specific info block */
+  let lepInfoH='';
+  if(cat==='vl'){
+    const L=+d.params.length, circ=+d.params.circuits;
+    const unitCost=d.equip/L/circ;
+    lepInfoH=`<div class="alert alert-vl">🗼 <b>Удельная стоимость ВЛ:</b> ${fm(unitCost)} / км (1 цепь) · Длина трассы: ${L} км · Цепей: ${circ}</div>`;
+  } else if(cat==='kl'){
+    const L=+d.params.length, circ=+d.params.circuits;
+    const unitCost=d.equip/L/circ;
+    lepInfoH=`<div class="alert alert-kl">🔵 <b>Удельная стоимость КЛ:</b> ${fm(unitCost)} / км (1 цепь) · Длина трассы: ${L} км · Цепей: ${circ}</div>`;
+  } else if(cat==='kvl'){
+    const tot=+d.params.total_len, klL=Math.min(+d.params.kl_len,tot), vlL=Math.max(0,tot-klL);
+    lepInfoH=`<div class="alert alert-vl">🔀 <b>КВЛ:</b> ВЛ ${vlL.toFixed(1)} км + КЛ ${klL.toFixed(1)} км = ${tot.toFixed(1)} км · Цепей: ${d.params.circuits}</div>`;
+  }
+
+  document.getElementById('reportRoot').innerHTML=`
+    <div class="rpt-hero ${cat}">
+      <h2>${d.def.ico} ${d.def.name} — Сметный расчёт</h2>
+      <div class="meta">${d.def.desc} &nbsp;|&nbsp; Дата: ${d.date}, ${d.time}</div>
+      <div class="rpt-chips">${chips}<span class="rchip">Регион ×${d.region}</span><span class="rchip">${d.vat>0?'НДС 20%':'Без НДС'}</span></div>
+    </div>
+
+    <div class="wrap">
+      <div class="rpt-grid">
+        <div>
+          ${lepInfoH}
+          <!-- ОБОРУДОВАНИЕ / МАТЕРИАЛЫ -->
+          <div class="card">
+            <div class="card-head"><h3>${cat==='ps'?'📦 Оборудование':'🔩 Материалы и работы'}</h3></div>
+            <div class="card-body" style="padding:0;overflow-x:auto">
+              <table class="ct">
+                <thead><tr><th>Наименование</th><th style="text-align:right">Кол-во</th><th>Ед.</th><th style="text-align:right">Цена, млн ₽</th><th style="text-align:right">Сумма, млн ₽</th></tr></thead>
+                <tbody>${eqH}</tbody>
+                <tfoot><tr class="${totClass}"><td colspan="4">ИТОГО ${cat==='ps'?'оборудование':'материалы и линейные работы'}:</td><td style="text-align:right">${fm(d.equip)}</td></tr></tfoot>
+              </table>
+            </div>
+          </div>
+
+          ${d.extRows.length?`<div class="card">
+            <div class="card-head"><h3>⚙️ Дополнительные системы</h3></div>
+            <div class="card-body" style="padding:0;overflow-x:auto">
+              <table class="ct">
+                <thead><tr><th>Система</th><th colspan="2">База</th><th style="text-align:right">Коэфф.</th><th style="text-align:right">Сумма, млн ₽</th></tr></thead>
+                <tbody>${exH}</tbody>
+                <tfoot><tr class="${totClass}"><td colspan="4">ИТОГО доп. системы:</td><td style="text-align:right">${fm(d.extTotal)}</td></tr></tfoot>
+              </table>
+            </div>
+          </div>`:''}
+
+          <!-- СВОДНАЯ СМЕТА -->
+          <div class="card">
+            <div class="card-head"><h3>📋 Сводный сметный расчёт</h3></div>
+            <div class="card-body" style="padding:0;overflow-x:auto">
+              <table class="ct">
+                <thead><tr><th>Статья затрат</th><th style="text-align:right">Сумма, млн ₽</th></tr></thead>
+                <tbody>${sv}</tbody>
+                <tfoot><tr class="${totClass}"><td>ИТОГО К ФИНАНСИРОВАНИЮ:</td><td style="text-align:right;font-size:.97rem">${fm(d.grand)}</td></tr></tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div class="alert alert-warn">⚠️ Расчёт носит ориентировочный характер (точность ±15–20%). Для точной сметы необходимо рабочее проектирование и проведение торгов.</div>
+          <div class="alert alert-info">ℹ️ Базовые цены 2024–2025 г. Для ЛЭП: удельная стоимость включает материалы и монтаж (без ПИР и СМР накладных). ПИР и СМР коэффициенты учтены отдельно.</div>
+
+          <div class="btn-group">
+            <button class="btn btn-blue" onclick="gotoPage('input')">← Изменить параметры</button>
+            <button class="btn btn-green" onclick="window.print()">🖨️ Печать / PDF</button>
+            <button class="btn btn-ghost" onclick="gotoPage('admin')">⚙️ Редактировать цены</button>
+          </div>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА -->
+        <div>
+          <div class="card" style="position:sticky;top:70px">
+            <div class="card-head"><h3>💰 Итоговая стоимость</h3></div>
+            <div class="card-body">
+              ${sumH}
+              <div class="grand-box ${boxClass}">
+                <div class="gl">Итого к финансированию</div>
+                <div class="gv">${fm(d.grand)}</div>
+                <div class="gn">${d.vat>0?'Включая НДС 20%':'Без НДС'} · Регион ×${d.region}</div>
+              </div>
+              <div style="margin-top:20px">
+                <div style="font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:10px">Структура затрат</div>
+                <div class="donut-wrap">
+                  <canvas id="rptC" width="190" height="190"></canvas>
+                  <div class="donut-center"><div class="dc-v">${fm(d.grand)}</div><div class="dc-l">всего</div></div>
+                </div>
+                <ul class="legend">${legendH}</ul>
+              </div>
+              <div style="margin-top:18px">
+                <div style="font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Сравнение статей</div>
+                ${barsH}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  requestAnimationFrame(()=>drawDonut('rptC',pieD));
+}
+
+/* ══════════════════════════════════════════
+   CANVAS DONUT CHART
+══════════════════════════════════════════ */
+function drawDonut(id,slices){
+  const c=document.getElementById(id); if(!c) return;
+  const dpr=window.devicePixelRatio||1, S=+c.getAttribute('width');
+  c.width=S*dpr; c.height=S*dpr;
+  c.style.width=S+'px'; c.style.height=S+'px';
+  const ctx=c.getContext('2d'); ctx.scale(dpr,dpr);
+  const cx=S/2,cy=S/2,R=S*.45,r=S*.29;
+  const sum=slices.reduce((s,x)=>s+x.v,0); if(!sum) return;
+  let a=-Math.PI/2;
+  slices.forEach(s=>{
+    const arc=s.v/sum*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,a,a+arc); ctx.closePath();
+    ctx.fillStyle=s.c; ctx.fill();
+    a+=arc;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle='#fff'; ctx.fill();
+}
+
+/* ══════════════════════════════════════════
+   RESET
+══════════════════════════════════════════ */
+function resetForm(){
+  selType=null; switchCat(selCat);
+  ['chk-pir','chk-smr','chk-pnr'].forEach(id=>{ const el=document.getElementById(id); if(el){el.checked=true;syncChk(el);} });
+  document.getElementById('chk-res').checked=false;
+}
+
+/* ══════════════════════════════════════════
+   ADMIN PAGE
+══════════════════════════════════════════ */
+const ADM_SECTIONS=[
+  {id:'ps_tr',  label:'Тр-ры ПС',  ico:'🔋', cls:'',    build:buildPsTr},
+  {id:'ps_eq',  label:'ОРУ/ячейки',ico:'⚡',  cls:'',    build:buildPsEq},
+  {id:'ps_bld', label:'Строит. ПС',ico:'🏗️',  cls:'',    build:buildPsBld},
+  {id:'vl_pr',  label:'ВЛ — цены', ico:'🗼',  cls:'vl',  build:buildVlPr},
+  {id:'kl_pr',  label:'КЛ — цены', ico:'🔵',  cls:'kl',  build:buildKlPr},
+  {id:'lep_ex', label:'Доп. ЛЭП',  ico:'🔀',  cls:'kvl', build:buildLepEx},
+  {id:'coeffs', label:'Коэффиц.',  ico:'📊',  cls:'',    build:buildCoeffs},
+];
+
+function buildAdminPage(){
+  const nav=document.getElementById('admNav');
+  nav.innerHTML=`<div class="adm-nav-title">Разделы</div>`+
+    ADM_SECTIONS.map((s,i)=>`<div class="adm-nav-item${i===0?' active':s.cls?' active-'+s.cls:''}" id="anav_${s.id}" onclick="swAdm('${s.id}','${s.cls}')"><span class="nav-dot"></span>${s.ico} ${s.label}</div>`).join('');
+  document.getElementById('admPanels').innerHTML=
+    ADM_SECTIONS.map((s,i)=>`<div class="card adm-panel${i===0?' active':''}" id="ap_${s.id}"><div class="card-body">${s.build()}</div></div>`).join('');
+}
+
+function swAdm(id,cls){
+  document.querySelectorAll('.adm-nav-item').forEach(el=>{el.className='adm-nav-item';});
+  document.querySelectorAll('.adm-panel').forEach(el=>el.classList.remove('active'));
+  document.getElementById('anav_'+id).className='adm-nav-item'+(cls?' active-'+cls:' active');
+  document.getElementById('ap_'+id).classList.add('active');
+}
+
+function admH(t){ return `<div style="font-size:.97rem;font-weight:700;color:var(--primary);margin-bottom:16px;padding-bottom:9px;border-bottom:2px solid var(--accent)">${t}</div>`; }
+function admSave(){ return `<div class="btn-group"><button class="btn btn-blue btn-sm" onclick="saveDB()">💾 Сохранить</button></div>`; }
+
+function buildPsTr(){
+  let h=admH('🔋 Трансформаторы подстанций (млн руб./шт.)');
+  h+='<div style="overflow-x:auto"><table class="pt"><thead><tr><th>Трансформатор</th><th>Цена, млн ₽</th></tr></thead><tbody>';
+  [{sec:'КТП 10/0.4 кВ (ТМГ, кВА)',obj:'tr_ktp',u:'кВА'},{sec:'ПС 35/10 кВ (ТДН, МВА)',obj:'tr_35',u:'МВА'},{sec:'ПС 110/10 кВ (ТРДН, МВА)',obj:'tr_110',u:'МВА'},{sec:'ПС 220 кВ (АТДЦТН, МВА)',obj:'tr_220',u:'МВА'}].forEach(s=>{
+    h+=`<tr class="sh"><td colspan="2">▸ ${s.sec}</td></tr>`;
+    Object.entries(DB[s.obj]).forEach(([k,v])=>{ h+=`<tr><td>${k} ${s.u}</td><td><input type="number" step="0.001" min="0" value="${v}" onchange="DB['${s.obj}'][${+k}]=+this.value"></td></tr>`; });
+  });
+  h+='</tbody></table></div>';
+  return h+admSave();
+}
+
+function buildPsEq(){
+  let h=admH('⚡ Оборудование ОРУ и ячейки (млн руб./шт.)');
+  h+='<div style="overflow-x:auto"><table class="pt"><thead><tr><th>Оборудование</th><th>Цена, млн ₽</th></tr></thead><tbody>';
+  [{sec:'Ячейки РУ',items:[['cell_kru10','КРУ-10 кВ с ВВ'],['cell_krue110','КРУЭ-110 кВ'],['cell_zru110','ЗРУ-110 кВ']]},
+   {sec:'ОРУ 35 кВ',items:[['e35_vvb','ВВУ-35'],['e35_razed','Разъед. 35'],['e35_opn','ОПН-35'],['e35_tt','ТТ-35'],['e35_tn','ТН-35'],['e35_opory','Опора/портал']]},
+   {sec:'ОРУ 110 кВ',items:[['e110_vvb','Выкл. элег. 110'],['e110_razed','Разъед. 110'],['e110_opn','ОПН-110'],['e110_tt','ТТ-110'],['e110_tn','ТН-110'],['e110_opory','Опора/портал']]},
+   {sec:'ОРУ 220 кВ',items:[['e220_vvb','Выкл. элег. 220'],['e220_razed','Разъед. 220'],['e220_opn','ОПН-220'],['e220_tt','ТТ-220'],['e220_tn','ТН-220'],['e220_opory','Опора/портал']]},
+  ].forEach(s=>{
+    h+=`<tr class="sh"><td colspan="2">▸ ${s.sec}</td></tr>`;
+    s.items.forEach(([k,l])=>{ h+=`<tr><td>${l}</td><td><input type="number" step="0.001" min="0" value="${DB[k]??0}" onchange="DB['${k}']=+this.value"></td></tr>`; });
+  });
+  h+='</tbody></table></div>';
+  return h+admSave();
+}
+
+function buildPsBld(){
+  let h=admH('🏗️ Строительная часть ПС (млн руб.)');
+  const items=[['b_ktp_metal','КТП корпус металл'],['b_ktp_brick','КТП корпус кирпич'],['b_ktp_concrete','КТП корпус ЖБ'],['b_ktp_cont','Блок-контейнер стандарт'],['b_ktp_termo','Блок-контейнер утеплённый'],['b_ktp_north','Блок-контейнер север'],['b_nn_panel','Панель НН 0.4 кВ'],['b_nn_cell','Ячейка НН 0.4 кВ'],['b_vvod_vn','Вводное уст-во ВН КТП'],['b_opu_35','ОПУ — ПС 35 кВ'],['b_opu_110','ОПУ — ПС 110 кВ'],['b_opu_220','ОПУ — ПС 220 кВ'],['b_found_35','Фундаменты — ПС 35 кВ'],['b_found_110','Фундаменты — ПС 110 кВ'],['b_found_220','Фундаменты — ПС 220 кВ'],['b_fence','Ограждение'],['b_fence_220','Ограждение — ПС 220 кВ'],['b_cable_trays','Кабельные лотки'],['b_inner_road','Дороги внутри ПС'],['b_zru_bld','Здание ЗРУ-110'],['b_shunt_r','Шунт. реактор 60 МВАр'],['b_metering_bas','Шкаф учёта баз.'],['b_metering_adv','АСКУЭ интелл.']];
+  h+='<div style="overflow-x:auto"><table class="pt"><thead><tr><th>Позиция</th><th>Цена, млн ₽</th></tr></thead><tbody>';
+  items.forEach(([k,l])=>{ h+=`<tr><td>${l}</td><td><input type="number" step="0.001" min="0" value="${DB[k]??0}" onchange="DB['${k}']=+this.value"></td></tr>`; });
+  h+='</tbody></table></div>';
+  return h+admSave();
+}
+
+function buildVlPr(){
+  let h=admH('🗼 ВЛ — удельные цены (млн руб./км, включая материалы и монтаж)');
+  h+=`<div class="notice" style="margin-bottom:14px">Цена за 1 км — 1 цепь. Коэффициенты цепности и рельефа применяются автоматически.</div>`;
+  const groups=[
+    {cls:'sh-vl',sec:'ВЛ 0.4 кВ (СИП)',items:[['vl_04_sip_wood','СИП / деревянные опоры'],['vl_04_sip_conc','СИП / ЖБ опоры']]},
+    {cls:'sh-vl',sec:'ВЛ 6–10 кВ (провод АС)',items:[['vl_610_as_wood','АС / деревянные опоры'],['vl_610_as_conc','АС / ЖБ опоры'],['vl_610_as_metal','АС / металлические опоры']]},
+    {cls:'sh-vl',sec:'ВЛ 35 кВ',items:[['vl_35_as_conc','АС / ЖБ опоры'],['vl_35_as_metal','АС / металлические опоры']]},
+    {cls:'sh-vl',sec:'ВЛ 110 кВ',items:[['vl_110_as_metal','АС стандарт / металл.'],['vl_110_ac_metal','АСО увел. сечение / металл.']]},
+    {cls:'sh-vl',sec:'ВЛ 220 кВ',items:[['vl_220_as_metal','АС / металл. опоры'],['vl_220_ac_metal','АСО расщеплённый / металл.']]},
+    {cls:'sh-vl',sec:'ВЛ 500 кВ',items:[['vl_500_ac_metal','АСО расщеплённый / металл.']]},
+  ];
+  h+='<div style="overflow-x:auto"><table class="pt"><thead><tr><th>Тип ВЛ</th><th>Цена, млн ₽/км</th></tr></thead><tbody>';
+  groups.forEach(g=>{
+    h+=`<tr class="${g.cls}"><td colspan="2">▸ ${g.sec}</td></tr>`;
+    g.items.forEach(([k,l])=>{ h+=`<tr><td>${l}</td><td><input type="number" step="0.01" min="0" value="${DB[k]??0}" onchange="DB['${k}']=+this.value"></td></tr>`; });
+  });
+  h+='</tbody></table></div>';
+
+  /* Пересечения и доп */
+  const adds=[['vl_cross_road','Пересечение а/дороги, шт.'],['vl_cross_rail','Пересечение ж/дороги, шт.'],['vl_cross_river','Пересечение реки/водоёма, шт.'],['vl_cross_pipe','Пересечение трубопровода, шт.'],['vl_clear_km','Просека (вырубка) за 1 км'],['vl_portal_35','Концевой портал ВЛ-35 кВ'],['vl_portal_110','Концевой портал ВЛ-110 кВ'],['vl_portal_220','Концевой портал ВЛ-220 кВ'],['vl_opn_35','ОПН-35 кВ концевой'],['vl_opn_110','ОПН-110 кВ концевой'],['vl_opn_220','ОПН-220 кВ концевой']];
+  h+=`<br><div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Дополнительные позиции (млн руб./шт. или км)</div>`;
+  h+='<div style="overflow-x:auto"><table class="pt"><thead><tr><th>Позиция</th><th>Цена, млн ₽</th></tr></thead><tbody>';
+  adds.forEach(([k,l])=>{ h+=`<tr><td>${l}</td><td><input type="number" step="0.001" min="0" value="${DB[k]??0}" onchange="DB['${k}']=+this.value"></td></tr>`; });
+
+  /* Коэффициенты рельефа */
+  h+=`<tr class="sh-vl"><td colspan="2">▸ Коэффициенты рельефа</td></tr>`;
+  [['vl_terrain_coeff_flat','Равнина'],['vl_terrain_coeff_hilly','Холмистая'],['vl_terrain_coeff_mountain','Горная'],['vl_terrain_coeff_swamp','Заболоченная']].forEach(([k,l])=>{
+    h+=`<tr><td>${l}</td><td><input type="number" step="0.01" min="1" value="${DB[k]??1}" onchange="DB['${k}']=+this.value"></td></tr>`;
+  });
+  h+=`<tr class="sh-vl"><td colspan="2">▸ Коэффициенты цепности</td></tr>`;
+  [['vl_circuit_coeff_2','2 цепи (относит. 1 цепи)'],['vl_circuit_coeff_3','3 цепи (относит. 1 цепи)']].forEach(([k,l])=>{
+    h+=`<tr><td>${l}</td><td><input type="number" step="0.01" min="1" value="${DB[k]??1}" onchange="DB['${k}']=+this.value"></td></tr>`;
+  });
+  h+='</tbody></table></div>';
+  return h+admSave();
+}
+
+function buildKlPr(){
+  let h=admH('🔵 КЛ — удельные цены (млн руб./км, включая кабель и прокладку)');
+  h+=`<div class="notice" style="margin-bottom:14px">Цена за 1 км — 1 цепь (3 фазы). Городской коэффициент ×1.28 применяется автоматически.</div>`;
+  const groups=[
+    {cls:'sh-kl',sec:'КЛ 0.4 кВ',items:[['kl_04_xlpe_trench','ПвП/ААШв в траншее'],['kl_04_xlpe_pipe','ПвП в трубах/блоках']]},
+    {cls:'sh-kl',sec:'КЛ 6–10 кВ',items:[['kl_610_xlpe_trench','ПвП в траншее'],['kl_610_xlpe_pipe','ПвП в трубах/блоках'],['kl_610_xlpe_tunnel','ПвП в кабельном тоннеле']]},
+    {cls:'sh-kl',sec:'КЛ 35 кВ',items:[['kl_35_xlpe_trench','ПвП в траншее'],['kl_35_xlpe_pipe','ПвП в трубах'],['kl_35_xlpe_tunnel','ПвП в тоннеле']]},
+    {cls:'sh-kl',sec:'КЛ 110 кВ',items:[['kl_110_xlpe_trench','ПвПу в траншее'],['kl_110_xlpe_pipe','ПвПу в трубах'],['kl_110_xlpe_tunnel','ПвПу в тоннеле']]},
+    {cls:'sh-kl',sec:'КЛ 220 кВ',items:[['kl_220_xlpe_trench','ПвПу в траншее'],['kl_220_xlpe_pipe','ПвПу в трубах'],['kl_220_xlpe_tunnel','ПвПу в тоннеле']]},
+  ];
+  h+='<div style="overflow-x:auto"><table class="pt"><thead><tr><th>Тип КЛ</th><th>Цена, млн ₽/км</th></tr></thead><tbody>';
+  groups.forEach(g=>{
+    h+=`<tr class="${g.cls}"><td colspan="2">▸ ${g.sec}</td></tr>`;
+    g.items.forEach(([k,l])=>{ h+=`<tr><td>${l}</td><td><input type="number" step="0.1" min="0" value="${DB[k]??0}" onchange="DB['${k}']=+this.value"></td></tr>`; });
+  });
+  h+='</tbody></table></div>';
+
+  const adds=[['kl_joint_04','Соед. муфта 0.4 кВ, шт.'],['kl_joint_610','Соед. муфта 6-10 кВ, шт.'],['kl_joint_35','Соед. муфта 35 кВ, шт.'],['kl_joint_110','Соед. муфта 110 кВ, шт.'],['kl_joint_220','Соед. муфта 220 кВ, шт.'],['kl_term_04','Конц. заделка 0.4 кВ, шт.'],['kl_term_610','Конц. заделка 6-10 кВ, шт.'],['kl_term_35','Конц. заделка 35 кВ, шт.'],['kl_term_110','Конц. заделка 110 кВ, шт.'],['kl_term_220','Конц. заделка 220 кВ, шт.'],['kl_manhole_km','Кабельные колодцы (за км)'],['kl_test_km','Испытания кабеля (за км)'],['kl_cross_road','Пересечение а/дороги (ГНБ)'],['kl_cross_rail','Пересечение ж/дороги'],['kl_cross_river','Пересечение реки'],['kl_road_restore_km','Восст. дорожного полотна/км']];
+  h+=`<br><div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Муфты, заделки и дополнительные работы (млн руб.)</div>`;
+  h+='<div style="overflow-x:auto"><table class="pt"><thead><tr><th>Позиция</th><th>Цена, млн ₽</th></tr></thead><tbody>';
+  adds.forEach(([k,l])=>{ h+=`<tr><td>${l}</td><td><input type="number" step="0.001" min="0" value="${DB[k]??0}" onchange="DB['${k}']=+this.value"></td></tr>`; });
+  h+='</tbody></table></div>';
+  return h+admSave();
+}
+
+function buildLepEx(){
+  let h=admH('🔀 Дополнительные системы ЛЭП — коэффициенты (% от осн. затрат)');
+  const items=[['k_vl_rza','РЗА ВЛ (дистанционная, ДФЗ)'],['k_vl_asutp','АСУ ТП телемеханика ВЛ'],['k_vl_ground','Заземление ВЛ (тросовое)'],['k_vl_cctv','Видеонаблюдение коридора ВЛ'],['k_kl_rza','РЗА КЛ (токовая, дифф.)'],['k_kl_asutp','АСУ ТП телемеханика КЛ'],['k_kl_diag','Диагностика и мониторинг КЛ'],['k_kl_cctv','Видеонаблюдение трассы КЛ']];
+  h+=`<div class="coeff-g">`;
+  items.forEach(([k,l])=>{ h+=`<div class="ci"><label>${l}</label><input type="number" step="0.1" min="0" max="50" value="${(DB[k]*100).toFixed(1)}" onchange="DB['${k}']=+this.value/100"><div class="cin">текущее: ${(DB[k]*100).toFixed(1)}%</div></div>`; });
+  h+=`</div>`;
+  return h+`<div class="btn-group" style="margin-top:18px"><button class="btn btn-blue btn-sm" onclick="saveDB()">💾 Сохранить</button></div>`;
+}
+
+function buildCoeffs(){
+  let h=admH('📊 Общие расчётные коэффициенты работ (%)');
+  h+=`<div class="alert alert-info" style="margin-bottom:16px">ℹ️ Коэффициенты применяются к итоговой базовой стоимости (оборудование + доп. системы) после регионального коэффициента.</div>`;
+  const secs=[
+    {t:'Работы и услуги (общие для ПС и ЛЭП)',items:[['k_pir','Проектирование (ПИР)'],['k_smr','СМР (строительно-монтажные)'],['k_pnr','ПНР (пуско-наладочные)'],['k_reserve','Непредвиденные расходы']]},
+    {t:'Дополнительные системы ПС',items:[['k_rza','РЗА ПС'],['k_asutp','АСУ ТП ПС'],['k_sopt','СОПТ / АКБ'],['k_ground','Заземление и молниезащита'],['k_fire','Пожаротушение'],['k_cctv','СКУД и видеонаблюдение'],['k_road','Дороги и благоустройство'],['k_avr','АВР'],['k_cable_e','Кабельные вводы и муфты'],['k_kompens','Компенсация РМ']]},
+  ];
+  secs.forEach(sec=>{
+    h+=`<div style="font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:16px 0 10px">${sec.t}</div><div class="coeff-g">`;
+    sec.items.forEach(([k,l])=>{ h+=`<div class="ci"><label>${l}</label><input type="number" step="0.1" min="0" max="100" value="${(DB[k]*100).toFixed(1)}" onchange="DB['${k}']=+this.value/100"><div class="cin">текущее: ${(DB[k]*100).toFixed(1)}%</div></div>`; });
+    h+=`</div>`;
+  });
+  return h+`<div class="btn-group" style="margin-top:18px">
+    <button class="btn btn-blue btn-sm" onclick="saveDB()">💾 Сохранить</button>
+    <button class="btn btn-danger btn-sm" onclick="doResetDB()" style="margin-left:auto">↺ Сбросить к умолчаниям</button>
+  </div>`;
+}
+
+function doResetDB(){
+  if(!confirm('Сбросить все цены и коэффициенты к умолчаниям?')) return;
+  DB=JSON.parse(JSON.stringify(DEFAULT_DB));
+  saveDB(); buildAdminPage();
+}
+
+/* ══════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════ */
+function toast(msg,dur=2400){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+switchCat('ps');
+buildAdminPage();
+syncAllChk();
+</script>
+</body>
+</html>

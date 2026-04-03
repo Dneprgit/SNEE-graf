@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расчёт мощности энергосистемы</title>
+    <meta name="development-author" content="Сорокина Анна Дмитриевна">
+    <link rel="icon" href="https://www.so-ups.ru/favicon.ico" type="image/x-icon">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=PT+Sans+Narrow:wght@400;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'PT Sans', Arial, sans-serif;
+            background: #e9edf2;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== TOP BAR ===== */
+        .top-bar {
+            background: #1a1a2e;
+            color: #8a8fa8;
+            font-size: 12px;
+            padding: 6px 0;
+        }
+        .top-bar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .top-bar a {
+            color: #aab0c6;
+            text-decoration: none;
+            margin-left: 18px;
+            transition: color .2s;
+        }
+        .top-bar a:hover { color: #fff; }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: linear-gradient(135deg, #0b1a3b 0%, #163a6e 40%, #1a5ca8 100%);
+            padding: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 500px; height: 100%;
+            background: radial-gradient(ellipse at 80% 50%, rgba(41,121,210,0.25) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 0;
+            position: relative;
+            z-index: 2;
+        }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .logo-icon-box {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #f5c800 0%, #e8a000 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(245,200,0,0.35);
+            flex-shrink: 0;
+        }
+        .logo-icon-box svg { width: 32px; height: 32px; }
+        .logo-text h1 {
+            color: #fff;
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .logo-text p {
+            color: #7fb3e0;
+            font-size: 13px;
+            margin-top: 2px;
+        }
+
+        /* ===== NAV ===== */
+        .main-nav {
+            background: linear-gradient(90deg, #0d2a5c 0%, #174d8c 50%, #1a5ca8 100%);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            position: relative;
+            z-index: 10;
+        }
+        .nav-list {
+            list-style: none;
+            display: flex;
+            gap: 0;
+        }
+        .nav-list li a {
+            display: block;
+            padding: 14px 22px;
+            color: #c2d7ee;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'PT Sans Narrow', sans-serif;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            transition: all .25s;
+            position: relative;
+        }
+        .nav-list li a:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.07);
+        }
+        .nav-list li a.active {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .nav-list li a.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            background: #f5c800;
+            border-radius: 2px 2px 0 0;
+        }
+
+        /* ===== HERO BANNER ===== */
+        .hero {
+            background: linear-gradient(135deg, #0f2b5e 0%, #1b5faa 60%, #2980d2 100%);
+            padding: 48px 0 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -10%;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(245,200,0,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f5c800, #e8a000, #f5c800);
+        }
+        .hero .container { position: relative; z-index: 2; }
+        .hero h2 {
+            color: #fff;
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .hero p {
+            color: #a8cef0;
+            font-size: 16px;
+            max-width: 700px;
+            line-height: 1.5;
+        }
+        .hero-grid {
+            display: flex;
+            gap: 14px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+        .hero-stat {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 16px 22px;
+            min-width: 140px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: all .35s ease;
+        }
+        .hero-stat:hover {
+            background: rgba(255,255,255,0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .hero-stat .val {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f5c800;
+            font-family: 'PT Sans Narrow', sans-serif;
+        }
+        .hero-stat .lbl {
+            font-size: 11px;
+            color: #8ab8e0;
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== Hero Verdict Card ===== */
+        .hero-verdict-card {
+            position: relative;
+            min-width: 220px;
+            border-radius: 10px;
+            padding: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(10px) scale(0.95);
+            transition: all .5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            display: none;
+        }
+        .hero-verdict-card.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        .hero-verdict-card .hv-inner {
+            position: relative;
+            z-index: 2;
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .hero-verdict-card .hv-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 20px;
+            transition: all .3s;
+        }
+        .hero-verdict-card .hv-text-wrap {
+            flex: 1;
+        }
+        .hero-verdict-card .hv-title {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'PT Sans Narrow', sans-serif;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+        }
+        .hero-verdict-card .hv-desc {
+            font-size: 11px;
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            opacity: 0.85;
+        }
+
+        /* Deficit state */
+        .hero-verdict-card.hv-deficit {
+            background: linear-gradient(135deg, rgba(220,53,69,0.25) 0%, rgba(255,107,107,0.15) 100%);
+            border: 1px solid rgba(255,107,107,0.35);
+            box-shadow: 0 0 30px rgba(255,80,80,0.12), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .hero-verdict-card.hv-deficit .hv-icon-wrap {
+            background: rgba(255,107,107,0.2);
+            box-shadow: 0 0 16px rgba(255,80,80,0.2);
+        }
+        .hero-verdict-card.hv-deficit .hv-title { color: #ff8a8a; }
+        .hero-verdict-card.hv-deficit .hv-desc { color: #ffb3b3; }
+
+        /* Surplus state */
+        .hero-verdict-card.hv-surplus {
+            background: linear-gradient(135deg, rgba(39,174,96,0.25) 0%, rgba(81,207,102,0.15) 100%);
+            border: 1px solid rgba(81,207,102,0.35);
+            box-shadow: 0 0 30px rgba(81,207,102,0.12), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .hero-verdict-card.hv-surplus .hv-icon-wrap {
+            background: rgba(81,207,102,0.2);
+            box-shadow: 0 0 16px rgba(81,207,102,0.2);
+        }
+        .hero-verdict-card.hv-surplus .hv-title { color: #6eda89; }
+        .hero-verdict-card.hv-surplus .hv-desc { color: #a3edb8; }
+
+        /* Balance state */
+        .hero-verdict-card.hv-balance {
+            background: linear-gradient(135deg, rgba(245,200,0,0.2) 0%, rgba(232,160,0,0.12) 100%);
+            border: 1px solid rgba(245,200,0,0.35);
+            box-shadow: 0 0 30px rgba(245,200,0,0.1), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .hero-verdict-card.hv-balance .hv-icon-wrap {
+            background: rgba(245,200,0,0.2);
+            box-shadow: 0 0 16px rgba(245,200,0,0.2);
+        }
+        .hero-verdict-card.hv-balance .hv-title { color: #f5d442; }
+        .hero-verdict-card.hv-balance .hv-desc { color: #f0e0a0; }
+
+        @keyframes verdictPulse {
+            0%, 100% { box-shadow: 0 0 0 0 transparent; }
+            50% { box-shadow: 0 0 20px 4px rgba(255,255,255,0.08); }
+        }
+        .hero-verdict-card.show {
+            animation: verdictPulse 2.5s ease-in-out 0.5s 1;
+        }
+
+        /* ===== CONTAINER ===== */
+        .container {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            padding: 36px 0 60px;
+        }
+
+        /* ===== CALC BLOCKS ===== */
+        .calc-block {
+            background: #fff;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px rgba(13,42,92,0.07);
+            overflow: hidden;
+            transition: all .4s ease;
+        }
+        .calc-block.hidden-block {
+            display: none;
+        }
+        .calc-block.visible-block {
+            display: block;
+            animation: fadeSlide .5s ease forwards;
+        }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .block-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid #eef2f7;
+        }
+        .block-num {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1a5ca8, #2980d2);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 3px 10px rgba(26,92,168,0.3);
+        }
+        .block-num.gold {
+            background: linear-gradient(135deg, #f5c800, #e8a000);
+            color: #1a1a2e;
+            box-shadow: 0 3px 10px rgba(245,200,0,0.35);
+        }
+        .block-title {
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a3c6e;
+            line-height: 1.35;
+        }
+        .block-body { padding: 20px 24px 24px; }
+
+        /* Input blocks */
+        .input-group { margin-bottom: 18px; }
+        .input-group:last-child { margin-bottom: 0; }
+        .input-label {
+            display: block;
+            font-size: 14px;
+            color: #4a5a6e;
+            margin-bottom: 8px;
+            line-height: 1.45;
+        }
+        .input-label .formula {
+            color: #1a5ca8;
+            font-weight: 700;
+        }
+        .input-field {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-family: 'PT Sans', sans-serif;
+            border: 2px solid #d0dae6;
+            border-radius: 6px;
+            background: #f8fafc;
+            transition: all .25s;
+            color: #1a3c6e;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #1a5ca8;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(26,92,168,0.12);
+        }
+        .input-field::placeholder {
+            color: #a0b0c0;
+        }
+        .input-field.input-error {
+            border-color: #dc3545;
+            background: #fff5f5;
+            box-shadow: 0 0 0 3px rgba(220,53,69,0.1);
+            animation: inputShake .4s ease;
+        }
+        .input-field.input-error:focus {
+            box-shadow: 0 0 0 4px rgba(220,53,69,0.15);
+            border-color: #dc3545;
+        }
+        @keyframes inputShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-4px); }
+            40% { transform: translateX(4px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(3px); }
+        }
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        /* ===== Validation Warning ===== */
+        .validation-warning {
+            display: none;
+            margin-top: 18px;
+            border-radius: 10px;
+            overflow: hidden;
+            transform-origin: top center;
+            animation: warnSlideIn .4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes warnSlideIn {
+            from { opacity: 0; transform: scaleY(0.8) translateY(-8px); }
+            to { opacity: 1; transform: scaleY(1) translateY(0); }
+        }
+        .validation-warning.show {
+            display: block;
+        }
+        .validation-warning .warn-inner {
+            display: flex;
+            align-items: stretch;
+            background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+            border: 1px solid #ffca28;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(255,193,7,0.15), 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .validation-warning .warn-accent {
+            width: 56px;
+            background: linear-gradient(180deg, #ffc107 0%, #e8a000 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .validation-warning .warn-accent-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            animation: warnPulse 2s ease-in-out infinite;
+        }
+        @keyframes warnPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+        }
+        .validation-warning .warn-content {
+            flex: 1;
+            padding: 16px 20px;
+        }
+        .validation-warning .warn-title {
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #7a5d00;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .validation-warning .warn-text {
+            font-size: 13px;
+            color: #6d5a1a;
+            line-height: 1.55;
+        }
+        .validation-warning .warn-text strong {
+            color: #5a4300;
+        }
+        .validation-warning .warn-rule {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,193,7,0.2);
+            border: 1px solid rgba(255,193,7,0.4);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #7a5d00;
+            margin-top: 8px;
+            font-family: 'PT Sans Narrow', sans-serif;
+        }
+
+        /* Result blocks */
+        .result-block {
+            border-left: 4px solid #1a5ca8;
+        }
+        .result-block .block-body {
+            background: linear-gradient(135deg, #f0f6fc 0%, #e8f0fa 100%);
+        }
+        .result-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .result-formula {
+            font-size: 14px;
+            color: #6a7a8e;
+            line-height: 1.5;
+        }
+        .result-value {
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-size: 36px;
+            font-weight: 700;
+            color: #1a5ca8;
+            line-height: 1;
+            transition: color .3s;
+        }
+        .result-unit {
+            font-size: 16px;
+            color: #6a7a8e;
+            font-weight: 400;
+        }
+        .result-note {
+            font-size: 12px;
+            color: #c0392b;
+            background: #fdf0ef;
+            border: 1px solid #f5c6cb;
+            padding: 8px 14px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+            line-height: 1.4;
+        }
+        .result-note.show { display: inline-block; }
+
+        .result-value.negative { color: #c0392b; }
+        .result-value.positive { color: #27ae60; }
+
+        /* ===== Verdict Panel in Block 7 ===== */
+        .verdict-panel {
+            margin-top: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: all .5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: none;
+        }
+        .verdict-panel.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .verdict-panel .vp-inner {
+            display: flex;
+            align-items: stretch;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .verdict-panel .vp-icon-col {
+            width: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .verdict-panel .vp-icon-circle {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            position: relative;
+            z-index: 2;
+        }
+        .verdict-panel .vp-icon-ring {
+            position: absolute;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+        .verdict-panel .vp-content {
+            flex: 1;
+            padding: 18px 24px 18px 0;
+        }
+        .verdict-panel .vp-label {
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+        .verdict-panel .vp-title {
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-bottom: 6px;
+        }
+        .verdict-panel .vp-desc {
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 0.85;
+        }
+        .verdict-panel .vp-value-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'PT Sans Narrow', sans-serif;
+            margin-top: 8px;
+        }
+
+        /* Generation recommendations */
+        .generation-recommendations {
+            margin-top: 20px;
+            padding: 16px 20px;
+            background: rgba(26, 92, 168, 0.08);
+            border-left: 4px solid #1a5ca8;
+            border-radius: 8px;
+            display: none;
+        }
+        .generation-recommendations.show {
+            display: block;
+        }
+        .generation-recommendations .rec-title {
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #1a3c6e;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .generation-recommendations .rec-item {
+            font-size: 13px;
+            color: #4a5a6e;
+            line-height: 1.6;
+            margin-bottom: 8px;
+            padding-left: 16px;
+            position: relative;
+        }
+        .generation-recommendations .rec-item:last-child {
+            margin-bottom: 0;
+        }
+        .generation-recommendations .rec-item::before {
+            content: '‒';
+            position: absolute;
+            left: 0;
+        }
+        .generation-recommendations .rec-item .rec-value {
+            font-weight: 700;
+            color: #1a5ca8;
+        }
+
+        /* Deficit verdict */
+        .verdict-panel.vp-deficit .vp-inner {
+            background: linear-gradient(135deg, rgba(220,53,69,0.18) 0%, rgba(255,107,107,0.08) 100%);
+            border: 1px solid rgba(255,107,107,0.25);
+        }
+        .verdict-panel.vp-deficit .vp-icon-circle { background: rgba(255,107,107,0.25); }
+        .verdict-panel.vp-deficit .vp-icon-ring { border: 2px solid rgba(255,107,107,0.3); animation: ringPulse 2s ease-in-out infinite; }
+        .verdict-panel.vp-deficit .vp-label { color: #ff9a9a; }
+        .verdict-panel.vp-deficit .vp-title { color: #ff8a8a; }
+        .verdict-panel.vp-deficit .vp-desc { color: #ffb8b8; }
+        .verdict-panel.vp-deficit .vp-value-chip {
+            background: rgba(255,107,107,0.2);
+            border: 1px solid rgba(255,107,107,0.3);
+            color: #ff8a8a;
+        }
+
+        /* Surplus verdict */
+        .verdict-panel.vp-surplus .vp-inner {
+            background: linear-gradient(135deg, rgba(39,174,96,0.18) 0%, rgba(81,207,102,0.08) 100%);
+            border: 1px solid rgba(81,207,102,0.25);
+        }
+        .verdict-panel.vp-surplus .vp-icon-circle { background: rgba(81,207,102,0.25); }
+        .verdict-panel.vp-surplus .vp-icon-ring { border: 2px solid rgba(81,207,102,0.3); animation: ringPulse 2.5s ease-in-out infinite; }
+        .verdict-panel.vp-surplus .vp-label { color: #82e89d; }
+        .verdict-panel.vp-surplus .vp-title { color: #6eda89; }
+        .verdict-panel.vp-surplus .vp-desc { color: #a3edb8; }
+        .verdict-panel.vp-surplus .vp-value-chip {
+            background: rgba(81,207,102,0.2);
+            border: 1px solid rgba(81,207,102,0.3);
+            color: #6eda89;
+        }
+
+        /* Balance verdict */
+        .verdict-panel.vp-balance .vp-inner {
+            background: linear-gradient(135deg, rgba(245,200,0,0.18) 0%, rgba(232,160,0,0.08) 100%);
+            border: 1px solid rgba(245,200,0,0.3);
+        }
+        .verdict-panel.vp-balance .vp-icon-circle { background: rgba(245,200,0,0.25); }
+        .verdict-panel.vp-balance .vp-icon-ring { border: 2px solid rgba(245,200,0,0.3); animation: ringPulse 2.5s ease-in-out infinite; }
+        .verdict-panel.vp-balance .vp-label { color: #f5d442; }
+        .verdict-panel.vp-balance .vp-title { color: #f5d442; }
+        .verdict-panel.vp-balance .vp-desc { color: #f0e0a0; }
+        .verdict-panel.vp-balance .vp-value-chip {
+            background: rgba(245,200,0,0.2);
+            border: 1px solid rgba(245,200,0,0.3);
+            color: #f5d442;
+        }
+
+        @keyframes ringPulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.15); opacity: 0.1; }
+        }
+
+        /* Final block */
+        .final-block {
+            background: linear-gradient(135deg, #0d2a5c 0%, #1a5ca8 100%) !important;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .final-block::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -20%;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(245,200,0,0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .final-block .block-header {
+            border-bottom-color: rgba(255,255,255,0.1);
+        }
+        .final-block .block-title {
+            color: #fff;
+        }
+        .final-block .block-body {
+            background: transparent !important;
+            position: relative;
+            z-index: 2;
+        }
+        .final-block .result-formula { color: #7fb3e0; }
+        .final-block .result-value {
+            color: #f5c800 !important;
+            font-size: 48px;
+            text-shadow: 0 2px 20px rgba(245,200,0,0.2);
+            transition: all .4s;
+        }
+        .final-block .result-unit { color: #a8cef0; font-size: 18px; }
+        .final-block .result-note {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.12);
+            color: #f5c800;
+            border-radius: 6px;
+            backdrop-filter: blur(4px);
+        }
+        .final-block .generation-recommendations {
+            background: rgba(255, 255, 255, 0.06);
+            border-left-color: #f5c800;
+        }
+        .final-block .generation-recommendations .rec-title {
+            color: #f5c800;
+        }
+        .final-block .generation-recommendations .rec-item {
+            color: #a8cef0;
+        }
+        .final-block .generation-recommendations .rec-item .rec-value {
+            color: #f5c800;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            background: #1a1a2e;
+            color: #6a7080;
+            padding: 32px 0;
+        }
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .footer-logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, #f5c800, #e8a000);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .footer-logo-icon svg { width: 20px; height: 20px; }
+        .footer-logo-text {
+            font-family: 'PT Sans Narrow', sans-serif;
+            font-weight: 700;
+            color: #aab0c6;
+            font-size: 15px;
+        }
+        .footer-copy { font-size: 12px; }
+        .footer-links { display: flex; gap: 20px; }
+        .footer-links a {
+            color: #6a7080;
+            text-decoration: none;
+            font-size: 13px;
+            transition: color .2s;
+        }
+        .footer-links a:hover { color: #f5c800; }
+
+        /* Sub / Sup for formulas */
+        .sub { font-size: 0.72em; vertical-align: sub; }
+        .sup { font-size: 0.72em; vertical-align: super; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .input-row { grid-template-columns: 1fr; gap: 16px; }
+            .hero h2 { font-size: 24px; }
+            .hero-grid { flex-wrap: wrap; }
+            .hero-stat { min-width: 120px; }
+            .hero-verdict-card { min-width: 100%; }
+            .nav-list { overflow-x: auto; }
+            .nav-list li a { padding: 12px 16px; font-size: 12px; white-space: nowrap; }
+            .top-bar .container { flex-direction: column; gap: 4px; }
+            .result-value { font-size: 28px; }
+            .final-block .result-value { font-size: 36px; }
+            .block-body { padding: 16px; }
+            .block-header { padding: 16px; }
+            .footer-inner { flex-direction: column; text-align: center; }
+            .verdict-panel .vp-inner { flex-direction: column; }
+            .verdict-panel .vp-icon-col { width: 100%; padding: 12px 0; flex-direction: row; gap: 10px; }
+            .verdict-panel .vp-content { padding: 0 16px 16px; }
+            .validation-warning .warn-inner { flex-direction: column; }
+            .validation-warning .warn-accent { width: 100%; height: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="top-bar">
+    <div class="container">
+        <span>Акционерное общество «Системный оператор Единой энергетической системы»</span>
+    </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+    <div class="container">
+        <div class="header-inner">
+            <div class="logo-area">
+                <div class="logo-icon-box">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>Системный оператор</h1>
+                    <p>Единой энергетической системы</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Navigation -->
+<nav class="main-nav">
+    <div class="container">
+        <ul class="nav-list">
+            <li><a href="#" class="active">Расчёт мощности</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- Hero Banner -->
+<section class="hero">
+    <div class="container">
+        <h2>Калькулятор мощности энергосистемы</h2>
+        <p>Расчёт требуемой мощности электростанции для обеспечения баланса и надёжного электроснабжения потребителей энергосистемы</p>
+        <div class="hero-grid">
+            <div class="hero-stat">
+                <div class="val">7</div>
+                <div class="lbl">Этапов расчёта</div>
+            </div>
+            <div class="hero-stat">
+                <div class="val">4</div>
+                <div class="lbl">Входных параметра</div>
+            </div>
+            <div class="hero-stat">
+                <div class="val" id="hero-status">—</div>
+                <div class="lbl">Результат, МВт</div>
+            </div>
+            <!-- Hero Verdict Card -->
+            <div class="hero-verdict-card" id="hero-verdict-card">
+                <div class="hv-inner">
+                    <div class="hv-icon-wrap" id="hv-icon-wrap">
+                        <span id="hv-icon">—</span>
+                    </div>
+                    <div class="hv-text-wrap">
+                        <div class="hv-title" id="hv-title">—</div>
+                        <div class="hv-desc" id="hv-desc">Итог расчёта</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Content -->
+<main class="main-content">
+    <div class="container">
+
+        <!-- ===== BLOCK 1 ===== -->
+        <div class="calc-block visible-block" id="block1">
+            <div class="block-header">
+                <div class="block-num">1</div>
+                <div class="block-title">Данные по энергосистеме</div>
+            </div>
+            <div class="block-body">
+                <div class="input-row">
+                    <div class="input-group">
+                        <label class="input-label" for="p_ust_sum">
+                            Суммарное значение установленной мощности генерирующего оборудования
+                            (<span class="formula">P<span class="sub">уст</span><span class="sup">сумм</span></span>), МВт
+                        </label>
+                        <input type="number" class="input-field" id="p_ust_sum" placeholder="Например: 630" step="any" oninput="calculate()">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" for="p_potr_max">
+                            Значение прогнозируемого максимального потребления мощности в энергосистеме
+                            (<span class="formula">P<span class="sub">потр</span><span class="sup">max</span></span>), МВт
+                        </label>
+                        <input type="number" class="input-field" id="p_potr_max" placeholder="Например: 600" step="any" oninput="calculate()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== BLOCK 2 ===== -->
+        <div class="calc-block hidden-block" id="block2">
+            <div class="block-header">
+                <div class="block-num">2</div>
+                <div class="block-title">Данные по генерирующему оборудованию электростанции</div>
+            </div>
+            <div class="block-body">
+                <div class="input-row">
+                    <div class="input-group">
+                        <label class="input-label" for="p_ust_1">
+                            Величина установленной генерирующей мощности наиболее крупной единицы генерирующего оборудования электростанции
+                            (<span class="formula">P<span class="sub">уст</span><span class="sup">1</span></span>), МВт
+                        </label>
+                        <input type="number" class="input-field" id="p_ust_1" placeholder="Например: 100" step="any" oninput="calculate()">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" for="p_ust_2">
+                            Величина установленной генерирующей мощности второй по крупности единицы генерирующего оборудования электростанции
+                            (<span class="formula">P<span class="sub">уст</span><span class="sup">2</span></span>), МВт
+                        </label>
+                        <input type="number" class="input-field" id="p_ust_2" placeholder="Например: 80" step="any" oninput="calculate()">
+                    </div>
+                </div>
+                <!-- Validation Warning -->
+                <div class="validation-warning" id="validation-warning">
+                    <div class="warn-inner">
+                        <div class="warn-accent">
+                            <div class="warn-accent-icon">⚠</div>
+                        </div>
+                        <div class="warn-content">
+                            <div class="warn-title">Ошибка валидации данных</div>
+                            <div class="warn-text">
+                                Значение <strong>P<span class="sub">уст</span><span class="sup">1</span></strong> (наиболее крупная единица генерирующего оборудования) должно быть <strong>больше или равно</strong> значению <strong>P<span class="sub">уст</span><span class="sup">2</span></strong> (вторая по крупности единица генерирующего оборудования). Для продолжения расчёта необходимо исправить введённые данные.
+                            </div>
+                            <div class="warn-rule">
+                                P<span class="sub">уст</span><span class="sup">1</span> ≥ P<span class="sub">уст</span><span class="sup">2</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== BLOCK 3 ===== -->
+        <div class="calc-block result-block hidden-block" id="block3">
+            <div class="block-header">
+                <div class="block-num">3</div>
+                <div class="block-title">Величина установленной генерирующей мощности электростанции при отключении наиболее крупной единицы генерирующего оборудования, МВт</div>
+            </div>
+            <div class="block-body">
+                <div class="result-row">
+                    <div class="result-formula">
+                        <span class="formula">P<span class="sub">уст</span><span class="sup">сумм</span></span> −
+                        <span class="formula">P<span class="sub">уст</span><span class="sup">1</span></span> =
+                    </div>
+                    <div class="result-value" id="res3">—</div>
+                    <div class="result-unit">МВт</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== BLOCK 4 ===== -->
+        <div class="calc-block result-block hidden-block" id="block4">
+            <div class="block-header">
+                <div class="block-num">4</div>
+                <div class="block-title">Прогнозируемый дефицит мощности при отключении наиболее крупной единицы генерирующего оборудования, МВт</div>
+            </div>
+            <div class="block-body">
+                <div class="result-row">
+                    <div class="result-formula">
+                        <span class="formula">P<span class="sub">потр</span><span class="sup">max</span></span> −
+                        (<span class="formula">P<span class="sub">уст</span><span class="sup">сумм</span></span> −
+                        <span class="formula">P<span class="sub">уст</span><span class="sup">1</span></span>) =
+                    </div>
+                    <div class="result-value" id="res4">—</div>
+                    <div class="result-unit">МВт</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== BLOCK 5 ===== -->
+        <div class="calc-block result-block hidden-block" id="block5">
+            <div class="block-header">
+                <div class="block-num">5</div>
+                <div class="block-title">20% от прогнозируемого максимального потребления мощности (0,2·P<span class="sub">потр</span><span class="sup">max</span>), МВт</div>
+            </div>
+            <div class="block-body">
+                <div class="result-row">
+                    <div class="result-formula">
+                        0,2 × <span class="formula">P<span class="sub">потр</span><span class="sup">max</span></span> =
+                    </div>
+                    <div class="result-value" id="res5">—</div>
+                    <div class="result-unit">МВт</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== BLOCK 6 ===== -->
+        <div class="calc-block result-block hidden-block" id="block6">
+            <div class="block-header">
+                <div class="block-num">6</div>
+                <div class="block-title">Разница между величиной P<span class="sub">уст</span><span class="sup">2</span> и 0,2·P<span class="sub">потр</span><span class="sup">max</span></div>
+            </div>
+            <div class="block-body">
+                <div class="result-row">
+                    <div class="result-formula">
+                        <span class="formula">P<span class="sub">уст</span><span class="sup">2</span></span> −
+                        0,2·<span class="formula">P<span class="sub">потр</span><span class="sup">max</span></span> =
+                    </div>
+                    <div class="result-value" id="res6">—</div>
+                    <div class="result-unit">МВт</div>
+                </div>
+                <div class="result-note" id="note6">
+                    ⚠ Результат отрицательный — в итоговом расчёте (блок 7) данное значение будет заменено на 0
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== BLOCK 7 ===== -->
+        <div class="calc-block final-block hidden-block" id="block7">
+            <div class="block-header">
+                <div class="block-num gold">7</div>
+                <div class="block-title">Мощность электростанции, требуемая для обеспечения баланса мощности и надёжного электроснабжения потребителей, МВт</div>
+            </div>
+            <div class="block-body">
+                <div class="result-row">
+                    <div class="result-formula">
+                        Дефицит + max(0, разница) =
+                    </div>
+                    <div class="result-value" id="res7">—</div>
+                    <div class="result-unit">МВт</div>
+                </div>
+                <div class="result-note" id="note7" style="display:none;color:#f5c800;">
+                    Значение блока 6 отрицательное → подставлен 0
+                </div>
+                <!-- Verdict Panel -->
+                <div class="verdict-panel" id="verdict-panel">
+                    <div class="vp-inner">
+                        <div class="vp-icon-col">
+                            <div class="vp-icon-ring"></div>
+                            <div class="vp-icon-circle" id="vp-icon">⚡</div>
+                        </div>
+                        <div class="vp-content">
+                            <div class="vp-label" id="vp-label">Результат</div>
+                            <div class="vp-title" id="vp-title">—</div>
+                            <div class="vp-desc" id="vp-desc">—</div>
+                            <div class="vp-value-chip" id="vp-chip">—</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Generation Recommendations -->
+                <div class="generation-recommendations" id="generation-recommendations">
+                    <div class="rec-title">Вид необходимой генерации</div>
+                    <div class="rec-item">
+                        Необходимо строительство <strong>гарантированной генерации</strong> в объеме не менее <span class="rec-value" id="rec-guaranteed">—</span> МВт
+                    </div>
+                    <div class="rec-item" id="rec-peak-item">
+                        Необходимо строительство <strong>пиковой генерации</strong> в объеме не менее <span class="rec-value" id="rec-peak">—</span> МВт
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-inner">
+            <div class="footer-logo">
+                <div class="footer-logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <div class="footer-logo-text">СО ЕЭС</div>
+            </div>
+            <div class="footer-links">
+                <a href="https://www.so-ups.ru/" target="_blank">so-ups.ru</a>
+            </div>
+            <div class="footer-copy">© 2026 Калькулятор мощности энергосистемы</div>
+        </div>
+    </div>
+</footer>
+
+<script>
+    function showBlock(id) {
+        const el = document.getElementById(id);
+        if (!el.classList.contains('visible-block')) {
+            el.classList.remove('hidden-block');
+            el.classList.add('visible-block');
+        }
+    }
+    function hideBlock(id) {
+        const el = document.getElementById(id);
+        el.classList.remove('visible-block');
+        el.classList.add('hidden-block');
+    }
+
+    function getVal(id) {
+        const v = document.getElementById(id).value;
+        return v !== '' ? parseFloat(v) : null;
+    }
+
+    function resetHero() {
+        document.getElementById('hero-status').textContent = '—';
+        document.getElementById('hero-verdict-card').classList.remove('show', 'hv-deficit', 'hv-surplus', 'hv-balance');
+    }
+
+    function hideBlocks3to7() {
+        hideBlock('block3');
+        hideBlock('block4');
+        hideBlock('block5');
+        hideBlock('block6');
+        hideBlock('block7');
+    }
+
+    function setVerdict(r7, r4, r6) {
+        const panel = document.getElementById('verdict-panel');
+        const vpIcon = document.getElementById('vp-icon');
+        const vpLabel = document.getElementById('vp-label');
+        const vpTitle = document.getElementById('vp-title');
+        const vpDesc = document.getElementById('vp-desc');
+        const vpChip = document.getElementById('vp-chip');
+
+        const heroCard = document.getElementById('hero-verdict-card');
+        const hvIcon = document.getElementById('hv-icon');
+        const hvTitle = document.getElementById('hv-title');
+        const hvDesc = document.getElementById('hv-desc');
+
+        const genRec = document.getElementById('generation-recommendations');
+        const recGuaranteed = document.getElementById('rec-guaranteed');
+        const recPeak = document.getElementById('rec-peak');
+        const recPeakItem = document.getElementById('rec-peak-item');
+
+        // Reset classes
+        panel.classList.remove('vp-deficit', 'vp-surplus', 'vp-balance');
+        heroCard.classList.remove('hv-deficit', 'hv-surplus', 'hv-balance');
+
+        if (r7 > 0) {
+            // DEFICIT
+            panel.classList.add('show', 'vp-deficit');
+            vpIcon.textContent = '🛠️';
+            vpLabel.textContent = 'Дефицит мощности';
+            vpTitle.textContent = 'Необходимо принять технические решения, направленные на ликвидацию/предотвращение данного дефицита мощности';
+            vpDesc.textContent = 'Существующей мощности недостаточно для обеспечения баланса мощности и надежного электроснабжения потребителей';
+            vpChip.textContent = formatNum(r7) + ' МВт — дефицит мощности';
+
+            heroCard.classList.add('show', 'hv-deficit');
+            hvIcon.textContent = '🛠️';
+            hvTitle.textContent = 'Дефицит мощности';
+            hvDesc.textContent = 'Необходима генерация';
+
+            // Show generation recommendations
+            genRec.classList.add('show');
+            recGuaranteed.textContent = formatNum(r4);
+            
+            if (r6 > 0) {
+                recPeak.textContent = formatNum(r6);
+                recPeakItem.style.display = 'block';
+            } else {
+                recPeakItem.style.display = 'none';
+            }
+
+        } else if (r7 < 0) {
+            // SURPLUS
+            panel.classList.add('show', 'vp-surplus');
+            vpIcon.textContent = '🔋';
+            vpLabel.textContent = 'Избыток мощности';
+            vpTitle.textContent = 'Отсутствует необходимость в принятии технических решений, направленных на ликвидацию/предотвращение дефицита мощности';
+            vpDesc.textContent = 'Энергосистема располагает достаточным резервом мощности';
+            vpChip.textContent = formatNum(Math.abs(r7)) + ' МВт — избыток мощности';
+
+            heroCard.classList.add('show', 'hv-surplus');
+            hvIcon.textContent = '🔋';
+            hvTitle.textContent = 'Избыток мощности';
+            hvDesc.textContent = 'Генерация не требуется';
+
+            // Hide generation recommendations
+            genRec.classList.remove('show');
+
+        } else {
+            // BALANCE
+            panel.classList.add('show', 'vp-balance');
+            vpIcon.textContent = '⚖️';
+            vpLabel.textContent = 'Баланс мощности';
+            vpTitle.textContent = 'Энергосистема работает «в ноль»: без дефицита, без избытка';
+            vpDesc.textContent = 'Генерируемая мощность энергосистемы полностью соответствует текущим потребностям, обеспечивая сбалансированность без дефицита и избытка';
+            vpChip.textContent = '0 МВт — баланс';
+
+            heroCard.classList.add('show', 'hv-balance');
+            hvIcon.textContent = '⚖️';
+            hvTitle.textContent = 'Баланс';
+            hvDesc.textContent = 'Мощность сбалансирована';
+
+            // Hide generation recommendations
+            genRec.classList.remove('show');
+        }
+    }
+
+    function hideVerdict() {
+        const panel = document.getElementById('verdict-panel');
+        const genRec = document.getElementById('generation-recommendations');
+        panel.classList.remove('show', 'vp-deficit', 'vp-surplus', 'vp-balance');
+        genRec.classList.remove('show');
+    }
+
+    function calculate() {
+        const pUstSum  = getVal('p_ust_sum');
+        const pPotrMax = getVal('p_potr_max');
+        const pUst1    = getVal('p_ust_1');
+        const pUst2    = getVal('p_ust_2');
+
+        const warning = document.getElementById('validation-warning');
+        const inputField1 = document.getElementById('p_ust_1');
+        const inputField2 = document.getElementById('p_ust_2');
+
+        // Block 2: show when both block-1 fields filled
+        if (pUstSum !== null && pPotrMax !== null) {
+            showBlock('block2');
+        } else {
+            hideBlock('block2');
+            hideBlocks3to7();
+            hideVerdict();
+            resetHero();
+            return;
+        }
+
+        // Validation: P_уст^1 >= P_уст^2
+        let validationFailed = false;
+        if (pUst1 !== null && pUst2 !== null && pUst1 < pUst2) {
+            validationFailed = true;
+            warning.classList.add('show');
+            inputField1.classList.add('input-error');
+            inputField2.classList.add('input-error');
+        } else {
+            warning.classList.remove('show');
+            inputField1.classList.remove('input-error');
+            inputField2.classList.remove('input-error');
+        }
+
+        if (validationFailed) {
+            hideBlocks3to7();
+            hideVerdict();
+            resetHero();
+            return;
+        }
+
+        // Block 3+
+        if (pUst1 !== null) {
+            const r3 = pUstSum - pUst1;
+            showBlock('block3');
+            document.getElementById('res3').textContent = formatNum(r3);
+
+            const r4 = pPotrMax - r3;
+            showBlock('block4');
+            document.getElementById('res4').textContent = formatNum(r4);
+            document.getElementById('res4').className = 'result-value' + (r4 > 0 ? ' negative' : (r4 < 0 ? ' positive' : ''));
+
+            const r5 = 0.2 * pPotrMax;
+            showBlock('block5');
+            document.getElementById('res5').textContent = formatNum(r5);
+
+            if (pUst2 !== null) {
+                const r6 = pUst2 - r5;
+                showBlock('block6');
+                document.getElementById('res6').textContent = formatNum(r6);
+
+                const note6 = document.getElementById('note6');
+                const res6el = document.getElementById('res6');
+                if (r6 < 0) {
+                    res6el.className = 'result-value negative';
+                    note6.classList.add('show');
+                } else {
+                    res6el.className = 'result-value positive';
+                    note6.classList.remove('show');
+                }
+
+                const r6adj = Math.max(0, r6);
+                const r7 = r4 + r6adj;
+                showBlock('block7');
+                document.getElementById('res7').textContent = formatNum(r7);
+                document.getElementById('hero-status').textContent = formatNum(r7);
+
+                const note7 = document.getElementById('note7');
+                if (r6 < 0) {
+                    note7.style.display = 'inline-block';
+                } else {
+                    note7.style.display = 'none';
+                }
+
+                setVerdict(r7, r4, r6);
+
+            } else {
+                hideBlock('block6');
+                hideBlock('block7');
+                hideVerdict();
+                resetHero();
+            }
+        } else {
+            hideBlocks3to7();
+            hideVerdict();
+            resetHero();
+        }
+    }
+
+    function formatNum(n) {
+        return Number.isInteger(n) ? n.toString() : parseFloat(n.toFixed(4)).toString();
+    }
+</script>
+
+</body>
+</html>

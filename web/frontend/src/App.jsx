@@ -11,9 +11,22 @@ import BatteryInteractiveSection_qp from './components/BatteryInteractiveSection
 import ChartsSection_qp from './components/ChartsSection_qp';
 import SchematicSection_qp from './components/SchematicSection_qp';
 import Footer from './components/Footer';
+import TopNavigationStrip from './components/TopNavigationStrip';
+import OtherTasksPage from './pages/OtherTasksPage';
 import { apiService } from './services/api';
 
-function App() {
+const getHashRoute = () => {
+  if (typeof window === 'undefined') {
+    return '/';
+  }
+
+  const rawHash = window.location.hash.replace(/^#/, '').trim();
+  const route = rawHash.split('?')[0] || '/';
+
+  return route.startsWith('/') ? route : `/${route}`;
+};
+
+function HomePage() {
   // Выбор алгоритма: 'wf' (water-filling) или 'qp' (quadratic programming)
   const [algorithm, setAlgorithm] = useState('qp');
   
@@ -279,6 +292,7 @@ function App() {
 
   return (
     <div className="min-h-screen">
+      <TopNavigationStrip currentPage="home" />
       <Hero algorithm={algorithm} setAlgorithm={setAlgorithm} />
       
       {algorithm === 'wf' ? (
@@ -389,6 +403,28 @@ function App() {
       <Footer />
     </div>
   );
+}
+
+function App() {
+  const [route, setRoute] = useState(getHashRoute);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setRoute(getHashRoute());
+    };
+
+    if (!window.location.hash) {
+      window.location.hash = '/';
+    }
+
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  return route === '/other-tasks' ? <OtherTasksPage /> : <HomePage />;
 }
 
 export default App;

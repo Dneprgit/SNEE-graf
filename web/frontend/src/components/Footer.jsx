@@ -1,7 +1,14 @@
 import { motion } from 'framer-motion';
-import { Github, Mail, Heart } from 'lucide-react';
+import { Github, Mail, Heart, UserRound } from 'lucide-react';
 
-const Footer = () => {
+const Footer = ({
+  productName = 'СНЭЭ Graf v1.532',
+  subtitle = 'Визуализация диспетчерского графика системы накопления электрической энергии',
+  copyrightName = 'СНЭЭ Graf',
+  tagline = 'для оптимизации энергетических систем',
+  techStack = 'Powered by FastAPI, React, Recharts & D3.js',
+  author = null,
+}) => {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -15,11 +22,16 @@ const Footer = () => {
           className="text-center"
         >
           <div className="mb-6">
-            <h3 className="text-2xl font-bold mb-2">СНЭЭ Graf v1.531</h3>
-            <p className="text-gray-400">
-              Визуализация диспетчерского графика системы накопления электрической энергии
-            </p>
+            <h3 className="text-2xl font-bold mb-2">{productName}</h3>
+            <p className="text-gray-400">{subtitle}</p>
           </div>
+
+          {author && (
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary-400/25 bg-primary-500/10 px-4 py-2 text-sm text-blue-100">
+              <UserRound className="h-4 w-4" />
+              Автор HTML-страницы: {author}
+            </div>
+          )}
 
           <div className="flex justify-center space-x-6 mb-6">
             <a
@@ -42,12 +54,12 @@ const Footer = () => {
 
           <div className="border-t border-gray-700 pt-6">
             <p className="text-sm text-gray-400 flex items-center justify-center">
-              © {currentYear} СНЭЭ Graf. Создано с
+              © {currentYear} {copyrightName}. Создано с
               <Heart className="w-4 h-4 mx-1 text-red-500 fill-current" />
-              для оптимизации энергетических систем
+              {tagline}
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              Powered by FastAPI, React, Recharts & D3.js
+              {techStack}
             </p>
           </div>
         </motion.div>
