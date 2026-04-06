@@ -38,6 +38,12 @@ export const apiService = {
     return response.data;
   },
 
+  // Получить каталог HTML-задач
+  async getHtmlTasks() {
+    const response = await api.get('/api/v1/html-tasks');
+    return response.data;
+  },
+
   // Рассчитать диспетчерский график
   async calculateSchedule(data) {
     const response = await api.post('/api/v1/calculate', data);

@@ -10,9 +10,12 @@ from typing import List, Optional
 from dotenv import load_dotenv
 import sys
 import os
+import re
 import numpy as np
 import pandas as pd
 from io import BytesIO
+from pathlib import Path
+from urllib.parse import quote
 
 from energy_storage_calculator_ import (
     EnergyStorageCalculator, calculate_optimal_parameters,
@@ -34,6 +37,74 @@ def load_env() -> None:
 
 
 load_env()
+
+
+def get_html_tasks_dir() -> Path:
+    """Каталог HTML-задач: локально из frontend, на сервере из HTML_TASKS_DIR."""
+    default_dir = Path(__file__).resolve().parent.parent / "frontend" / "html_task"
+    return Path(os.getenv("HTML_TASKS_DIR", str(default_dir))).expanduser()
+
+
+def _detect_html_charset(html_bytes: bytes) -> str:
+    head_chunk = html_bytes[:4096].decode("latin1", errors="ignore")
+    direct_charset = re.search(r'<meta[^>]+charset=["\']?\s*([^"\'>\s/]+)', head_chunk, re.IGNORECASE)
+    http_equiv_charset = re.search(r'charset=([^"\'>\s;]+)', head_chunk, re.IGNORECASE)
+
+    return (direct_charset or http_equiv_charset).group(1).lower() if (direct_charset or http_equiv_charset) else "utf-8"
+
+
+def _decode_html_bytes(html_bytes: bytes) -> str:
+    for encoding in (_detect_html_charset(html_bytes), "utf-8", "cp1251", "latin-1"):
+        try:
+            return html_bytes.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+
+    return html_bytes.decode("utf-8", errors="replace")
+
+
+def _extract_html_title(html_content: str, file_name: str) -> str:
+    title_match = re.search(r"<title>([\s\S]*?)</title>", html_content, re.IGNORECASE)
+    title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else ""
+    return title or Path(file_name).stem
+
+
+def _extract_meta_content(html_content: str, meta_name: str) -> Optional[str]:
+    escaped_meta_name = re.escape(meta_name)
+    name_first_pattern = re.compile(
+        rf'<meta[^>]*name=["\']{escaped_meta_name}["\'][^>]*content=["\']([^"\']*)["\'][^>]*>',
+        re.IGNORECASE,
+    )
+    content_first_pattern = re.compile(
+        rf'<meta[^>]*content=["\']([^"\']*)["\'][^>]*name=["\']{escaped_meta_name}["\'][^>]*>',
+        re.IGNORECASE,
+    )
+
+    match = name_first_pattern.search(html_content) or content_first_pattern.search(html_content)
+    return match.group(1).strip() if match else None
+
+
+def get_html_tasks_manifest() -> List[dict]:
+    html_tasks_dir = get_html_tasks_dir()
+    if not html_tasks_dir.exists():
+        return []
+
+    tasks = []
+    for file_path in sorted(html_tasks_dir.glob("*.html"), key=lambda current_file: current_file.name.lower()):
+        html_bytes = file_path.read_bytes()
+        html_content = _decode_html_bytes(html_bytes)
+
+        tasks.append(
+            {
+                "id": file_path.stem,
+                "fileName": file_path.name,
+                "title": _extract_html_title(html_content, file_path.name),
+                "author": _extract_meta_content(html_content, "development-author"),
+                "url": f"/html_task/{quote(file_path.name)}",
+            }
+        )
+
+    return tasks
 
 
 def _str_to_bool(value: Optional[str]) -> bool:
@@ -109,6 +180,15 @@ async def get_default_profile():
         "load_profile": DataManager.get_default_profile(),
         "description": "Профиль баланса мощности из примера задания"
     }
+
+
+@app.get("/api/v1/html-tasks")
+async def get_html_tasks():
+    """Получить список HTML-задач из внешнего каталога."""
+    try:
+        return get_html_tasks_manifest()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при чтении HTML-задач: {str(e)}")
 
 
 @app.post("/api/v1/calculate", response_model=CalculationResponse)

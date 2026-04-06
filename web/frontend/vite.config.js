@@ -3,50 +3,8 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const extractCharset = (htmlBuffer) => {
-  const headChunk = htmlBuffer.subarray(0, 4096).toString('latin1');
-  const directCharset = headChunk.match(/<meta[^>]+charset=["']?\s*([^"'>\s/]+)/i)?.[1];
-  const httpEquivCharset = headChunk.match(/charset=([^"'>\s;]+)/i)?.[1];
-
-  return (directCharset || httpEquivCharset || 'utf-8').toLowerCase();
-};
-
-const decodeHtml = (htmlBuffer) => {
-  try {
-    return new TextDecoder(extractCharset(htmlBuffer)).decode(htmlBuffer);
-  } catch {
-    return new TextDecoder('utf-8').decode(htmlBuffer);
-  }
-};
-
-const extractTitle = (htmlContent, fileName) => {
-  const title = htmlContent.match(/<title>([\s\S]*?)<\/title>/i)?.[1];
-  const normalizedTitle = title?.replace(/\s+/g, ' ').trim();
-
-  return normalizedTitle || fileName.replace(/\.html$/i, '');
-};
-
-const extractMetaContent = (htmlContent, metaName) => {
-  const escapedMetaName = metaName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const nameFirstPattern = new RegExp(
-    `<meta[^>]*name=["']${escapedMetaName}["'][^>]*content=["']([^"']*)["'][^>]*>`,
-    'i'
-  );
-  const contentFirstPattern = new RegExp(
-    `<meta[^>]*content=["']([^"']*)["'][^>]*name=["']${escapedMetaName}["'][^>]*>`,
-    'i'
-  );
-
-  return (
-    htmlContent.match(nameFirstPattern)?.[1]?.trim() ||
-    htmlContent.match(contentFirstPattern)?.[1]?.trim() ||
-    null
-  );
-};
-
-const readHtmlTaskManifest = async (rootDir) => {
-  const htmlTaskDir = path.resolve(rootDir, 'html_task');
-  const htmlFiles = await fs
+const listHtmlFiles = async (htmlTaskDir) =>
+  fs
     .readdir(htmlTaskDir)
     .then((fileNames) =>
       fileNames
@@ -54,31 +12,6 @@ const readHtmlTaskManifest = async (rootDir) => {
         .sort((firstFile, secondFile) => firstFile.localeCompare(secondFile, 'ru'))
     )
     .catch(() => []);
-
-  return Promise.all(
-    htmlFiles.map(async (fileName) => {
-      const filePath = path.resolve(htmlTaskDir, fileName);
-      const htmlBuffer = await fs.readFile(filePath);
-      const htmlContent = decodeHtml(htmlBuffer);
-
-      return {
-        id: fileName.replace(/\.html$/i, ''),
-        fileName,
-        title: extractTitle(htmlContent, fileName),
-        author: extractMetaContent(htmlContent, 'development-author'),
-      };
-    })
-  );
-};
-
-const writeHtmlTaskManifest = async (targetDir, manifest) => {
-  await fs.mkdir(targetDir, { recursive: true });
-  await fs.writeFile(
-    path.resolve(targetDir, 'manifest.json'),
-    JSON.stringify(manifest, null, 2),
-    'utf-8'
-  );
-};
 
 const isSafeHtmlTaskPath = (htmlTaskDir, requestedPath) => {
   const resolvedPath = path.resolve(htmlTaskDir, requestedPath);
@@ -125,19 +58,6 @@ const htmlTaskPlugin = () => {
         }
       });
 
-      server.middlewares.use('/html_task/manifest.json', async (_req, res, next) => {
-        try {
-          const manifest = await readHtmlTaskManifest(rootDir);
-
-          res.statusCode = 200;
-          res.setHeader('Content-Type', 'application/json; charset=utf-8');
-          res.setHeader('Cache-Control', 'no-store');
-          res.end(JSON.stringify(manifest));
-        } catch (error) {
-          return next(error);
-        }
-      });
-
       server.middlewares.use('/html_task', async (req, res, next) => {
         try {
           const requestedPath = decodeURIComponent((req.url || '/').split('?')[0]).replace(/^\/+/, '');
@@ -164,16 +84,10 @@ const htmlTaskPlugin = () => {
     async writeBundle() {
       const htmlTaskDir = path.resolve(rootDir, 'html_task');
       const outputHtmlTaskDir = path.resolve(buildOutDir, 'html_task');
-      const manifest = await readHtmlTaskManifest(rootDir);
 
       await fs.rm(outputHtmlTaskDir, { recursive: true, force: true });
       await fs.mkdir(outputHtmlTaskDir, { recursive: true });
-      await writeHtmlTaskManifest(outputHtmlTaskDir, manifest);
-
-      const htmlFiles = await fs
-        .readdir(htmlTaskDir)
-        .then((fileNames) => fileNames.filter((fileName) => fileName.toLowerCase().endsWith('.html')))
-        .catch(() => []);
+      const htmlFiles = await listHtmlFiles(htmlTaskDir);
 
       await Promise.all(
         htmlFiles.map((fileName) =>

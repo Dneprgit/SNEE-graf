@@ -9,17 +9,11 @@ import {
 } from 'lucide-react';
 import Footer from '../components/Footer';
 import TopNavigationStrip from '../components/TopNavigationStrip';
-
-const buildTaskUrl = (fileName) => `${import.meta.env.BASE_URL}html_task/${fileName}`;
-const MANIFEST_URL = `${import.meta.env.BASE_URL}html_task/manifest.json`;
+import { apiService } from '../services/api';
 
 const mapTasks = (manifest) =>
   [...manifest]
-    .sort((firstTask, secondTask) => firstTask.title.localeCompare(secondTask.title, 'ru'))
-    .map((task) => ({
-      ...task,
-      url: buildTaskUrl(task.fileName),
-    }));
+    .sort((firstTask, secondTask) => firstTask.title.localeCompare(secondTask.title, 'ru'));
 
 const OtherTasksPage = () => {
   const [tasks, setTasks] = useState([]);
@@ -35,16 +29,7 @@ const OtherTasksPage = () => {
 
     const loadTasks = async () => {
       try {
-        const manifestUrl = import.meta.env.DEV
-          ? `${MANIFEST_URL}?t=${Date.now()}`
-          : MANIFEST_URL;
-        const response = await fetch(manifestUrl, { cache: 'no-store' });
-
-        if (!response.ok) {
-          throw new Error(`Failed to load manifest: ${response.status}`);
-        }
-
-        const manifest = await response.json();
+        const manifest = await apiService.getHtmlTasks();
 
         if (isMounted) {
           setTasks(mapTasks(manifest));
@@ -109,9 +94,8 @@ const OtherTasksPage = () => {
             </h1>
 
             <p className="mx-auto mb-10 max-w-3xl text-lg text-blue-100 md:text-xl">
-              Отдельная страница с автоматическим меню HTML-задач. Список собирается напрямую из
-              папки `html_task`, а сами файлы подключаются без перекодирования и открываются как
-              есть.
+              Отдельная страница с автоматическим меню HTML-задач. Список собирается backend из
+              внешнего каталога HTML на сервере, а сами файлы подключаются и открываются как есть.
             </p>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -153,7 +137,7 @@ const OtherTasksPage = () => {
                 <div className="col-span-full rounded-3xl border border-white/10 bg-white/10 p-8 text-left backdrop-blur">
                   <div className="mb-3 text-xl font-semibold">HTML-файлы не найдены</div>
                   <p className="text-blue-100">
-                    Добавьте файлы в папку `html_task`, и ссылки на них появятся здесь автоматически.
+                    Добавьте HTML-файлы в серверный каталог, и ссылки на них появятся здесь автоматически.
                   </p>
                 </div>
               )}
