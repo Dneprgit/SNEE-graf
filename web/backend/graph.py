@@ -36,6 +36,7 @@ def _collect_highs_qp_debug_modified(
     model_status_str: str,
     alpha_d: float,
     standby_load_mw: float,
+    model: Any,
 ) -> Dict[str, Any]:
     """Сбор подробной отладочной информации для модифицированного HiGHS QP."""
     return {
@@ -65,6 +66,22 @@ def _collect_highs_qp_debug_modified(
             "model_status": str(model_status),
             "model_status_text": model_status_str,
         },
+        "highs_model": {
+            "lp": {
+                "a_matrix": {
+                    "format": str(model.lp_.a_matrix_.format_),
+                    "start": _to_serializable(model.lp_.a_matrix_.start_),
+                    "index": _to_serializable(model.lp_.a_matrix_.index_),
+                    "value": _to_serializable(model.lp_.a_matrix_.value_),
+                },
+            },
+            "hessian": {
+                "dim": int(model.hessian_.dim_),
+                "start": _to_serializable(model.hessian_.start_),
+                "index": _to_serializable(model.hessian_.index_),
+                "value": _to_serializable(model.hessian_.value_),
+            },
+        }
     }
 
 
@@ -267,7 +284,7 @@ class TestQpSolverModified:
         lb[2 * m + 1] = 0.0
         ub[2 * m + 1] = -smin
 
-        # квадратичная часть цели (реальный QP): штрафует почасовой обмен EC[i]
+        # # квадратичная часть цели (реальный QP): штрафует почасовой обмен EC[i]
         alpha_d = float(os.getenv("QP_HIGHS_ALPHA_D", "1.0"))
         for i in range(m):
             idx = i + m
@@ -312,7 +329,8 @@ class TestQpSolverModified:
             raise ValueError("HiGHS QP (модиф.) не вернул корректный вектор решения.")
 
         # контроль уравнения баланса заряд-разряд + собственные нужды
-        balance_check = float(np.sum(x[m : 2 * m] + self.standby_load))
+        balance_check = float(np.sum(x[m : 2 * m]) + np.sum(self.standby_load))
+
         if abs(balance_check) >= 0.001:
             print(
                 f"Предупреждение: баланс заряд-разряд нарушен на {balance_check:.3f} МВтч"
@@ -347,5 +365,6 @@ class TestQpSolverModified:
                 model_status_str=model_status_str,
                 alpha_d=alpha_d,
                 standby_load_mw=self.standby_load_mw,
+                model=model,
             )
         return result_payload

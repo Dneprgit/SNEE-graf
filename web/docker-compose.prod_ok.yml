@@ -5,9 +5,13 @@ services:
     restart: always
     ports:
       - "8002:8002"
+    env_file:
+      - /opt/snee-graf/backend/.env
     environment:
       - PYTHONUNBUFFERED=1
       - ENVIRONMENT=production
+    volumes:
+      - /opt/snee-graf/html_task:/opt/snee-graf/html_task:ro
     networks:
       - snee-network
     healthcheck:

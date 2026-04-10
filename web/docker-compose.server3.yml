@@ -28,6 +28,9 @@
       
       # Таймауты
       - REQUEST_TIMEOUT=60
+      - HTML_TASKS_DIR=/opt/snee-graf/html_task
+    volumes:
+      - /opt/snee-graf/html_task:/opt/snee-graf/html_task:ro
     networks:
       - snee-network
     healthcheck:

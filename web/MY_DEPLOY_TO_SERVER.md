@@ -35,6 +35,27 @@ docker images
 # 9# Создаем контейнеры:
 docker compose up -d
 
+# HTML-задачи для страницы "Прочие задачи СПЭС"
+# 9.1# Создаем каталог на сервере
+mkdir -p /opt/snee-graf/html_task
+
+# 9.2# Проверяем, 
+релиз 1: что в /opt/snee-graf/backend/.env есть строка HTML_TASKS_DIR=/opt/snee-graf/html_task
+релиз 2: .env не создавался, проверить в docker-composer.yml на сервере:
+     HTML_TASKS_DIR=/opt/snee-graf/html_task
+и
+             volumes:
+      - /opt/snee-graf/html_task:/opt/snee-graf/html_task:ro
+
+# 9.3# После добавления новых html файлов в /opt/snee-graf/html_task
+# backend должен видеть этот каталог через volume в docker-compose.yml
+
+# 9.4# Перезапускаем backend контейнер после изменения .env или docker-compose.yml
+docker compose up -d --force-recreate snee-backend-spes
+
+# 9.5# После правки nginx-конфига не забываем перезагрузить nginx
+sudo nginx -t && sudo systemctl reload nginx
+
 # 11# Просмотреть список образов в докер можно командой
 docker image ls -a
 

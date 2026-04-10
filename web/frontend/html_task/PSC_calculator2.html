@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Расчёт мощности энергосистемы</title>
-    <meta name="development-author" content="Сорокина Анна Дмитриевна">
     <link rel="icon" href="https://www.so-ups.ru/favicon.ico" type="image/x-icon">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=PT+Sans+Narrow:wght@400;700&display=swap');
@@ -879,7 +878,7 @@
 <!-- Top Bar -->
 <div class="top-bar">
     <div class="container">
-        <span>Акционерное общество «Системный оператор Единой энергетической системы»</span>
+        <span>Калькулятор мощности энергосистемы</span>
     </div>
 </div>
 
@@ -894,8 +893,8 @@
                     </svg>
                 </div>
                 <div class="logo-text">
-                    <h1>Системный оператор</h1>
-                    <p>Единой энергетической системы</p>
+                    <h1>ТИТЭС</h1>
+                    <p>Калькулятор мощности</p>
                 </div>
             </div>
         </div>
@@ -959,8 +958,8 @@
                 <div class="input-row">
                     <div class="input-group">
                         <label class="input-label" for="p_ust_sum">
-                            Суммарное значение установленной мощности генерирующего оборудования
-                            (<span class="formula">P<span class="sub">уст</span><span class="sup">сумм</span></span>), МВт
+                            Суммарное значение мощности генерирующего оборудования
+                            (<span class="formula">P<span class="sub">расп</span><span class="sup">сумм</span></span>), МВт
                         </label>
                         <input type="number" class="input-field" id="p_ust_sum" placeholder="Например: 630" step="any" oninput="calculate()">
                     </div>
@@ -985,15 +984,15 @@
                 <div class="input-row">
                     <div class="input-group">
                         <label class="input-label" for="p_ust_1">
-                            Величина установленной генерирующей мощности наиболее крупной единицы генерирующего оборудования электростанции
-                            (<span class="formula">P<span class="sub">уст</span><span class="sup">1</span></span>), МВт
+                            Величина генерирующей мощности наиболее крупной единицы генерирующего оборудования электростанции
+                            (<span class="formula">P<span class="sub">расп</span><span class="sup">1</span></span>), МВт
                         </label>
                         <input type="number" class="input-field" id="p_ust_1" placeholder="Например: 100" step="any" oninput="calculate()">
                     </div>
                     <div class="input-group">
                         <label class="input-label" for="p_ust_2">
-                            Величина установленной генерирующей мощности второй по крупности единицы генерирующего оборудования электростанции
-                            (<span class="formula">P<span class="sub">уст</span><span class="sup">2</span></span>), МВт
+                            Величина генерирующей мощности второй по крупности единицы генерирующего оборудования электростанции
+                            (<span class="formula">P<span class="sub">расп</span><span class="sup">2</span></span>), МВт
                         </label>
                         <input type="number" class="input-field" id="p_ust_2" placeholder="Например: 80" step="any" oninput="calculate()">
                     </div>
@@ -1007,10 +1006,10 @@
                         <div class="warn-content">
                             <div class="warn-title">Ошибка валидации данных</div>
                             <div class="warn-text">
-                                Значение <strong>P<span class="sub">уст</span><span class="sup">1</span></strong> (наиболее крупная единица генерирующего оборудования) должно быть <strong>больше или равно</strong> значению <strong>P<span class="sub">уст</span><span class="sup">2</span></strong> (вторая по крупности единица генерирующего оборудования). Для продолжения расчёта необходимо исправить введённые данные.
+                                Значение <strong>P<span class="sub">расп</span><span class="sup">1</span></strong> (наиболее крупная единица генерирующего оборудования) должно быть <strong>больше или равно</strong> значению <strong>P<span class="sub">расп</span><span class="sup">2</span></strong> (вторая по крупности единица генерирующего оборудования). Для продолжения расчёта необходимо исправить введённые данные.
                             </div>
                             <div class="warn-rule">
-                                P<span class="sub">уст</span><span class="sup">1</span> ≥ P<span class="sub">уст</span><span class="sup">2</span>
+                                P<span class="sub">расп</span><span class="sup">1</span> ≥ P<span class="sub">расп</span><span class="sup">2</span>
                             </div>
                         </div>
                     </div>
@@ -1022,13 +1021,13 @@
         <div class="calc-block result-block hidden-block" id="block3">
             <div class="block-header">
                 <div class="block-num">3</div>
-                <div class="block-title">Величина установленной генерирующей мощности электростанции при отключении наиболее крупной единицы генерирующего оборудования, МВт</div>
+                <div class="block-title">Величина генерирующей мощности электростанции при отключении наиболее крупной единицы генерирующего оборудования, МВт</div>
             </div>
             <div class="block-body">
                 <div class="result-row">
                     <div class="result-formula">
-                        <span class="formula">P<span class="sub">уст</span><span class="sup">сумм</span></span> −
-                        <span class="formula">P<span class="sub">уст</span><span class="sup">1</span></span> =
+                        <span class="formula">P<span class="sub">расп</span><span class="sup">сумм</span></span> −
+                        <span class="formula">P<span class="sub">расп</span><span class="sup">1</span></span> =
                     </div>
                     <div class="result-value" id="res3">—</div>
                     <div class="result-unit">МВт</div>
@@ -1046,8 +1045,8 @@
                 <div class="result-row">
                     <div class="result-formula">
                         <span class="formula">P<span class="sub">потр</span><span class="sup">max</span></span> −
-                        (<span class="formula">P<span class="sub">уст</span><span class="sup">сумм</span></span> −
-                        <span class="formula">P<span class="sub">уст</span><span class="sup">1</span></span>) =
+                        (<span class="formula">P<span class="sub">расп</span><span class="sup">сумм</span></span> −
+                        <span class="formula">P<span class="sub">расп</span><span class="sup">1</span></span>) =
                     </div>
                     <div class="result-value" id="res4">—</div>
                     <div class="result-unit">МВт</div>
@@ -1076,12 +1075,12 @@
         <div class="calc-block result-block hidden-block" id="block6">
             <div class="block-header">
                 <div class="block-num">6</div>
-                <div class="block-title">Разница между величиной P<span class="sub">уст</span><span class="sup">2</span> и 0,2·P<span class="sub">потр</span><span class="sup">max</span></div>
+                <div class="block-title">Разница между величиной P<span class="sub">расп</span><span class="sup">2</span> и 0,2·P<span class="sub">потр</span><span class="sup">max</span></div>
             </div>
             <div class="block-body">
                 <div class="result-row">
                     <div class="result-formula">
-                        <span class="formula">P<span class="sub">уст</span><span class="sup">2</span></span> −
+                        <span class="formula">P<span class="sub">расп</span><span class="sup">2</span></span> −
                         0,2·<span class="formula">P<span class="sub">потр</span><span class="sup">max</span></span> =
                     </div>
                     <div class="result-value" id="res6">—</div>
@@ -1128,7 +1127,7 @@
                 <!-- Generation Recommendations -->
                 <div class="generation-recommendations" id="generation-recommendations">
                     <div class="rec-title">Вид необходимой генерации</div>
-                    <div class="rec-item">
+                    <div class="rec-item" id="rec-guaranteed-item">
                         Необходимо строительство <strong>гарантированной генерации</strong> в объеме не менее <span class="rec-value" id="rec-guaranteed">—</span> МВт
                     </div>
                     <div class="rec-item" id="rec-peak-item">
@@ -1151,10 +1150,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                 </div>
-                <div class="footer-logo-text">СО ЕЭС</div>
-            </div>
-            <div class="footer-links">
-                <a href="https://www.so-ups.ru/" target="_blank">so-ups.ru</a>
+                <div class="footer-logo-text">ТИТЭС</div>
             </div>
             <div class="footer-copy">© 2026 Калькулятор мощности энергосистемы</div>
         </div>
@@ -1207,6 +1203,7 @@
         const hvDesc = document.getElementById('hv-desc');
 
         const genRec = document.getElementById('generation-recommendations');
+        const recGuaranteedItem = document.getElementById('rec-guaranteed-item');
         const recGuaranteed = document.getElementById('rec-guaranteed');
         const recPeak = document.getElementById('rec-peak');
         const recPeakItem = document.getElementById('rec-peak-item');
@@ -1229,14 +1226,30 @@
             hvTitle.textContent = 'Дефицит мощности';
             hvDesc.textContent = 'Необходима генерация';
 
-            // Show generation recommendations
+            // === Generation Recommendations ===
             genRec.classList.add('show');
-            recGuaranteed.textContent = formatNum(r4);
-            
-            if (r6 > 0) {
-                recPeak.textContent = formatNum(r6);
-                recPeakItem.style.display = 'block';
+
+            // Гарантированная генерация: показываем |r4| только если r4 > 0
+            if (r4 > 0) {
+                recGuaranteedItem.style.display = 'block';
+                recGuaranteed.textContent = formatNum(Math.abs(r4));
             } else {
+                // r4 <= 0 → строительство гарантированной генерации не требуется
+                recGuaranteedItem.style.display = 'none';
+            }
+
+            // Пиковая генерация: показываем только при r6 > 0
+            if (r6 > 0) {
+                recPeakItem.style.display = 'block';
+                if (r4 > 0) {
+                    // Если Блок 4 положительный → пиковая = |r6|
+                    recPeak.textContent = formatNum(Math.abs(r6));
+                } else {
+                    // Если Блок 4 отрицательный/нулевой → пиковая = |r7|
+                    recPeak.textContent = formatNum(Math.abs(r7));
+                }
+            } else {
+                // r6 <= 0 → пиковая генерация не выводится
                 recPeakItem.style.display = 'none';
             }
 
@@ -1304,7 +1317,7 @@
             return;
         }
 
-        // Validation: P_уст^1 >= P_уст^2
+        // Validation: P_расп^1 >= P_расп^2
         let validationFailed = false;
         if (pUst1 !== null && pUst2 !== null && pUst1 < pUst2) {
             validationFailed = true;
