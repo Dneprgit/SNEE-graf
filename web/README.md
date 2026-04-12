@@ -1,302 +1,267 @@
-# СНЭЭ Graf - Web Version
+# СНЭЭ Graf - Web Platform
 
-Современная веб-версия системы визуализации диспетчерского графика СНЭЭ с трендовым UI и интерактивными графиками.
+`СНЭЭ Graf` - это актуальная web-платформа для расчета и визуализации диспетчерского графика систем накопления электрической энергии.
 
-## 🚀 Возможности
+Проект состоит из `FastAPI` backend и `React + Vite` frontend. Backend выполняет расчеты, подбор параметров СНЭЭ, загрузку Excel и публикацию HTML-задач, а frontend предоставляет интерфейс редактирования профиля, запуска расчета разными решателями и анализа результатов.
 
-- **Современный UI/UX** с использованием Tailwind CSS и Framer Motion
-- **Интерактивные графики** на базе Recharts
-- **SVG визуализация** потоков энергии в реальном времени
-- **Drag & Drop** загрузка Excel файлов
-- **Редактирование данных** в визуальном режиме
-- **Экспорт результатов** в Excel
-- **Адаптивный дизайн** для всех устройств
-- **REST API** на FastAPI
+## Возможности
 
-## 📁 Структура проекта
+- расчет диспетчерского графика СНЭЭ по 24-часовому профилю;
+- загрузка баланса мощности из Excel и скачивание Excel-шаблона;
+- ручное редактирование всех 24 значений профиля;
+- вставка диапазонов значений из Excel прямо в поля ввода;
+- интерактивное изменение профиля перетаскиванием точек;
+- сдвиг всего профиля и плавное изменение соседних точек;
+- расчет оценочных параметров СНЭЭ;
+- переключение между заводскими и оценочными параметрами;
+- запуск расчета тремя решателями из одного интерфейса;
+- отображение KPI, SOC, результирующего баланса и потоков энергии;
+- экспорт результатов в Excel;
+- отдельная страница `Прочие задачи СПЭС` с HTML-инструментами.
 
-```
+## Актуальные решатели
+
+В backend доступны следующие варианты расчета диспетчерского графика:
+
+1. `SciPy linprog (HiGHS)`  
+   Линейная постановка задачи. Endpoint: `POST /api/v1/calculate-qp`
+
+2. `HiGHS QP (highspy)`  
+   Квадратичная оптимизация на базе `highspy`. Endpoint: `POST /api/v1/calculate-qp-highs`
+
+3. `HiGHS QP modified`  
+   Модифицированный QP-решатель с учетом `standby_load_mw` и влияния собственных нужд. Endpoint: `POST /api/v1/calculate-qp-highs-modified`
+
+Для оценки параметров СНЭЭ используется отдельный endpoint `POST /api/v1/calculate-optimal-parameters-qp`.
+
+## Актуальный интерфейс
+
+### Основной экран `СНЭЭ Graf`
+
+Во frontend сейчас реализован полноценный расчетный интерфейс, который включает:
+
+- верхнюю навигацию между основной страницей и страницей HTML-задач;
+- hero-блок продукта;
+- секцию загрузки и редактирования профиля;
+- визуальный редактор профиля с drag-and-drop корректировкой точек;
+- debug-режим для QP-расчетов;
+- блок расчета оценочных параметров;
+- интерактивную SVG-настройку батареи;
+- запуск диспетчерского графика тремя решателями;
+- графики результатов, SOC и экспорт в Excel;
+- интерактивную схему потоков энергии по выбранному часу.
+
+### Страница `Прочие задачи СПЭС`
+
+Во frontend добавлена отдельная страница с автоматическим каталогом HTML-задач:
+
+- backend формирует манифест HTML-файлов;
+- frontend показывает карточки задач с названием и автором;
+- выбранная HTML-страница открывается встроенно через `iframe`;
+- задачу можно открыть в отдельной вкладке.
+
+## Структура проекта
+
+```text
 web/
-├── backend/           # FastAPI сервер
-│   ├── main.py       # Основной файл API
+├── run-backend.bat          локальный запуск backend
+├── run-frontend.bat         локальный запуск frontend
+├── backend/                 FastAPI API и вычислительная логика
+│   ├── main.py
+│   ├── graph.py
+│   ├── energy_storage_calculator_.py
+│   ├── data_manager.py
 │   ├── requirements.txt
-│   ├── run.bat       # Скрипт запуска (Windows)
-│   └── env.example   # Пример конфигурации
-│
-├── frontend/         # React приложение
+│   └── env.example
+├── frontend/                React/Vite интерфейс
 │   ├── src/
-│   │   ├── components/    # React компоненты
-│   │   │   ├── Hero.jsx
-│   │   │   ├── DataInputSection.jsx
-│   │   │   ├── DataVisualizationSection.jsx
-│   │   │   ├── ChartsSection.jsx
-│   │   │   ├── SchematicSection.jsx
-│   │   │   └── Footer.jsx
-│   │   ├── services/      # API клиент
-│   │   │   └── api.js
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
 │   ├── package.json
 │   ├── vite.config.js
-│   └── tailwind.config.js
-│
-└── README.md         # Этот файл
+│   └── env.example
+└── README.md
 ```
 
-## 🛠 Установка и запуск
+## Установка и запуск
 
-### 🐳 Docker (Рекомендуется для продакшена)
+### Локальный запуск
 
-Для развертывания на сервере используйте Docker:
+Для локального запуска используйте bat-скрипты из директории `web`.
 
-**📚 Полная документация Docker:**
-- **[README_DOCKER.md](README_DOCKER.md)** - Обзор Docker развертывания
-- **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - Подробная инструкция
-- **[QUICKSTART_DOCKER.md](QUICKSTART_DOCKER.md)** - Быстрый старт
-- **[COMMANDS.md](COMMANDS.md)** - Шпаргалка по командам
+1. Откройте терминал в директории `web`:
 
-**Быстрый старт с Docker:**
+```bat
+cd web
+```
+
+2. Запустите backend:
+
+```bat
+run-backend.bat
+```
+
+3. В отдельном терминале запустите frontend:
+
+```bat
+run-frontend.bat
+```
+
+`run-backend.bat` автоматически:
+
+- создает `venv`, если окружение еще не создано;
+- активирует виртуальное окружение;
+- устанавливает Python-зависимости;
+- запускает FastAPI.
+
+`run-frontend.bat` автоматически:
+
+- устанавливает npm-зависимости при необходимости;
+- запускает Vite dev server.
+
+### Локальные адреса
+
+- Frontend: `http://localhost:3002`
+- Backend API: `http://localhost:8002`
+- Swagger UI: `http://localhost:8002/docs`
+- ReDoc: `http://localhost:8002/redoc`
+
+### Docker
+
+Для серверного и production-развертывания используйте Docker.
+
+Быстрый старт:
 
 ```bash
-# Разработка (с hot-reload)
 cd web
 docker-compose up -d
+```
 
-# Продакшен (оптимизированные образы)
+Production-вариант:
+
+```bash
 cd web
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-Подробнее см. [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
+Подробности смотрите в `README_DOCKER.md` и `DOCKER_DEPLOYMENT.md`.
 
----
-
-### Backend (FastAPI)
-
-1. Перейдите в директорию backend:
-```bash
-cd web/backend
-```
-
-2. Создайте виртуальное окружение:
-```bash
-python -m venv venv
-```
-
-3. Активируйте виртуальное окружение:
-```bash
-# Windows
-venv\Scripts\activate
-
-# Linux/Mac
-source venv/bin/activate
-```
-
-4. Установите зависимости:
-```bash
-pip install -r requirements.txt
-```
-
-5. Запустите сервер:
-```bash
-# Windows
-run.bat
-
-# Linux/Mac
-uvicorn main:app --reload --host 0.0.0.0 --port 8001
-```
-
-API будет доступен по адресу: http://localhost:8001
-Документация: http://localhost:8001/docs
-
-### Frontend (React)
-
-1. Перейдите в директорию frontend:
-```bash
-cd web/frontend
-```
-
-2. Установите зависимости:
-```bash
-npm install
-```
-
-3. Запустите dev сервер:
-```bash
-npm run dev
-```
-
-Приложение будет доступно по адресу: http://localhost:3001
-
-## 🎨 Технологии
+## Технологии
 
 ### Backend
-- **FastAPI** - современный веб-фреймворк для Python
-- **Uvicorn** - ASGI сервер
-- **Pydantic** - валидация данных
-- **NumPy** - вычисления
-- **Pandas** - обработка данных
-- **OpenPyXL** - работа с Excel
+
+- `FastAPI`
+- `Uvicorn`
+- `Pydantic`
+- `NumPy`
+- `SciPy`
+- `highspy`
+- `Pandas`
+- `OpenPyXL`
+- `python-dotenv`
 
 ### Frontend
-- **React 18** - UI библиотека
-- **Vite** - сборщик и dev сервер
-- **Tailwind CSS** - utility-first CSS framework
-- **Recharts** - библиотека графиков
-- **D3.js** - визуализация данных
-- **Framer Motion** - анимации
-- **Lucide React** - иконки
-- **Axios** - HTTP клиент
-- **React Dropzone** - drag & drop файлов
-- **XLSX** - работа с Excel в браузере
 
-## 📦 Сборка для продакшена
+- `React 18`
+- `Vite`
+- `Tailwind CSS`
+- `Framer Motion`
+- `Recharts`
+- `D3`
+- `Lucide React`
+- `Axios`
+- `React Dropzone`
+- `XLSX`
+
+## API
+
+После запуска backend документация доступна по адресам:
+
+- Swagger UI: `http://localhost:8002/docs`
+- ReDoc: `http://localhost:8002/redoc`
+
+Основные endpoints:
+
+- `GET /api/v1/health`
+- `GET /api/v1/default-profile`
+- `GET /api/v1/html-tasks`
+- `POST /api/v1/upload-excel`
+- `POST /api/v1/validate-profile`
+- `POST /api/v1/calculate-qp`
+- `POST /api/v1/calculate-qp-highs`
+- `POST /api/v1/calculate-qp-highs-modified`
+- `POST /api/v1/calculate-optimal-parameters-qp`
+
+## Сборка и deployment
 
 ### Backend
 
-Для развертывания на сервере используйте:
+Пример запуска backend без bat-скрипта:
 
 ```bash
 pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8001 --workers 4
-```
-
-Или с использованием Gunicorn:
-
-```bash
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8001
+uvicorn main:app --host 0.0.0.0 --port 8002 --workers 4
 ```
 
 ### Frontend
 
-1. Создайте production сборку:
+Production-сборка frontend:
+
 ```bash
 npm run build
 ```
 
-2. Файлы будут находиться в директории `dist/`
+Предпросмотр production-сборки:
 
-3. Разверните на любом статическом хостинге или используйте:
 ```bash
 npm run preview
 ```
 
-## 🌐 Развертывание на Reg.ru
-
-### Вариант 1: Виртуальный хостинг
-
-1. **Backend**: Загрузите файлы backend на сервер через FTP/SSH
-2. Создайте файл `.env` на основе `env.example`
-3. Установите зависимости: `pip install -r requirements.txt`
-4. Настройте веб-сервер (nginx/Apache) для проксирования к FastAPI
-
-### Вариант 2: VPS
-
-1. Подключитесь к серверу по SSH
-2. Клонируйте репозиторий
-3. Установите зависимости для backend и frontend
-4. Настройте Nginx как reverse proxy
-5. Используйте systemd для автозапуска backend
-6. Соберите frontend и разместите в `/var/www/`
-
-Пример конфигурации Nginx:
+Пример `nginx` для reverse proxy:
 
 ```nginx
 server {
     listen 80;
     server_name your-domain.ru;
 
-    # Frontend
     location / {
         root /var/www/snee-graf/frontend/dist;
         try_files $uri $uri/ /index.html;
     }
 
-    # Backend API
     location /api {
-        proxy_pass http://localhost:8001;
+        proxy_pass http://localhost:8002;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 }
 ```
 
-### Вариант 3: Docker (рекомендуется для продакшена)
+## Дополнительная документация
 
-**Для полного развертывания на продакшен сервере с Docker Hub:**
+### Основная
 
-См. **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - подробная пошаговая инструкция:
-- Сборка и публикация образов в Docker Hub
-- Развертывание на сервере Reg.ru
-- Настройка Nginx с SSL
-- Автозапуск и мониторинг
-- Скрипты автоматизации
+- [`QUICKSTART.md`](QUICKSTART.md) - быстрый старт
+- [`API_EXAMPLES.md`](API_EXAMPLES.md) - примеры API
+- [`TESTING.md`](TESTING.md) - тестирование
+- [`USER_GUIDE.md`](USER_GUIDE.md) - руководство пользователя
 
-**Быстрый локальный запуск:**
+### По QP-логике и backend
 
-```bash
-cd web
+- [`backend/QP_IMPLEMENTATION.md`](backend/QP_IMPLEMENTATION.md) - детали реализации QP
+- [`backend/QP_ALGORITHM_README.md`](backend/QP_ALGORITHM_README.md) - описание алгоритма
+- [`backend/QP_VALIDATION_CHECKLIST.md`](backend/QP_VALIDATION_CHECKLIST.md) - чеклист валидации
 
-# Development режим (с hot-reload)
-docker-compose up -d
+### Docker и развертывание
 
-# Production режим (оптимизированные образы)
-docker-compose -f docker-compose.prod.yml up -d
-```
+- [`README_DOCKER.md`](README_DOCKER.md) - обзор Docker-развертывания
+- [`DOCKER_DEPLOYMENT.md`](DOCKER_DEPLOYMENT.md) - пошаговое развертывание
+- [`QUICKSTART_DOCKER.md`](QUICKSTART_DOCKER.md) - быстрый старт Docker
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) - ручное развертывание
+- [`scripts/README.md`](scripts/README.md) - скрипты автоматизации
 
-**Доступные файлы:**
-- `Dockerfile.backend.prod` - Production образ backend
-- `Dockerfile.frontend.prod` - Production образ frontend
-- `docker-compose.yml` - Development конфигурация
-- `docker-compose.prod.yml` - Production конфигурация
-- `nginx-server.conf` - Готовая конфигурация Nginx для сервера
+## Статус
 
-## 📝 API Документация
-
-После запуска backend, полная API документация доступна по адресам:
-- Swagger UI: http://localhost:8001/docs
-- ReDoc: http://localhost:8001/redoc
-
-### Основные эндпоинты:
-
-- `GET /api/v1/health` - проверка работоспособности
-- `GET /api/v1/default-profile` - профиль по умолчанию
-- `POST /api/v1/calculate` - расчет графика СНЭЭ
-- `POST /api/v1/upload-excel` - загрузка Excel файла
-- `POST /api/v1/validate-profile` - валидация профиля
-
-## 🎯 Секции лендинга
-
-1. **Hero** - приветственная секция с анимацией
-2. **Исходные данные** - загрузка и настройка параметров
-3. **Визуализация данных** - графики исходного профиля
-4. **Результаты расчета** - диспетчерский график и статистика
-5. **Схема системы** - интерактивная SVG визуализация
-
-## 📚 Дополнительная документация
-
-### Для разработчиков:
-- **[QUICKSTART.md](QUICKSTART.md)** - Быстрый старт для разработчиков
-- **[API_EXAMPLES.md](API_EXAMPLES.md)** - Примеры использования API
-- **[TESTING.md](TESTING.md)** - Руководство по тестированию
-- **[USER_GUIDE.md](USER_GUIDE.md)** - Руководство пользователя
-
-### Для развертывания (Docker):
-- **[README_DOCKER.md](README_DOCKER.md)** - 🐳 Обзор Docker развертывания ⭐
-- **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - Подробная инструкция развертывания
-- **[QUICKSTART_DOCKER.md](QUICKSTART_DOCKER.md)** - Быстрый старт Docker
-- **[COMMANDS.md](COMMANDS.md)** - Шпаргалка по командам Docker/Nginx/SSL
-- **[scripts/README.md](scripts/README.md)** - Документация по скриптам автоматизации
-
-### Альтернативное развертывание:
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Развертывание без Docker (ручная установка)
-
-## 🤝 Поддержка
-
-Для вопросов и предложений создавайте issue в репозитории проекта.
-
-## 📄 Лицензия
-
-См. LICENSE файл в корне проекта.
+- проект развивается как web-платформа;
+- основной пользовательский сценарий построен вокруг QP/LP-решателей;
+- frontend уже включает расширенный интерфейс настройки, анализа и визуализации;
+- backend обслуживает как расчеты СНЭЭ, так и каталог HTML-инструментов.
 

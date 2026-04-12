@@ -209,9 +209,9 @@ class TestQpSolverModified:
         smax = float(np.max(s))
 
         # веса квадратичной части
-        q0_weight = 1e-20  # диагональное усиление
-        qcap_weight = 1e-9  # емкость
-        qec_weight = 1e-9  # обменная мощность
+        q0_weight = 1e-4  # диагональное усиление
+        qcap_weight = 1e-6  # емкость
+        qec_weight = 1e-6  # обменная мощность
         # веса линейной части
         dmax_weight = 1.0
         dsum_weight = dmax_weight / (m + 1)
@@ -286,9 +286,9 @@ class TestQpSolverModified:
 
         # # квадратичная часть цели (реальный QP): штрафует почасовой обмен EC[i]
         alpha_d = float(os.getenv("QP_HIGHS_ALPHA_D", "1.0"))
-        for i in range(m):
-            idx = i + m
-            q[idx, idx] = q[idx, idx] + 2.0 * alpha_d
+        # for i in range(m):
+        #     idx = i + m
+        #     q[idx, idx] = q[idx, idx] + 2.0 * alpha_d
 
         # наполнение модели HiGHS в col-wise sparse формате
         model = highspy.HighsModel()

@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Github, Mail, Heart, UserRound } from 'lucide-react';
 
 const Footer = ({
-  productName = 'СНЭЭ Graf v1.534',
+  productName = 'СНЭЭ Graf v1.535',
   subtitle = 'Визуализация диспетчерского графика системы накопления электрической энергии',
   copyrightName = 'СНЭЭ Graf',
   tagline = 'для оптимизации энергетических систем',
