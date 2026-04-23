@@ -1,4 +1,3 @@
-Attribute VB_Name = "Module1"
 Option Explicit
 
 Const MaxRealNumber = 1E+300
@@ -23,60 +22,23 @@ Const MaxRealNumber = 1E+300
 ' 7    stopping conditions are too stringent, further improvement is impossible, X contains best point found so far.
 '* 8    user requested termination, X contains best point found so far
 
-' BLEICQPSolve решает задачу квадратичной оптимизации с двусторонними ограничениями общего вида:
+' BLEICQPSolve СЂРµС€Р°РµС‚ Р·Р°РґР°С‡Сѓ РєРІР°РґСЂР°С‚РёС‡РЅРѕР№ РѕРїС‚РёРјРёР·Р°С†РёРё СЃ РґРІСѓСЃС‚РѕСЂРѕРЅРЅРёРјРё РѕРіСЂР°РЅРёС‡РµРЅРёСЏРјРё РѕР±С‰РµРіРѕ РІРёРґР°:
 ' min F(x), F(x)=0.5*x'*A*x+b'*x
-' с ограничениями: lb<=x<=ub
+' СЃ РѕРіСЂР°РЅРёС‡РµРЅРёСЏРјРё: lb<=x<=ub
 '   cl<=C'*x<=cu
-' Старт с точки x0
-' Масштаб x задан в s
-' Матрица A должна быть симметричной.
+' РЎС‚Р°СЂС‚ СЃ С‚РѕС‡РєРё x0
+' РњР°СЃС€С‚Р°Р± x Р·Р°РґР°РЅ РІ s
+' РњР°С‚СЂРёС†Р° A РґРѕР»Р¶РЅР° Р±С‹С‚СЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕР№.
 
 #If Win64 Then
-   Private Declare PtrSafe Function SetEnvironmentVariableA Lib "kernel32" (ByVal lpname As String, ByVal lpValue As String) As Long
-   Private Declare PtrSafe Function GetEnvironmentVariableA Lib "kernel32" (ByVal lpname As String, ByVal lpBuffer As String, ByVal nSize As Long) As Long
    Private Declare PtrSafe Function BLEICQPSolve Lib "QuickQP_x64.dll" (ByRef x() As Double, ByRef A() As Double, ByRef b() As Double, _
       ByRef C() As Double, ByRef cl() As Double, ByRef cu() As Double, ByRef lb() As Double, ByRef ub() As Double, _
       ByRef s() As Double, ByRef x0() As Double) As Long
 #Else
-   Private Declare Function SetEnvironmentVariableA Lib "kernel32" (ByVal lpname As String, ByVal lpValue As String) As Long
-   Private Declare Function GetEnvironmentVariableA Lib "kernel32" (ByVal lpname As String, ByVal lpBuffer As String, ByVal nSize As Long) As Long
    Private Declare Function BLEICQPSolve Lib "QuickQP_x86.dll" (ByRef x() As Double, ByRef A() As Double, ByRef b() As Double, _
       ByRef C() As Double, ByRef cl() As Double, ByRef cu() As Double, ByRef lb() As Double, ByRef ub() As Double, _
       ByRef s() As Double, ByRef x0() As Double) As Long
-
 #End If
-
-Private Function SetEnvironmentVariable(name As String, value As String) As Boolean
-    SetEnvironmentVariable = SetEnvironmentVariableA(name, value)
-End Function
-
-Private Function GetEnvironmentVariable(name As String) As String
-Dim L As Long
-Dim Buf As String
-    L = GetEnvironmentVariableA(name, vbNullString, 0)
-    If L > 0 Then
-        Buf = Space$(L)
-        L = GetEnvironmentVariableA(name, Buf, Len(Buf))
-        GetEnvironmentVariable = Mid$(Buf, 1, L)
-    End If
-End Function
-
-Public Function InitDLLPath(Optional ByVal dllPath As String = "") As Boolean
-Static bEnvChanged As Boolean
-Dim Path As String
-
-    If Len(dllPath) = 0 Then
-        dllPath = Application.Path
-    End If
-    On Error Resume Next
-    If Not bEnvChanged Then
-        bEnvChanged = True
-        Path = GetEnvironmentVariable("PATH")
-        If InStr(1, Path & ";", dllPath & ";", vbTextCompare) = 0 Then
-            SetEnvironmentVariable "PATH", dllPath & ";" & Path
-        End If
-    End If
-End Function
 
 Private Function MinDbl(ByVal x, ByVal y) As Double
    MinDbl = IIf(x > y, y, x)
@@ -89,16 +51,17 @@ End Function
 Private Function CheckInitPoint(ByRef x0() As Double, ByRef C() As Double, ByRef cl() As Double, ByRef cu() As Double, ByRef lb() As Double, ByRef ub() As Double, Optional ByVal ctol As Double = 0.000001) As Long
 Dim i As Long, j As Long, n As Long, m As Long
 Dim s As Double
+   CheckInitPoint = 0
    Debug.Assert ctol > 0
    n = UBound(x0)
    m = UBound(cl)
    ReDim cx(1 To m) As Double
    For i = 1 To n
       If x0(i) < lb(i) - ctol Then
-         Debug.Assert 0
+         CheckInitPoint = CheckInitPoint Or 1
       End If
       If x0(i) > ub(i) + ctol Then
-         Debug.Assert 0
+         CheckInitPoint = CheckInitPoint Or 2
       End If
    Next i
    For i = 1 To m
@@ -107,26 +70,25 @@ Dim s As Double
          s = s + C(i, j) * x0(j)
       Next j
       If s < cl(i) - ctol Then
-         Debug.Assert 0
+         CheckInitPoint = CheckInitPoint Or 4
       End If
       If s > cu(i) + ctol Then
-         Debug.Assert 0
+         CheckInitPoint = CheckInitPoint Or 8
       End If
    Next i
-
 End Function
 
-Private Function GetEESSOptimalLoad_new2(ByRef dblSystemLoad() As Double, _
-   ByVal dblEfficiency As Double, ByVal dblNIn As Double, ByVal dblNOut As Double, ByVal dblCapacity As Double, _
+Private Function GetEESSOptimalLoad_new3(ByRef dblSystemLoad() As Double, _
+   ByVal dblEfficiency As Double, ByVal dblNIn As Double, ByVal dblNOut As Double, ByVal dblPSb As Double, ByVal dblCapacity As Double, _
    ByRef dblEENSEnergyAvailable() As Double, ByRef dblEENSLoad() As Double, _
    ByRef dblSystemWithENSSLoadDeficite As Double, ByRef dblSystemWithENSSLoadReserve As Double) As Long
 Dim i As Long, im As Long, j As Long, k As Long, n As Long
 Dim x() As Double, x0() As Double, lb() As Double, ub() As Double
 Dim A() As Double, b() As Double, s() As Double
 Dim C() As Double, cl() As Double, cu() As Double
-Dim dblS() As Double, dblP As Double
+Dim dblS() As Double
 Dim dblSmin As Double, dblSmax As Double, dblWSmin As Double, dblWSmax As Double
-Dim dblVal As Double
+Dim dblVal As Double, lRet As Long
 Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dblRmax As Double, dblDsum As Double
    Debug.Assert dblEfficiency > 0 And dblEfficiency <= 1
    Debug.Assert dblNIn >= 0
@@ -136,20 +98,17 @@ Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dbl
    Debug.Assert im = 24
    ReDim dblEENSEnergyAvailable(1 To im) As Double
    ReDim dblENSSLoad(1 To im) As Double
-   ' размеры задачи оптимизации
+   ' СЂР°Р·РјРµСЂС‹ Р·Р°РґР°С‡Рё РѕРїС‚РёРјРёР·Р°С†РёРё
    n = im * 2 + 2
    k = im * 2
-   ' настройки
+   ' РЅР°СЃС‚СЂРѕР№РєРё
    dblW0 = 1E-20
-   dblWCap = 0.000000001 ' емкость
-   dblWEC = 0.000000001 ' обменная мощность
-   dblDmax = 1 ' максимальный дефицит мощности
-   dblDsum = dblDmax / (im + 1) ' максимальный дефицит энергии
-   dblRmax = dblDsum / (im + 1) ' максимальный избыток мощности
-   ' доопределение
-   dblP = 10 ' !!! значение для тестов
-   dblP = 0.01 * MaxDbl(dblNIn, dblNOut) ' !!! значение для тестов
-   ' распределение памяти
+   dblWCap = 0.000000001 ' РµРјРєРѕСЃС‚СЊ
+   dblWEC = 0.000000001 ' РѕР±РјРµРЅРЅР°СЏ РјРѕС‰РЅРѕСЃС‚СЊ
+   dblDmax = 1 ' РјР°РєСЃРёРјР°Р»СЊРЅС‹Р№ РґРµС„РёС†РёС‚ РјРѕС‰РЅРѕСЃС‚Рё
+   dblDsum = dblDmax / (im + 1) ' РјР°РєСЃРёРјР°Р»СЊРЅС‹Р№ РґРµС„РёС†РёС‚ СЌРЅРµСЂРіРёРё
+   dblRmax = dblDsum / (im + 1) ' РјР°РєСЃРёРјР°Р»СЊРЅС‹Р№ РёР·Р±С‹С‚РѕРє РјРѕС‰РЅРѕСЃС‚Рё
+   ' СЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ РїР°РјСЏС‚Рё
    ReDim A(1 To n, 1 To n) As Double
    ReDim b(1 To n) As Double
    ReDim C(1 To k, 1 To n) As Double
@@ -160,13 +119,13 @@ Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dbl
    ReDim lb(1 To n) As Double
    ReDim ub(1 To n) As Double
    ReDim s(1 To n) As Double
-   ' приведение к задаче без потерь
+   ' РїСЂРёРІРµРґРµРЅРёРµ Рє Р·Р°РґР°С‡Рµ Р±РµР· РїРѕС‚РµСЂСЊ
    dblNIn = dblNIn * dblEfficiency
    dblS = dblSystemLoad
    For i = 1 To im
       dblS(i) = IIf(dblS(i) < 0, dblEfficiency, 1) * dblS(i)
    Next i
-   ' экстремумы графика
+   ' СЌРєСЃС‚СЂРµРјСѓРјС‹ РіСЂР°С„РёРєР°
    dblSmin = 0
    dblSmax = 0
    For i = 1 To im
@@ -174,33 +133,33 @@ Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dbl
       dblSmax = MaxDbl(dblSmax, dblS(i))
    Next i
    ' ---
-   ' минимальное диагональное усиление нулевой матрицы
+   ' РјРёРЅРёРјР°Р»СЊРЅРѕРµ РґРёР°РіРѕРЅР°Р»СЊРЅРѕРµ СѓСЃРёР»РµРЅРёРµ РЅСѓР»РµРІРѕР№ РјР°С‚СЂРёС†С‹
    For i = 1 To n
       A(i, i) = dblW0
    Next i
-   ' дообуславливание при прочих равных
-   ' максимизация уровня заряда
+   ' РґРѕРѕР±СѓСЃР»Р°РІР»РёРІР°РЅРёРµ РїСЂРё РїСЂРѕС‡РёС… СЂР°РІРЅС‹С…
+   ' РјР°РєСЃРёРјРёР·Р°С†РёСЏ СѓСЂРѕРІРЅСЏ Р·Р°СЂСЏРґР°
    For i = 1 To im
       A(i, i) = A(i, i) + dblWCap
       b(i + im * 0) = b(i + im * 0) - 2 * dblCapacity * dblWCap
    Next i
-   ' минимизация уровня обменной мощности
+   ' РјРёРЅРёРјРёР·Р°С†РёСЏ СѓСЂРѕРІРЅСЏ РѕР±РјРµРЅРЅРѕР№ РјРѕС‰РЅРѕСЃС‚Рё
    For i = 1 To im
       A(i + im, i + im) = A(i + im, i + im) + dblWEC
    Next i
-   ' основная целевая функция
+   ' РѕСЃРЅРѕРІРЅР°СЏ С†РµР»РµРІР°СЏ С„СѓРЅРєС†РёСЏ
    ' L[]
    For i = 1 To im
       b(i + im * 0) = b(i + im * 0) + 0
    Next i
    ' EC[]
-   For i = 1 To im ' максимальная выдача в часы дефицита
-      b(i + im * 1) = b(i + im * 1) - dblDsum * IIf(dblS(i) > 0, 1, 0) ' проверить корректность для P<>0
+   For i = 1 To im ' РјР°РєСЃРёРјРёР·РёСЂСѓРµРј РІС‹РґР°С‡Сѓ С‚РѕР»СЊРєРѕ РІ С‡Р°СЃС‹ РґРµС„РёС†РёС‚Р°
+      b(i + im * 1) = b(i + im * 1) - dblDsum * IIf(dblS(i) > 0, 1, 0)
    Next i
    b(im * 2 + 1) = b(im * 2 + 1) + dblDmax ' Dmax
    b(im * 2 + 2) = b(im * 2 + 2) + dblRmax ' Rmax
-   ' ограничения:
-   ' связь 'x' и 'y':
+   ' РѕРіСЂР°РЅРёС‡РµРЅРёСЏ:
+   ' СЃРІСЏР·СЊ 'x' Рё 'y':
    For i = 1 To k
       For j = 1 To n
          C(i, j) = 0
@@ -213,8 +172,8 @@ Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dbl
       C(i, i + im) = 1 ' EC[]
       ' Dmax
       ' Rmax
-     cl(i) = -dblP ' -P[]
-     cu(i) = -dblP ' -P[]
+     cl(i) = -dblPSb ' -P[]
+     cu(i) = -dblPSb ' -P[]
    Next i
    For i = 1 To im ' rD
       ' dL[]
@@ -232,7 +191,7 @@ Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dbl
          cu(i + im) = dblS(i)
       End If
    Next i
-   ' ограничения на диапазон 'x':
+   ' РѕРіСЂР°РЅРёС‡РµРЅРёСЏ РЅР° РґРёР°РїР°Р·РѕРЅ 'x':
    For i = 1 To im
       ' SOC
       lb(i) = 0
@@ -248,28 +207,29 @@ Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dbl
    Next i
    ' Dmax
    lb(im * 2 + 1) = 0
-'   ub(im * 2 + 1) = MaxRealNumber ' если для расчетчика не требуется ограничение
-   ub(im * 2 + 1) = dblSmax ' если требуется конечное ограничение
+'   ub(im * 2 + 1) = MaxRealNumber ' РµСЃР»Рё РґР»СЏ СЂР°СЃС‡РµС‚С‡РёРєР° РЅРµ С‚СЂРµР±СѓРµС‚СЃСЏ РѕРіСЂР°РЅРёС‡РµРЅРёРµ
+   ub(im * 2 + 1) = dblSmax ' РµСЃР»Рё С‚СЂРµР±СѓРµС‚СЃСЏ РєРѕРЅРµС‡РЅРѕРµ РѕРіСЂР°РЅРёС‡РµРЅРёРµ
    ' Rmax
-   lb(im * 2 + 2) = 0 ' проверить корректность для случая P<>0!
-'   ub(im * 2 + 2) = MaxRealNumber ' если для расчетчика не требуется ограничение
-   ub(im * 2 + 2) = -dblSmin ' если требуется конечное ограничение
-   ' масштаб переменных: =1
+   lb(im * 2 + 2) = 0
+'   ub(im * 2 + 2) = MaxRealNumber ' РµСЃР»Рё РґР»СЏ СЂР°СЃС‡РµС‚С‡РёРєР° РЅРµ С‚СЂРµР±СѓРµС‚СЃСЏ РѕРіСЂР°РЅРёС‡РµРЅРёРµ
+   ub(im * 2 + 2) = -dblSmin ' РµСЃР»Рё С‚СЂРµР±СѓРµС‚СЃСЏ РєРѕРЅРµС‡РЅРѕРµ РѕРіСЂР°РЅРёС‡РµРЅРёРµ
+   ' РјР°СЃС€С‚Р°Р± РїРµСЂРµРјРµРЅРЅС‹С…: =1
    For i = 1 To n
       s(i) = 1
    Next i
-   ' начальное приближение:
-   ' по L
+   ' РЅР°С‡Р°Р»СЊРЅРѕРµ РїСЂРёР±Р»РёР¶РµРЅРёРµ:
+   ' РїРѕ L
    dblSmin = 0
    dblSmax = 0
    For i = 1 To im
-      dblSmin = dblSmin + lb(i + im) + dblP
-      dblSmax = dblSmax + ub(i + im) + dblP
+      dblSmin = dblSmin + lb(i + im) + dblPSb
+      dblSmax = dblSmax + ub(i + im) + dblPSb
    Next i
-   If dblSmin > 0 Then ' заряд невозможен
+   ' СЂР°РЅРЅРµРµ РѕР±РЅР°СЂСѓР¶РµРЅРёРµ РЅРµСЃРѕРІРјРµСЃС‚РЅРѕСЃС‚Рё СѓСЃР»РѕРІРёР№ Р·Р°РґР°С‡Рё
+   If dblSmin > 0 Then ' Р·Р°СЂСЏРґ РЅРµРІРѕР·РјРѕР¶РµРЅ, РІ С‚РѕРј С‡РёСЃР»Рµ РґР»СЏ РїРѕРєСЂС‹С‚РёСЏ РЅР°РіСЂСѓР·РєРё СЃРѕР±СЃС‚РІРµРЅРЅС‹С… РЅСѓР¶Рґ РІ СЂРµР¶РёРјРµ РѕР¶РёРґР°РЅРёСЏ
       Debug.Assert 0
    End If
-   If dblSmax < 0 Then ' разряд невостребован
+   If dblSmax < 0 Then ' СЂР°Р·СЂСЏРґ РЅРµРІРѕСЃС‚СЂРµР±РѕРІР°РЅ, СЃРёС‚СѓР°С†РёСЏ РЅРµ РґРѕР»Р¶РЅР° РІРѕР·РЅРёРєР°С‚СЊ РїСЂРё РєРѕСЂСЂРµРєС‚РЅС‹С… ub РґР»СЏ EC
       Debug.Assert 0
    End If
    dblWSmin = dblSmax / (dblSmax - dblSmin)
@@ -278,7 +238,7 @@ Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dbl
    dblSmax = 0
    dblVal = 0
    For i = 1 To im
-      dblVal = dblVal + lb(i + im) * dblWSmin + ub(i + im) * dblWSmax + dblP
+      dblVal = dblVal + lb(i + im) * dblWSmin + ub(i + im) * dblWSmax + dblPSb
       x0(i) = dblVal
       dblSmin = MinDbl(dblSmin, dblVal)
       dblSmax = MaxDbl(dblSmax, dblVal)
@@ -288,380 +248,49 @@ Dim dblW0 As Double, dblWCap As Double, dblWEC As Double, dblDmax As Double, dbl
    For i = 1 To im
       x0(i) = dblVal - x0(i)
    Next i
-   ' по ЕС
+   ' РїРѕ Р•РЎ
    dblVal = x0(im)
    For i = 1 To im
-      x0(i + im) = dblVal - x0(i) - dblP
+      x0(i + im) = dblVal - x0(i) - dblPSb
       dblVal = x0(i)
    Next i
-   ' по Dmax, Rmax
+   ' РїРѕ Dmax, Rmax
    x0(im * 2 + 1) = ub(im * 2 + 1)
    x0(im * 2 + 2) = ub(im * 2 + 2)
-   Call CheckInitPoint(x0, C, cl, cu, lb, ub)
-   ' расчет
-   i = BLEICQPSolve(x, A, b, C, cl, cu, lb, ub, s, x0)
-   GetEESSOptimalLoad_new2 = i
-   Select Case i
+   lRet = CheckInitPoint(x0, C, cl, cu, lb, ub)
+   Debug.Assert lRet = 0
+   ' СЂР°СЃС‡РµС‚
+   lRet = BLEICQPSolve(x, A, b, C, cl, cu, lb, ub, s, x0)
+   GetEESSOptimalLoad_new3 = lRet
+   Select Case lRet
    Case 2
-      ' ок, сходимость по x к минимуму
+      ' РѕРє, СЃС…РѕРґРёРјРѕСЃС‚СЊ РїРѕ x Рє РјРёРЅРёРјСѓРјСѓ
    Case 4
-      ' ок, сходимость к минимуму по y
+      ' РѕРє, СЃС…РѕРґРёРјРѕСЃС‚СЊ Рє РјРёРЅРёРјСѓРјСѓ РїРѕ y
    Case 1, 5, 7, 8
-      Debug.Print "Exit code = " & i ' успешное завершение с иным критерием
-   Case Else ' отказ, либо неизвестный код возврата
-      Debug.Print "Exit code = " & i
+      Debug.Print "Exit code = " & lRet  ' СѓСЃРїРµС€РЅРѕРµ Р·Р°РІРµСЂС€РµРЅРёРµ СЃ РёРЅС‹Рј РєСЂРёС‚РµСЂРёРµРј
+   Case Else ' РѕС‚РєР°Р·, Р»РёР±Рѕ РЅРµРёР·РІРµСЃС‚РЅС‹Р№ РєРѕРґ РІРѕР·РІСЂР°С‚Р°
+      Debug.Print "Exit code = " & lRet
    End Select
-   ' тестовый возврат начального приближения
+   ' С‚РµСЃС‚РѕРІС‹Р№ РІРѕР·РІСЂР°С‚ РЅР°С‡Р°Р»СЊРЅРѕРіРѕ РїСЂРёР±Р»РёР¶РµРЅРёСЏ
    If 0 Then
       For i = 1 To n
          x(i) = x0(i)
       Next i
    End If
-   ' контроль
-   dblVal = dblP * im
+   ' РєРѕРЅС‚СЂРѕР»СЊ
+   dblVal = dblPSb * im
    For i = 1 To im
       dblVal = dblVal + x(i + im)
    Next i
-   Debug.Assert Abs(dblVal) < 0.001 ' заряд-разряд подсистемы накопителя сбалансирован
-   ' результат
+   Debug.Assert Abs(dblVal) < 0.001 ' Р·Р°СЂСЏРґ-СЂР°Р·СЂСЏРґ РїРѕРґСЃРёСЃС‚РµРјС‹ РЅР°РєРѕРїРёС‚РµР»СЏ СЃР±Р°Р»Р°РЅСЃРёСЂРѕРІР°РЅ
+   ' СЂРµР·СѓР»СЊС‚Р°С‚
    For i = 1 To im
       dblEENSEnergyAvailable(i) = x(i)
       dblEENSLoad(i) = x(i + im) * IIf(x(i + im) >= 0, 1, 1 / dblEfficiency)
    Next i
    dblSystemWithENSSLoadDeficite = x(1 + im * 2)
    dblSystemWithENSSLoadReserve = x(2 + im * 2) / dblEfficiency
-End Function
-
-Private Function GetEESSOptimalLoad_new(ByRef dblSystemLoad() As Double, _
-   ByVal dblEfficiency As Double, ByVal dblNIn As Double, ByVal dblNOut As Double, ByVal dblCapacity As Double, _
-   ByRef dblEENSEnergyAvailable() As Double, ByRef dblEENSLoad() As Double, _
-   ByRef dblSystemWithENSSLoadDeficite As Double, ByRef dblSystemWithENSSLoadReserve As Double) As Long
-Dim i As Long, im As Long, j As Long, k As Long, n As Long
-Dim x() As Double, x0() As Double, lb() As Double, ub() As Double
-Dim A() As Double, b() As Double, s() As Double
-Dim C() As Double, cl() As Double, cu() As Double
-Dim dblSmin As Double, dblSmax As Double, dblWSmin As Double, dblWSmax As Double
-Dim dblVal As Double
-   Debug.Assert dblEfficiency > 0 And dblEfficiency <= 1
-   Debug.Assert dblNIn >= 0
-   Debug.Assert dblNOut >= 0
-   Debug.Assert dblCapacity >= 0
-   im = UBound(dblSystemLoad, 1)
-   Debug.Assert im = 24
-   ReDim dblEENSEnergyAvailable(1 To im) As Double
-   ReDim dblENSSLoad(1 To im) As Double
-   ' размеры задачи оптимизации
-   n = im * 2 + 2
-   k = im * 2
-   ' распределение памяти
-   ReDim A(1 To n, 1 To n) As Double
-   ReDim b(1 To n) As Double
-   ReDim C(1 To k, 1 To n) As Double
-   ReDim cl(1 To k) As Double
-   ReDim cu(1 To k) As Double
-   ReDim x(1 To n) As Double
-   ReDim x0(1 To n) As Double
-   ReDim lb(1 To n) As Double
-   ReDim ub(1 To n) As Double
-   ReDim s(1 To n) As Double
-   ' экстремумы графика
-   dblSmin = 0
-   dblSmax = 0
-   For i = 1 To im
-      dblSmin = MinDbl(dblSmin, dblSystemLoad(i))
-      dblSmax = MaxDbl(dblSmax, dblSystemLoad(i))
-   Next i
-   dblSmin = dblSmin * dblEfficiency
-   '
-   ' ---
-   ' минимальное диагональное усиление нулевой матрицы
-   For i = 1 To n
-      For j = 1 To n
-         A(i, j) = IIf(i = j, 1, 0) * 0.00000001
-      Next j
-   Next i
-   ' веса для 'x':
-   For i = 1 To im ' L[]
-      b(i + im * 0) = 0
-   Next i
-   For i = 1 To im ' EC[]
-      b(i + im * 1) = -0.04 * IIf(dblSystemLoad(i) > 0, 1, 0) ' проверить корректности для P<>0
-   Next i
-   b(im * 2 + 1) = 1      ' Dmax
-   b(im * 2 + 2) = 0.0016 ' Rmax
-   ' ограничения:
-   ' связь 'x' и 'y':
-   For i = 1 To k
-      For j = 1 To n
-         C(i, j) = 0
-      Next j
-   Next i
-   For i = 1 To im ' rL
-      j = IIf(i > 1, i - 1, im)
-      C(i, i) = 1      ' L[]
-      C(i, j) = -1     ' L[]
-      C(i, i + im) = 1 ' EC[]
-      ' Dmax
-      ' Rmax
-     cl(i) = -0 ' -P[]
-     cu(i) = -0 ' -P[]
-   Next i
-   For i = 1 To im ' rD
-      ' dL[]
-      If dblSystemLoad(i) > 0 Then
-         C(i + im, i + im) = -1   ' EC[i]
-         C(i + im, im * 2 + 1) = -1 ' Dmax
-'         C(i + im, im * 2 + 2) = 0 ' Rmax
-         cl(i + im) = -MaxRealNumber
-         cu(i + im) = -dblSystemLoad(i)
-      Else
-         C(i + im, i + im) = 1   ' EC[i]
-'         C(i + im, im * 2 + 1) = 0 ' Dmax
-         C(i + im, im * 2 + 2) = -1 ' Rmax
-         cl(i + im) = -MaxRealNumber
-         cu(i + im) = dblSystemLoad(i) * dblEfficiency
-      End If
-   Next i
-   ' ограничения на диапазон 'x':
-   For i = 1 To im
-      ' SOC
-      lb(i) = 0
-      ub(i) = dblCapacity
-      ' EC
-      If dblSystemLoad(i) > 0 Then
-         lb(i + im) = 0
-         ub(i + im) = MinDbl(dblNOut, dblSystemLoad(i))
-      Else
-         lb(i + im) = MaxDbl(-dblNIn, dblSystemLoad(i) * dblEfficiency)
-         ub(i + im) = 0
-      End If
-   Next i
-   ' Dmax
-   lb(im * 2 + 1) = 0
-'   ub(im * 2 + 1) = MaxRealNumber ' если для расчетчика не требуется ограничение
-   ub(im * 2 + 1) = dblSmax ' если требуется ограничение
-   ' Rmax
-   lb(im * 2 + 2) = 0 ' проверить корректность для случая P<>0!
-'   ub(im * 2 + 2) = MaxRealNumber ' если для расчетчика не требуется ограничение
-   ub(im * 2 + 2) = -dblSmin ' если требуется ограничение
-   ' масштаб переменных: =1
-   For i = 1 To n
-      s(i) = 1
-   Next i
-   ' начальное приближение:
-   ' по L
-   dblSmin = 0
-   dblSmax = 0
-   For i = 1 To im
-      dblSmin = dblSmin + lb(i + im)
-      dblSmax = dblSmax + ub(i + im)
-   Next i
-   If dblSmin > 0 Then ' заряд невозможен
-      Debug.Assert 0
-   End If
-   If dblSmax < 0 Then ' разряд невостребован
-      Debug.Assert 0
-   End If
-   dblWSmin = dblSmax / (dblSmax - dblSmin)
-   dblWSmax = -dblSmin / (dblSmax - dblSmin)
-   dblSmin = 0
-   dblSmax = 0
-   dblVal = 0
-   For i = 1 To im
-      dblVal = dblVal + lb(i + im) * dblWSmin + ub(i + im) * dblWSmax
-      x0(i) = dblVal
-      dblSmin = MinDbl(dblSmin, dblVal)
-      dblSmax = MaxDbl(dblSmax, dblVal)
-   Next i
-   Debug.Assert dblCapacity >= dblSmax - dblSmin
-   dblVal = dblCapacity + dblSmin
-   For i = 1 To im
-      x0(i) = dblVal - x0(i)
-   Next i
-   ' по ЕС
-   dblVal = x0(im)
-   For i = 1 To im
-      x0(i + im) = dblVal - x0(i)
-      dblVal = x0(i)
-   Next i
-   ' по Dmax, Rmax
-   x0(im * 2 + 1) = ub(im * 2 + 1)
-   x0(im * 2 + 2) = ub(im * 2 + 2)
-   Call CheckInitPoint(x0, C, cl, cu, lb, ub)
-   ' расчет
-   i = BLEICQPSolve(x, A, b, C, cl, cu, lb, ub, s, x0)
-   GetEESSOptimalLoad_new = i
-   Select Case i
-   Case 2
-      ' ок, сходимость по x к минимуму
-   Case 4
-      ' ок, сходимость к минимуму по y
-   Case 1, 5, 7, 8
-      Debug.Print "Exit code = " & i ' успешное завершение с иным критерием
-   Case Else ' отказ, либо неизвестный код возврата
-      Debug.Print "Exit code = " & i
-   End Select
-   ' тестовый возврат начального приближения
-   If 0 Then
-      For i = 1 To n
-         x(i) = x0(i)
-      Next i
-   End If
-   ' контроль
-   dblVal = 0
-   For i = 1 To im
-      dblVal = dblVal + x(i + im)
-   Next i
-   Debug.Assert Abs(dblVal) < 0.001 ' заряд-разряд подсистемы накопителя сбалансирован
-   ' результат
-   For i = 1 To im
-      dblEENSEnergyAvailable(i) = x(i)
-      dblEENSLoad(i) = x(i + im) * IIf(x(i + im) >= 0, 1, 1 / dblEfficiency)
-   Next i
-   dblSystemWithENSSLoadDeficite = x(1 + im * 2)
-   dblSystemWithENSSLoadReserve = x(2 + im * 2) / dblEfficiency
-End Function
-
-
-Private Function GetEESSOptimalLoad(ByRef dblSystemLoad() As Double, _
-   ByVal dblEfficiency As Double, ByVal dblNIn As Double, ByVal dblNOut As Double, ByVal dblCapacity As Double, _
-   ByRef dblEENSEnergyAvailable() As Double, ByRef dblEENSLoad() As Double, _
-   ByRef dblSystemWithENSSLoadDeficite As Double, ByRef dblSystemWithENSSLoadReserve As Double) As Long
-Dim i As Long, im As Long, j As Long, k As Long, n As Long
-Dim x() As Double, A() As Double, b() As Double, lb() As Double, ub() As Double, s() As Double, x0() As Double
-Dim dblVal As Double
-   Debug.Assert dblEfficiency > 0 And dblEfficiency <= 1
-   Debug.Assert dblNIn >= 0
-   Debug.Assert dblNOut >= 0
-   Debug.Assert dblCapacity >= 0
-   im = UBound(dblSystemLoad, 1)
-   Debug.Assert im = 24
-   ReDim dblEENSEnergyAvailable(1 To im) As Double
-   ReDim dblENSSLoad(1 To im) As Double
-   n = im * 4 + 2
-   k = im * 4
-
-   ReDim A(1 To n, 1 To n) As Double
-   ReDim b(1 To n) As Double
-   ReDim C(1 To k, 1 To n) As Double
-   ReDim cl(1 To k) As Double
-   ReDim cu(1 To k) As Double
-   ReDim x(1 To n) As Double
-   ReDim x0(1 To n) As Double
-   ReDim lb(1 To n) As Double
-   ReDim ub(1 To n) As Double
-   ReDim s(1 To n) As Double
-   ' ---
-   ' минимальное диагональное усиление нулевой матрицы
-   For i = 1 To n
-      For j = 1 To n
-         A(i, j) = IIf(i = j, 1, 0) * 0.00000001
-      Next j
-   Next i
-   ' веса для 'x':
-   For i = 1 To im * 3
-      b(i) = 0
-   Next i
-   For i = im * 3 + 1 To im * 4
-      b(i) = 0.04
-   Next i
-   b(im * 4 + 1) = 1
-   b(im * 4 + 2) = 0.0016
-   ' ограничения:
-   ' связь 'x' и 'y':
-   For i = 1 To k
-      For j = 1 To n
-         C(i, j) = 0
-      Next j
-   Next i
-   For i = 1 To im ' rL
-      j = IIf(i > 1, i - 1, im)
-      C(i, i) = 1 ' dL[]
-      C(i, j) = -1 ' dL[]
-      C(i, i + im) = -1 ' CC[]
-      C(i, i + im * 2) = 1 ' CD[]
-      ' D[]
-      ' Dmax
-      ' Rmax
-     cl(i) = 0
-     cu(i) = 0
-   Next i
-   For i = 1 To im ' rD
-      ' dL[]
-      C(i + im, i + im) = -1 / dblEfficiency ' CC[]
-      C(i + im, i + im * 2) = 1 ' CD[]
-      C(i + im, i + im * 3) = 1 ' D[]
-      ' Dmax
-      ' Rmax
-     cl(i + im) = dblSystemLoad(i)
-     cu(i + im) = MaxRealNumber
-   Next i
-   For i = 1 To im ' rDmin
-      ' dL[]
-      C(i + im * 2, i + im) = 1 / dblEfficiency ' CC[]
-      C(i + im * 2, i + im * 2) = -1 ' CD[]
-      ' D[]
-      ' Dmax
-      C(i + im * 2, 2 + im * 4) = 1 ' Rmax
-      cl(i + im * 2) = -dblSystemLoad(i)
-      cu(i + im * 2) = MaxRealNumber
-   Next i
-   For i = 1 To im ' rDmax
-      ' dL[]
-      ' CC[]
-      ' CD[]
-      C(i + im * 3, i + im * 3) = -1 ' D[]
-      C(i + im * 3, 1 + im * 4) = 1 ' Dmax
-      ' Rmax
-      cl(i + im * 3) = 0
-      cu(i + im * 3) = MaxRealNumber
-   Next i
-   ' ограничения на диапазон 'x':
-   For i = 1 To n
-      lb(i) = 0
-   Next i
-   For i = 1 To im
-      ub(i) = dblCapacity
-      ub(i + im) = dblNIn * dblEfficiency
-      ub(i + im * 2) = dblNOut
-      ub(i + im * 3) = MaxRealNumber
-   Next i
-   ub(1 + im * 4) = MaxRealNumber
-   ub(2 + im * 4) = MaxRealNumber
-   ' масштаб переменных: =1
-   For i = 1 To n
-      s(i) = 1
-   Next i
-   ' начальное приближение: x0=lb+s
-   For i = 1 To n
-      x0(i) = lb(i) + s(i)
-   Next i
-   ' расчет
-   i = BLEICQPSolve(x, A, b, C, cl, cu, lb, ub, s, x0)
-   GetEESSOptimalLoad = i
-   Select Case i
-   Case 2
-      ' ок, сходимость по x к минимуму
-   Case 4
-      ' ок, сходимость к минимуму по y
-   Case 1, 5, 7, 8
-      Debug.Print "Exit code = " & i ' успешное завершение с иным критерием
-   Case Else ' отказ, либо неизвестный код возврата
-      Debug.Print "Exit code = " & i
-   End Select
-   ' контроль
-   dblVal = 0
-   For i = 1 To im
-      dblVal = dblVal + x(i + im) - x(i + im * 2)
-   Next i
-   Debug.Assert Abs(dblVal) < 0.001 ' заряд-разряд подсистемы накопителя сбалансированы
-   ' результат
-   For i = 1 To im
-      dblEENSEnergyAvailable(i) = x(i)
-      dblEENSLoad(i) = x(i + im * 2) - x(i + im) / dblEfficiency
-   Next i
-   dblSystemWithENSSLoadDeficite = x(1 + im * 4)
-   dblSystemWithENSSLoadReserve = x(2 + im * 4)
 End Function
 
 Private Function GetEESSOptimizedParameters(ByRef dblSystemLoad() As Double, ByVal dblEfficiency As Double, _
@@ -690,13 +319,13 @@ Dim dblVal As Double
    ReDim ub(1 To n) As Double
    ReDim s(1 To n) As Double
    ' ---
-   ' минимальное диагональное усиление нулевой матрицы
+   ' РјРёРЅРёРјР°Р»СЊРЅРѕРµ РґРёР°РіРѕРЅР°Р»СЊРЅРѕРµ СѓСЃРёР»РµРЅРёРµ РЅСѓР»РµРІРѕР№ РјР°С‚СЂРёС†С‹
    For i = 1 To n
       For j = 1 To n
          A(i, j) = IIf(i = j, 1, 0) * 0.00000001
       Next j
    Next i
-   ' веса для 'x':
+   ' РІРµСЃР° РґР»СЏ 'x':
    For i = 1 To im * 3
       b(i) = 0
    Next i
@@ -705,8 +334,8 @@ Dim dblVal As Double
    b(im * 3 + 3) = 0.02
    b(im * 3 + 4) = 0.0008
    
-   ' ограничения:
-   ' связь 'x' и 'y':
+   ' РѕРіСЂР°РЅРёС‡РµРЅРёСЏ:
+   ' СЃРІСЏР·СЊ 'x' Рё 'y':
    For i = 1 To k
       For j = 1 To n
          C(i, j) = 0
@@ -769,39 +398,39 @@ Dim dblVal As Double
       cl(i + im * 4) = 0
       cu(i + im * 4) = MaxRealNumber
    Next i
-   ' ограничения на диапазон 'x':
+   ' РѕРіСЂР°РЅРёС‡РµРЅРёСЏ РЅР° РґРёР°РїР°Р·РѕРЅ 'x':
    For i = 1 To n
       lb(i) = 0
       ub(i) = MaxRealNumber
    Next i
-   ' масштаб переменных: =1
+   ' РјР°СЃС€С‚Р°Р± РїРµСЂРµРјРµРЅРЅС‹С…: =1
    For i = 1 To n
       s(i) = 1
    Next i
-   ' начальное приближение: x0=lb+s
+   ' РЅР°С‡Р°Р»СЊРЅРѕРµ РїСЂРёР±Р»РёР¶РµРЅРёРµ: x0=lb+s
    For i = 1 To n
       x0(i) = lb(i) + s(i)
    Next i
-   ' расчет
+   ' СЂР°СЃС‡РµС‚
    i = BLEICQPSolve(x, A, b, C, cl, cu, lb, ub, s, x0)
    GetEESSOptimizedParameters = i
    Select Case i
    Case 2
-      ' ок, сходимость по x к минимуму
+      ' РѕРє, СЃС…РѕРґРёРјРѕСЃС‚СЊ РїРѕ x Рє РјРёРЅРёРјСѓРјСѓ
    Case 4
-      ' ок, сходимость к минимуму по y
+      ' РѕРє, СЃС…РѕРґРёРјРѕСЃС‚СЊ Рє РјРёРЅРёРјСѓРјСѓ РїРѕ y
    Case 1, 5, 7, 8
-      Debug.Print "Exit code = " & i ' успешное завершение с иным критерием
-   Case Else ' отказ, либо неизвестный код возврата
+      Debug.Print "Exit code = " & i ' СѓСЃРїРµС€РЅРѕРµ Р·Р°РІРµСЂС€РµРЅРёРµ СЃ РёРЅС‹Рј РєСЂРёС‚РµСЂРёРµРј
+   Case Else ' РѕС‚РєР°Р·, Р»РёР±Рѕ РЅРµРёР·РІРµСЃС‚РЅС‹Р№ РєРѕРґ РІРѕР·РІСЂР°С‚Р°
       Debug.Print "Exit code = " & i
    End Select
-   ' контроль
+   ' РєРѕРЅС‚СЂРѕР»СЊ
    dblVal = 0
    For i = 1 To im
       dblVal = dblVal + x(i + im) - x(i + im * 2)
    Next i
    Debug.Assert Abs(dblVal) < 0.001
-   ' результат
+   ' СЂРµР·СѓР»СЊС‚Р°С‚
    For i = 1 To im
       dblEENSEnergyAvailable(i) = x(i)
       dblEENSLoad(i) = x(i + im * 2) - x(i + im) / dblEfficiency
@@ -815,35 +444,41 @@ End Function
 Public Sub test_optimize_load()
 Dim oWS As Worksheet, oRng As Range
 Dim dblSystemLoad() As Double
-Dim dblEfficiency As Double, dblNIn As Double, dblNOut As Double, dblCapacity As Double
+Dim dblEfficiency As Double, dblNIn As Double, dblNOut As Double, dblP As Double, dblCapacity As Double
 Dim dblEENSEnergyAvailable() As Double, dblEENSLoad() As Double
 Dim dblSystemWithENSSLoadDeficite As Double, dblSystemWithENSSLoadReserve As Double
 Dim i As Integer, im As Integer
 Dim lRes As Long
 Dim arr()
-   InitDLLPath ThisWorkbook.Path ' указываем место расположения DLL - в одном каталоге с книгой
+   ChDir ThisWorkbook.Path ' РјРµРЅСЏРµРј С‚РµРєСѓС‰РёР№ РєР°С‚Р°Р»РѕРі РЅР° РјРµСЃС‚Рѕ СЂР°СЃРїРѕР»РѕР¶РµРЅРёСЏ DLL (С‚Р°Рј Р¶Рµ, РіРґРµ РєРЅРёРіР°)
+   
    im = 24
-   Set oWS = ThisWorkbook.Worksheets("График")
+   Set oWS = ThisWorkbook.Worksheets("Р“СЂР°С„РёРє")
    
    ReDim dblSystemLoad(1 To im) As Double
    ReDim dblEENSEnergyAvailable(1 To im) As Double
    ReDim dblEENSLoad(1 To im) As Double
-   ' чтение параметров
+   ' С‡С‚РµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ
    dblEfficiency = oWS.Range("G2")
    dblNIn = oWS.Range("B2")
    dblNOut = oWS.Range("B3")
    dblCapacity = oWS.Range("B4")
-   ' чтение графика нагрузки
+   dblP = 0 ' С‚РёРїРѕРІРѕР№ СЂР°СЃС‡РµС‚ - РЅРµС‚ РїРѕС‚СЂРµР±Р»РµРЅРёСЏ РІ СЂРµР¶РёРјРµ РѕР¶РёРґР°РЅРёСЏ
+   
+   ' !!! Р·РЅР°С‡РµРЅРёСЏ РґР»СЏ С‚РµСЃС‚РѕРІ
+'   dblP = 0.01 * MaxDbl(dblNIn, dblNOut) ' !!! Р·РЅР°С‡РµРЅРёРµ РґР»СЏ С‚РµСЃС‚РѕРІ
+'   dblP = 10
+   
+   ' С‡С‚РµРЅРёРµ РіСЂР°С„РёРєР° РЅР°РіСЂСѓР·РєРё
    Set oRng = oWS.Range("B7:Y7")
    arr = oRng
    Debug.Assert UBound(arr, 2) = im
    For i = 1 To im
       dblSystemLoad(i) = arr(1, i)
    Next i
-   ' расчет
-'   lRes = GetEESSOptimalLoad(dblSystemLoad, dblEfficiency, dblNIn, dblNOut, dblCapacity, dblEENSEnergyAvailable, dblEENSLoad, dblSystemWithENSSLoadDeficite, dblSystemWithENSSLoadReserve)
-   lRes = GetEESSOptimalLoad_new2(dblSystemLoad, dblEfficiency, dblNIn, dblNOut, dblCapacity, dblEENSEnergyAvailable, dblEENSLoad, dblSystemWithENSSLoadDeficite, dblSystemWithENSSLoadReserve)
-   ' выгрузка
+   ' СЂР°СЃС‡РµС‚
+   lRes = GetEESSOptimalLoad_new3(dblSystemLoad, dblEfficiency, dblNIn, dblNOut, dblP, dblCapacity, dblEENSEnergyAvailable, dblEENSLoad, dblSystemWithENSSLoadDeficite, dblSystemWithENSSLoadReserve)
+   ' РІС‹РіСЂСѓР·РєР°
    oWS.Range("B13") = dblSystemWithENSSLoadDeficite
    oWS.Range("B14") = dblSystemWithENSSLoadReserve
    ReDim arr(1 To 1, 1 To im)
@@ -868,25 +503,26 @@ Dim dblSystemWithENSSLoadDeficite As Double, dblSystemWithENSSLoadReserve As Dou
 Dim i As Integer, im As Integer
 Dim lRes As Long
 Dim arr()
-   InitDLLPath ThisWorkbook.Path ' указываем место расположения DLL - в одном каталоге с книгой
+   ChDir ThisWorkbook.Path ' РјРµРЅСЏРµРј С‚РµРєСѓС‰РёР№ РєР°С‚Р°Р»РѕРі РЅР° РјРµСЃС‚Рѕ СЂР°СЃРїРѕР»РѕР¶РµРЅРёСЏ DLL (С‚Р°Рј Р¶Рµ, РіРґРµ РєРЅРёРіР°)
+   
    im = 24
-   Set oWS = ThisWorkbook.Worksheets("Минимум")
+   Set oWS = ThisWorkbook.Worksheets("РњРёРЅРёРјСѓРј")
    
    ReDim dblSystemLoad(1 To im) As Double
    ReDim dblEENSEnergyAvailable(1 To im) As Double
    ReDim dblEENSLoad(1 To im) As Double
-   ' чтение параметров
+   ' С‡С‚РµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ
    dblEfficiency = oWS.Range("G2")
-   ' чтение графика нагрузки
+   ' С‡С‚РµРЅРёРµ РіСЂР°С„РёРєР° РЅР°РіСЂСѓР·РєРё
    Set oRng = oWS.Range("B7:Y7")
    arr = oRng
    Debug.Assert UBound(arr, 2) = im
    For i = 1 To im
       dblSystemLoad(i) = arr(1, i)
    Next i
-   ' расчет
+   ' СЂР°СЃС‡РµС‚
    lRes = GetEESSOptimizedParameters(dblSystemLoad, dblEfficiency, dblNIn, dblNOut, dblCapacity, dblEENSEnergyAvailable, dblEENSLoad, dblSystemWithENSSLoadDeficite)
-   ' выгрузка
+   ' РІС‹РіСЂСѓР·РєР°
    oWS.Range("B2") = dblNIn
    oWS.Range("B3") = dblNOut
    oWS.Range("B4") = dblCapacity

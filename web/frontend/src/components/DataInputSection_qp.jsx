@@ -471,9 +471,9 @@ const DataInputSection_qp = ({
                 <p className="text-sm text-gray-700">
                   <strong>Полярность для алгоритма QP:</strong>
                   <br />
-                  • <span className="text-red-600 font-semibold">Положительное значение</span> = потребность в покрытии потребления (дефицит)
+                  • <span className="text-black-600 font-semibold">Положительное значение</span> = потребность в покрытии потребления (дефицит)
                   <br />
-                  • <span className="text-green-600 font-semibold">Отрицательное значение</span> = избыток энергии
+                  • <span className="text-black-600 font-semibold">Отрицательное значение</span> = избыток энергии
                 </p>
               </div>
               <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-12 xl:grid-cols-12 2xl:grid-cols-24 gap-1">
@@ -509,9 +509,6 @@ const DataInputSection_qp = ({
                 ))}
               </div>
               <div className="mt-4 space-y-2">
-                <p className="text-xs text-gray-500">
-                  💡 Положительные значения — избыток энергии, отрицательные — дефицит
-                </p>
                 <p className="text-xs text-blue-600 font-medium">
                   📋 Совет: Вы можете скопировать данные из Excel и вставить их с помощью Ctrl+V в любое поле — значения автоматически заполнятся по порядку
                 </p>

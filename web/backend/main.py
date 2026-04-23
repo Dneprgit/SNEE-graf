@@ -557,9 +557,9 @@ async def calculate_dispatch_schedule_qp_highs_modified(request: CalculationRequ
     try:
         debug_enabled = request.debug or _str_to_bool(os.getenv("ENABLE_QP_DEBUG"))
 
-        rated_power_mw = min(request.rated_input_power_mw, request.rated_output_power_mw)
         calculator = TestQpSolverModified(
-            rated_power_mw=rated_power_mw,
+            rated_input_power_mw=request.rated_input_power_mw,
+            rated_output_power_mw=request.rated_output_power_mw,
             rated_capacity_mwh=request.rated_capacity_mwh,
             total_efficiency=request.efficiency,
             standby_load_mw=request.standby_load_mw,
@@ -595,7 +595,8 @@ async def calculate_dispatch_schedule_qp_highs_modified(request: CalculationRequ
         )
         summary["solver"] = "highs_qp_modified"
         summary["standby_load_mw"] = request.standby_load_mw
-        summary["rated_power_used_mw"] = rated_power_mw
+        summary["rated_input_power_used_mw"] = request.rated_input_power_mw
+        summary["rated_output_power_used_mw"] = request.rated_output_power_mw
 
         return CalculationResponse(
             eess_schedule=eess_schedule.tolist(),

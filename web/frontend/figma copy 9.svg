@@ -1,0 +1,40 @@
+<svg width="1294" height="437" viewBox="0 0 1294 437" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern id="positiveHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+<rect width="8" height="8" fill="#22C55E" fill-opacity="0.28"/>
+<line x1="0" y1="0" x2="0" y2="8" stroke="#15803D" stroke-opacity="0.5" stroke-width="2"/>
+</pattern>
+<pattern id="negativeHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+<rect width="8" height="8" fill="#EF4444" fill-opacity="0.28"/>
+<line x1="0" y1="0" x2="0" y2="8" stroke="#B91C1C" stroke-opacity="0.5" stroke-width="2"/>
+</pattern>
+</defs>
+<path d="M0 436.494H1294" stroke="#E0E0E0" stroke-width="0.999985" stroke-dasharray="3 3"/>
+<path d="M0 0.5H1294" stroke="#E0E0E0" stroke-width="0.999985" stroke-dasharray="3 3"/>
+<line x1="0" y1="218.497" x2="1294" y2="218.497" stroke="#94A3B8" stroke-width="1.5" stroke-opacity="0.7"/>
+<rect x="0" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="53.9167" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="107.8334" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="161.7501" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="215.6668" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="269.5835" y="218.352" width="53.9167" height="0.145" fill="url(#positiveHatch)"/>
+<rect x="323.5002" y="181.293" width="53.9167" height="37.204" fill="url(#positiveHatch)"/>
+<rect x="377.4169" y="167.195" width="53.9167" height="51.302" fill="url(#positiveHatch)"/>
+<rect x="431.3336" y="207.379" width="53.9167" height="11.118" fill="url(#positiveHatch)"/>
+<rect x="485.2503" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="539.167" y="218.497" width="53.9167" height="9.81" fill="url(#negativeHatch)"/>
+<rect x="593.0837" y="218.497" width="53.9167" height="5.087" fill="url(#negativeHatch)"/>
+<rect x="647.0004" y="218.497" width="53.9167" height="21.8" fill="url(#negativeHatch)"/>
+<rect x="700.9171" y="218.497" width="53.9167" height="21.8" fill="url(#negativeHatch)"/>
+<rect x="754.8338" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="808.7505" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="862.6672" y="190.398" width="53.9167" height="28.099" fill="url(#positiveHatch)"/>
+<rect x="916.5839" y="218.497" width="53.9167" height="0" fill="url(#negativeHatch)"/>
+<rect x="970.5006" y="140.745" width="53.9167" height="77.752" fill="url(#positiveHatch)"/>
+<rect x="1024.4173" y="140.745" width="53.9167" height="77.752" fill="url(#positiveHatch)"/>
+<rect x="1078.334" y="217.044" width="53.9167" height="1.453" fill="url(#positiveHatch)"/>
+<rect x="1132.2507" y="140.745" width="53.9167" height="77.752" fill="url(#positiveHatch)"/>
+<rect x="1186.1674" y="140.745" width="53.9167" height="77.752" fill="url(#positiveHatch)"/>
+<rect x="1240.0841" y="152.459" width="53.9159" height="66.038" fill="url(#positiveHatch)"/>
+<path d="M0 218.497H269.5835V218.352H323.5002V181.293H377.4169V167.195H431.3336V207.379H485.2503V218.497H539.167V228.307H593.0837V223.584H647.0004V240.297H754.8338V218.497H862.6672V190.398H916.5839V218.497H970.5006V140.745H1078.334V217.044H1132.2507V140.745H1240.0841V152.459H1294" stroke="#EF4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

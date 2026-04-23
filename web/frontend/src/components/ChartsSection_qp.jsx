@@ -264,7 +264,7 @@ const ChartsSection_qp = ({ loadProfile, calculationResult, parameters, schedule
               Диспетчерский график работы СНЭЭ (QP)
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Исходный баланс для QP: <span className="text-red-600 font-semibold">положительный</span> = дефицит, <span className="text-green-600 font-semibold">отрицательный</span> = избыток
+              Исходный баланс для QP: <span className="text-black-600 font-semibold">положительный</span> = дефицит, <span className="text-black-600 font-semibold">отрицательный</span> = избыток
             </p>
             {/* Пресет отображения */}
             <div className="flex items-center gap-3 mb-4">

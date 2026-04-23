@@ -21,6 +21,58 @@ def _to_serializable(value: Any) -> Any:
     return value
 
 
+def _build_hessian_upper_from_sparse(matrix: Any) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Преобразование Hessian в upper-triangular CSC формат для HighsModel."""
+    upper = sp.triu(matrix, format="csc")
+    return (
+        upper.indptr.astype(np.int32),
+        upper.indices.astype(np.int32),
+        upper.data.astype(np.float64),
+    )
+
+
+def _solve_qp_with_trust_constr(
+    c: np.ndarray,
+    q: Any,
+    a: Any,
+    row_lower: np.ndarray,
+    row_upper: np.ndarray,
+    lb: np.ndarray,
+    ub: np.ndarray,
+    x0: np.ndarray,
+) -> np.ndarray:
+    """Резервное решение QP через scipy.optimize.trust-constr."""
+    from scipy.optimize import Bounds, LinearConstraint, minimize
+
+    q_dense = q.toarray() if hasattr(q, "toarray") else np.asarray(q, dtype=np.float64)
+    a_dense = a.toarray() if hasattr(a, "toarray") else np.asarray(a, dtype=np.float64)
+
+    def objective(x: np.ndarray) -> float:
+        return 0.5 * float(x @ q_dense @ x) + float(c @ x)
+
+    def objective_grad(x: np.ndarray) -> np.ndarray:
+        return q_dense @ x + c
+
+    linear_constraint = LinearConstraint(a_dense, row_lower, row_upper)
+    bounds = Bounds(lb, ub)
+
+    result = minimize(
+        objective,
+        x0,
+        method="trust-constr",
+        jac=objective_grad,
+        hess=lambda x: q_dense,
+        constraints=[linear_constraint],
+        bounds=bounds,
+        options={"verbose": 0, "maxiter": 2000, "gtol": 1e-8},
+    )
+
+    if not result.success:
+        raise ValueError(f"SciPy trust-constr не нашел решение: {result.message}")
+
+    return np.asarray(result.x, dtype=float)
+
+
 def _collect_highs_qp_debug_modified(
     *,
     mode: str,
@@ -96,7 +148,8 @@ class TestQpSolverModified:
 
     def __init__(
         self,
-        rated_power_mw: float,
+        rated_input_power_mw: float,
+        rated_output_power_mw: float,
         rated_capacity_mwh: float,
         total_efficiency: float = 0.84,
         standby_load_mw: float = 0.0,
@@ -105,13 +158,14 @@ class TestQpSolverModified:
         Инициализация калькулятора СНЭЭ.
 
         Args:
-            rated_power_mw: Мощность преобразователя в МВт (используется симметрично).
+            rated_input_power_mw: Мощность заряда в МВт.
+            rated_output_power_mw: Мощность разряда в МВт.
             rated_capacity_mwh: Емкость накопителя в МВтч.
             total_efficiency: Полный КПД цикла (0..1).
             standby_load_mw: Почасовое потребление в режиме ожидания, МВт.
         """
-        if rated_power_mw <= 0 or rated_capacity_mwh <= 0:
-            raise ValueError("Мощность и емкость должны быть положительными")
+        if rated_input_power_mw <= 0 or rated_output_power_mw <= 0 or rated_capacity_mwh <= 0:
+            raise ValueError("Мощности заряда/разряда и емкость должны быть положительными")
         if total_efficiency <= 0 or total_efficiency > 1:
             raise ValueError("Энергоэффективность должна быть в диапазоне (0, 1]")
         if standby_load_mw < 0:
@@ -120,8 +174,8 @@ class TestQpSolverModified:
         self.period_length = 24  # длина расчетного периода в часах
         self.rated_capacity = float(rated_capacity_mwh)
         self.total_efficiency = float(total_efficiency)
-        self.pin_max = float(rated_power_mw) * np.ones(self.period_length)
-        self.pout_max = float(rated_power_mw) * np.ones(self.period_length)
+        self.pin_max = float(rated_input_power_mw) * np.ones(self.period_length)
+        self.pout_max = float(rated_output_power_mw) * np.ones(self.period_length)
         self.standby_load = float(standby_load_mw) * np.ones(self.period_length)
         self.system_load = np.zeros(self.period_length)
 
@@ -205,13 +259,15 @@ class TestQpSolverModified:
         if max_charge_window < standby_need:
             raise ValueError("Отсутствует возможность заряда для покрытия собственных нужд")
 
-        smin = float(np.min(s))
-        smax = float(np.max(s))
-
+        # smin = float(np.min(s))
+        # smax = float(np.max(s))
+        smin = min(0.0, float(np.min(s)))
+        smax = max(0.0, float(np.max(s)))
+       
         # веса квадратичной части
-        q0_weight = 1e-4  # диагональное усиление
-        qcap_weight = 1e-6  # емкость
-        qec_weight = 1e-6  # обменная мощность
+        q0_weight = 1e-12  # минимальное диагональное усиление, различимое для HiGHS
+        qcap_weight = 1e-9  # емкость
+        qec_weight = 1e-9  # обменная мощность
         # веса линейной части
         dmax_weight = 1.0
         dsum_weight = dmax_weight / (m + 1)
@@ -244,11 +300,19 @@ class TestQpSolverModified:
 
         # баланс между запасом энергии, обменной мощностью и потреблением на с.н.
         # циклическая матрица конечно-разностной схемы
-        diags = np.zeros((3, m))
-        diags[0, :] = -1.0
-        diags[1, :] = 1.0
-        diags[2, :] = -1.0
-        ac = sp.spdiags(diags, [1 - m, 0, 1], m, m).tocsc()
+        # diags = np.zeros((3, m))
+        # diags[0, :] = -1.0
+        # diags[1, :] = 1.0
+        # diags[2, :] = -1.0
+        # ac = sp.spdiags(diags, [1 - m, 0, 1], m, m).tocsc()
+
+        # баланс между запасом энергии, обменной мощностью и потреблением на с.н.
+        # эквивалент VBA: L[i] - L[i-1] + EC[i] = -standby_load[i]
+        ac = sp.lil_matrix((m, m), dtype=np.float64)
+        for i in range(m):
+            ac[i, i] = 1.0
+            ac[i, i - 1 if i > 0 else m - 1] = -1.0
+        ac = ac.tocsc()
 
         for i in range(m):
             alb[i] = -self.standby_load[i]
@@ -284,6 +348,61 @@ class TestQpSolverModified:
         lb[2 * m + 1] = 0.0
         ub[2 * m + 1] = -smin
 
+        # Начальное приближение по аналогии с VBA-прототипом.
+        x0 = np.zeros(n, dtype=np.float64)
+        ec_lb = lb[m : 2 * m]
+        ec_ub = ub[m : 2 * m]
+
+        flow_min = float(np.sum(ec_lb + self.standby_load))
+        flow_max = float(np.sum(ec_ub + self.standby_load))
+
+        if flow_min > 0:
+            raise ValueError(
+                "Начальное приближение не построить: заряд невозможен, "
+                "в том числе для покрытия standby-нагрузки"
+            )
+        if flow_max < 0:
+            raise ValueError(
+                "Начальное приближение не построить: разряд невостребован "
+                "или bounds на EC заданы некорректно"
+            )
+        if abs(flow_max - flow_min) < 1e-12:
+            raise ValueError("Начальное приближение не построить: degenerate flow range")
+
+        w_min = flow_max / (flow_max - flow_min)
+        w_max = -flow_min / (flow_max - flow_min)
+
+        soc_min = 0.0
+        soc_max = 0.0
+        level = 0.0
+        for i in range(m):
+            level += ec_lb[i] * w_min + ec_ub[i] * w_max + self.standby_load[i]
+            x0[i] = level
+            soc_min = min(soc_min, level)
+            soc_max = max(soc_max, level)
+
+        if self.rated_capacity < soc_max - soc_min:
+            raise ValueError("Начальное приближение x0 несовместимо с емкостью накопителя")
+
+        offset = self.rated_capacity + soc_min
+        x0[:m] = offset - x0[:m]
+
+        prev_level = x0[m - 1]
+        for i in range(m):
+            x0[m + i] = prev_level - x0[i] - self.standby_load[i]
+            prev_level = x0[i]
+
+        x0[2 * m] = ub[2 * m]
+        x0[2 * m + 1] = ub[2 * m + 1]
+
+        tol = 1e-9
+        if np.any(x0 < lb - tol) or np.any(x0 > ub + tol):
+            raise ValueError("Начальное приближение x0 выходит за bounds")
+
+        ax0 = np.asarray(a @ x0).reshape(-1)
+        if np.any(ax0 < alb - tol) or np.any(ax0 > aub + tol):
+            raise ValueError("Начальное приближение x0 нарушает линейные ограничения")
+
         # # квадратичная часть цели (реальный QP): штрафует почасовой обмен EC[i]
         alpha_d = float(os.getenv("QP_HIGHS_ALPHA_D", "1.0"))
         # for i in range(m):
@@ -291,6 +410,8 @@ class TestQpSolverModified:
         #     q[idx, idx] = q[idx, idx] + 2.0 * alpha_d
 
         # наполнение модели HiGHS в col-wise sparse формате
+        hess_start, hess_index, hess_value = _build_hessian_upper_from_sparse(q)
+
         model = highspy.HighsModel()
         model.lp_.num_col_ = n
         model.lp_.num_row_ = k
@@ -304,27 +425,37 @@ class TestQpSolverModified:
         model.lp_.a_matrix_.index_ = a.indices
         model.lp_.a_matrix_.value_ = a.data
         model.hessian_.dim_ = n
-        model.hessian_.start_ = q.indptr
-        model.hessian_.index_ = q.indices
-        model.hessian_.value_ = q.data
+        model.hessian_.start_ = hess_start
+        model.hessian_.index_ = hess_index
+        model.hessian_.value_ = hess_value
 
         qp = highspy.Highs()
         qp.setOptionValue("output_flag", bool(debug))
+        # В VBA коэффициенты 1e-9 значимы; в HiGHS их нужно не обнулять порогом.
+        qp.setOptionValue("small_matrix_value", 1e-12)
+        qp.setOptionValue("time_limit", 10.0)
+
         qp.passModel(model)
+        init_solution = highspy.HighsSolution()
+        init_solution.col_value = x0.tolist()
+        qp.setSolution(init_solution)
 
         run_status = qp.run()
         model_status = qp.getModelStatus()
         model_status_str = qp.modelStatusToString(model_status)
 
-        # проверка статуса решения
-        if "Optimal" not in model_status_str:
+        if "Optimal" in model_status_str:
+            solution = qp.getSolution()
+            x = np.array(solution.col_value, dtype=float)
+        elif "Time limit" in model_status_str:
+            x = _solve_qp_with_trust_constr(c, q, a, alb, aub, lb, ub, x0)
+            model_status_str = f"{model_status_str}; fallback=trust-constr"
+        else:
             raise ValueError(
                 "HiGHS QP (модиф.) не нашел оптимальное решение. "
                 f"Статус: {model_status_str}"
             )
 
-        solution = qp.getSolution()
-        x = np.array(solution.col_value, dtype=float)
         if x.size != n:
             raise ValueError("HiGHS QP (модиф.) не вернул корректный вектор решения.")
 
