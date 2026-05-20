@@ -8,4 +8,5 @@ pydantic>=2.5.0
 python-dotenv>=1.0.0
 scipy>=1.10.0
 highspy
+notebooklm-py
 

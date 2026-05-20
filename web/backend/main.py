@@ -155,6 +155,16 @@ class CalculationResponse(BaseModel):
     debug_info: Optional[dict] = Field(None, description="Подробная отладочная информация (только debug режим)")
 
 
+class NotebookLmFaqRequest(BaseModel):
+    """Вопрос пользователя к подготовленному блокноту NotebookLM."""
+    question: str = Field(..., min_length=3, max_length=4000, description="Вопрос пользователя")
+
+
+class NotebookLmFaqResponse(BaseModel):
+    """Ответ NotebookLM для FAQ по исходным данным."""
+    answer: str = Field(..., description="Сгенерированный ответ NotebookLM")
+
+
 # Эндпоинты
 @app.get("/")
 async def root():
@@ -189,6 +199,38 @@ async def get_html_tasks():
         return get_html_tasks_manifest()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при чтении HTML-задач: {str(e)}")
+
+
+@app.post("/api/v1/input-data-faq/ask", response_model=NotebookLmFaqResponse)
+async def ask_input_data_faq(request: NotebookLmFaqRequest):
+    """Передать вопрос в заранее подготовленный блокнот NotebookLM."""
+    # notebook_id = os.getenv("NOTEBOOKLM_NOTEBOOK_ID", "").strip()
+    notebook_id = "4a5038b0-ec1c-4915-9df6-45c69d789f10" # 4a5038b0-ec1c-4915-9df6-45c69d789f10 
+    if not notebook_id:
+        raise HTTPException(
+            status_code=500,
+            detail="Не задан NOTEBOOKLM_NOTEBOOK_ID для блокнота FAQ по исходным данным",
+        )
+
+    try:
+        from notebooklm import NotebookLMClient
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="На сервере не установлена библиотека notebooklm-py",
+        ) from exc
+
+    try:
+        async with await NotebookLMClient.from_storage() as client:
+            result = await client.chat.ask(notebook_id, request.question.strip())
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Ошибка обращения к NotebookLM: {str(exc)}",
+        ) from exc
+
+    answer = getattr(result, "answer", None) or str(result)
+    return NotebookLmFaqResponse(answer=answer)
 
 
 @app.post("/api/v1/calculate", response_model=CalculationResponse)

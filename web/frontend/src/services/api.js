@@ -44,6 +44,12 @@ export const apiService = {
     return response.data;
   },
 
+  // Задать вопрос NotebookLM FAQ по исходным данным
+  async askInputDataFaq(question) {
+    const response = await api.post('/api/v1/input-data-faq/ask', { question });
+    return response.data;
+  },
+
   // Рассчитать диспетчерский график
   async calculateSchedule(data) {
     const response = await api.post('/api/v1/calculate', data);

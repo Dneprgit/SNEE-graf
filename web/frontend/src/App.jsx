@@ -13,6 +13,7 @@ import SchematicSection_qp from './components/SchematicSection_qp';
 import Footer from './components/Footer';
 import TopNavigationStrip from './components/TopNavigationStrip';
 import OtherTasksPage from './pages/OtherTasksPage';
+import InputDataFaqPage from './pages/InputDataFaqPage';
 import { apiService } from './services/api';
 
 const getHashRoute = () => {
@@ -424,7 +425,15 @@ function App() {
     };
   }, []);
 
-  return route === '/other-tasks' ? <OtherTasksPage /> : <HomePage />;
+  if (route === '/other-tasks') {
+    return <OtherTasksPage />;
+  }
+
+  if (route === '/input-data-faq') {
+    return <InputDataFaqPage />;
+  }
+
+  return <HomePage />;
 }
 
 export default App;

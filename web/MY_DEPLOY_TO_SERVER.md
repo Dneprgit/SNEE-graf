@@ -19,8 +19,8 @@ Latest или 1.2
 docker-compose down --rmi local
 
 # 10# Удалить образ
-docker image rm end2040/snee_web_spes-backend:1.524
-docker image rm end2040/snee_web_spes-frontend:1.524
+docker image rm end2040/snee_web_spes-backend:1.530
+docker image rm end2040/snee_web_spes-frontend:1.530
 
 # 6# меняем версию в /opt/snee-graf/docker-compose.yml
 # для закачки (pull) с Docker Hub

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 const navigationItems = [
   { href: '#/', label: 'СНЭЭ Graf', page: 'home' },
   { href: '#/other-tasks', label: 'Прочие задачи СПЭС', page: 'tasks' },
+  { href: '#/input-data-faq', label: 'FAQ по подаче исходных данных', page: 'input-data-faq' },
 ];
 
 const TopNavigationStrip = ({ currentPage, className = '' }) => {
